@@ -71,6 +71,15 @@ type ReadOptions struct {
 	// It exists so that a caller can preserve the author's column order, which
 	// is lost once each row becomes a JSON object.
 	OnHeader func(columns []string)
+
+	// TextColumns names CSV columns whose cells must be kept as written.
+	//
+	// CSV has no types, so the reader guesses — and its guess destroys data when
+	// the column is a zero-padded identifier: "001" becomes the number 1 and the
+	// padding is gone for good. A schema that declares the column a string is
+	// the producer saying so, and it must reach the reader, because by the time
+	// the row is a JSON object the original text no longer exists.
+	TextColumns map[string]struct{}
 }
 
 // ReadRows dispatches on format. It never buffers the whole input: every reader
@@ -139,7 +148,11 @@ func ReadCSVRows(body io.Reader, opts ReadOptions, emit RowEmitter) (bool, error
 			if i < len(columns) {
 				name = columns[i]
 			}
-			payload[name] = CSVValue(value)
+			if _, isText := opts.TextColumns[name]; isText {
+				payload[name] = value
+			} else {
+				payload[name] = CSVValue(value)
+			}
 		}
 
 		encoded, err := json.Marshal(payload)

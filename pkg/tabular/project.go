@@ -82,7 +82,8 @@ func FromRows(
 		MaxRows: ClampRows(limit),
 		// A CSV author's column order carries meaning; preserve it rather than
 		// alphabetizing the file's own layout away.
-		OnHeader: func(columns []string) { b.setLeading(columns) },
+		OnHeader:    func(columns []string) { b.setLeading(columns) },
+		TextColumns: textColumns(props),
 	}
 
 	truncated, err := ReadRows(r, format, opts, func(row int, payload json.RawMessage) error {
@@ -98,4 +99,25 @@ func FromRows(
 	}
 
 	return b.table(truncated, StrategyHead), nil
+}
+
+// textColumns lists the columns a schema declares as strings.
+//
+// Typing them correctly is not enough on its own: a station_id of "001" is
+// nominal either way, but if the reader has already turned it into the number 1
+// then the leading zeros are gone and no downstream label can bring them back.
+func textColumns(props map[string]PropType) map[string]struct{} {
+	if len(props) == 0 {
+		return nil
+	}
+	out := map[string]struct{}{}
+	for name, prop := range props {
+		if prop.Type == "string" {
+			out[name] = struct{}{}
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }

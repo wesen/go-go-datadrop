@@ -1,0 +1,212 @@
+{
+  "events": [
+    {
+      "specversion": "",
+      "id": "01JQF0",
+      "source": "sensor-7",
+      "type": "io.datadrop.event",
+      "time": "2026-07-24T15:04:05.1Z",
+      "data": {
+        "temp_c": 21.5,
+        "station": "north",
+        "ok": true,
+        "location": {
+          "lat": 52.1,
+          "lon": 4.3
+        },
+        "tags": [
+          "a",
+          "b"
+        ],
+        "note": null,
+        "extras": {},
+        "ticket": 12345678901234567
+      },
+      "drop": "lab",
+      "stream": "temps",
+      "seq": 41,
+      "received_at": "2026-07-24T15:04:05.1Z"
+    },
+    {
+      "specversion": "",
+      "id": "01JQF1",
+      "source": "sensor-7",
+      "subject": "recalibration",
+      "time": "2026-07-24T15:05:35.1Z",
+      "data": {
+        "temp_c": 22,
+        "station": "south",
+        "ok": false,
+        "comment": "recalibrated"
+      },
+      "drop": "lab",
+      "stream": "temps",
+      "seq": 42,
+      "received_at": "2026-07-24T15:05:35.1Z"
+    }
+  ],
+  "fields": [
+    {
+      "name": "id",
+      "type": "n",
+      "inferred_from": "envelope",
+      "distinct": 2
+    },
+    {
+      "name": "drop",
+      "type": "n",
+      "inferred_from": "envelope",
+      "distinct": 1
+    },
+    {
+      "name": "stream",
+      "type": "n",
+      "inferred_from": "envelope",
+      "distinct": 1
+    },
+    {
+      "name": "seq",
+      "type": "q",
+      "inferred_from": "envelope",
+      "distinct": 2
+    },
+    {
+      "name": "time",
+      "type": "t",
+      "inferred_from": "envelope",
+      "distinct": 2
+    },
+    {
+      "name": "received_at",
+      "type": "t",
+      "inferred_from": "envelope",
+      "distinct": 2
+    },
+    {
+      "name": "source",
+      "type": "n",
+      "inferred_from": "envelope",
+      "distinct": 1
+    },
+    {
+      "name": "type",
+      "type": "n",
+      "inferred_from": "envelope",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "subject",
+      "type": "n",
+      "inferred_from": "envelope",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "data.comment",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "data.extras",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "data.location.lat",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "data.location.lon",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "data.note",
+      "type": "n",
+      "inferred_from": "default",
+      "null_count": 2
+    },
+    {
+      "name": "data.ok",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 2
+    },
+    {
+      "name": "data.station",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 2
+    },
+    {
+      "name": "data.tags",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 1,
+      "null_count": 1
+    },
+    {
+      "name": "data.temp_c",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 2
+    },
+    {
+      "name": "data.ticket",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 1,
+      "null_count": 1
+    }
+  ],
+  "rows": [
+    {
+      "data.extras": {},
+      "data.location.lat": 52.1,
+      "data.location.lon": 4.3,
+      "data.note": null,
+      "data.ok": true,
+      "data.station": "north",
+      "data.tags": [
+        "a",
+        "b"
+      ],
+      "data.temp_c": 21.5,
+      "data.ticket": 12345678901234567,
+      "drop": "lab",
+      "id": "01JQF0",
+      "received_at": "2026-07-24T15:04:05.100Z",
+      "seq": 41,
+      "source": "sensor-7",
+      "stream": "temps",
+      "subject": "",
+      "time": "2026-07-24T15:04:05.100Z",
+      "type": "io.datadrop.event"
+    },
+    {
+      "data.comment": "recalibrated",
+      "data.ok": false,
+      "data.station": "south",
+      "data.temp_c": 22,
+      "drop": "lab",
+      "id": "01JQF1",
+      "received_at": "2026-07-24T15:05:35.100Z",
+      "seq": 42,
+      "source": "sensor-7",
+      "stream": "temps",
+      "subject": "recalibration",
+      "time": "2026-07-24T15:05:35.100Z",
+      "type": ""
+    }
+  ]
+}

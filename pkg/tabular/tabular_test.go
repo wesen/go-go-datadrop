@@ -571,3 +571,38 @@ func itoaTest(i int) string {
 	}
 	return string(out)
 }
+
+// Typing the column correctly is not enough. A zero-padded identifier that the
+// reader has already turned into a number has lost its padding permanently, so
+// the schema has to reach the reader and not just the field list.
+func TestSchemaStringColumnsKeepTheirText(t *testing.T) {
+	rows := "station_id,reading\n001,3\n002,4\n003,5\n"
+	schema := json.RawMessage(`{"properties": {"station_id": {"type": "string"}}}`)
+
+	table, err := FromRows(SourceRef{}, strings.NewReader(rows), FormatCSV, 10,
+		SchemaProperties(schema))
+	if err != nil {
+		t.Fatalf("FromRows: %v", err)
+	}
+
+	if got := table.Rows[0]["station_id"]; got != "001" {
+		t.Fatalf("station_id = %v (%T), want the string \"001\"", got, got)
+	}
+	// The neighbouring column still gets typed, so this is a targeted exception
+	// rather than a switch that turns typing off.
+	if got, ok := table.Rows[0]["reading"].(json.Number); !ok || got.String() != "3" {
+		t.Fatalf("reading = %v (%T), want the number 3", table.Rows[0]["reading"], table.Rows[0]["reading"])
+	}
+}
+
+// Without a schema the reader must keep guessing — that is what makes a plain
+// CSV usable at all.
+func TestWithoutASchemaCellsAreStillTyped(t *testing.T) {
+	table, err := FromRows(SourceRef{}, strings.NewReader("v\n001\n002\n"), FormatCSV, 10, nil)
+	if err != nil {
+		t.Fatalf("FromRows: %v", err)
+	}
+	if got, ok := table.Rows[0]["v"].(json.Number); !ok || got.String() != "1" {
+		t.Fatalf("v = %v (%T), want the number 1", table.Rows[0]["v"], table.Rows[0]["v"])
+	}
+}

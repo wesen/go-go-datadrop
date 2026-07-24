@@ -14,6 +14,7 @@ import (
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/server"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
+	"github.com/go-go-golems/go-go-datadrop/pkg/webui"
 )
 
 func newServeCmd(opts *globalOptions) *cobra.Command {
@@ -24,6 +25,8 @@ func newServeCmd(opts *globalOptions) *cobra.Command {
 		token          string
 		maxBodyBytes   int64
 		maxUploadBytes int64
+		disableUI      bool
+		uiDir          string
 	)
 
 	cmd := &cobra.Command{
@@ -47,6 +50,8 @@ command is safe to re-run against the same file.`,
 				token:          token,
 				maxBodyBytes:   maxBodyBytes,
 				maxUploadBytes: maxUploadBytes,
+				disableUI:      disableUI,
+				uiDir:          uiDir,
 			})
 		},
 	}
@@ -60,6 +65,9 @@ command is safe to re-run against the same file.`,
 		"maximum accepted JSON request body size")
 	flags.Int64Var(&maxUploadBytes, "max-upload-bytes", server.DefaultMaxUploadBytes,
 		"maximum accepted dataset file upload size")
+	flags.BoolVar(&disableUI, "no-ui", false, "do not mount the web UI at /ui")
+	flags.StringVar(&uiDir, "ui-dir", "",
+		"serve the web UI from this directory instead of the embedded copy")
 
 	return cmd
 }
@@ -71,6 +79,8 @@ type serveOptions struct {
 	token          string
 	maxBodyBytes   int64
 	maxUploadBytes int64
+	disableUI      bool
+	uiDir          string
 }
 
 func runServe(ctx context.Context, opts serveOptions) error {
@@ -109,6 +119,8 @@ func runServe(ctx context.Context, opts serveOptions) error {
 		Token:          opts.token,
 		MaxBodyBytes:   opts.maxBodyBytes,
 		MaxUploadBytes: opts.maxUploadBytes,
+		DisableUI:      opts.disableUI,
+		UIDir:          opts.uiDir,
 	}, st, blobs)
 	if err != nil {
 		return err
@@ -117,13 +129,32 @@ func runServe(ctx context.Context, opts serveOptions) error {
 	group, groupCtx := errgroup.WithContext(ctx)
 	group.Go(func() error {
 		return srv.Serve(groupCtx, func(addr net.Addr) {
-			log.Info().
+			event := log.Info().
 				Str("addr", addr.String()).
 				Str("db", st.Path()).
-				Str("blobs", blobs.Root()).
-				Msg("datadrop ready")
+				Str("blobs", blobs.Root())
+			if !opts.disableUI {
+				event = event.Str("ui", uiURL(addr))
+			}
+			event.Msg("datadrop ready")
 		})
 	})
 
 	return errors.Wrap(group.Wait(), "serve")
+}
+
+// uiURL turns a bound listener address into something a human can click.
+//
+// A wildcard bind renders as ":8080" or "[::]:8080", neither of which a browser
+// will open, so the host is rewritten to localhost. Naming the port the server
+// actually got also matters when --addr used port 0.
+func uiURL(addr net.Addr) string {
+	host, port, err := net.SplitHostPort(addr.String())
+	if err != nil {
+		return "http://" + addr.String() + webui.MountPath
+	}
+	if host == "" || host == "::" || host == "0.0.0.0" {
+		host = "localhost"
+	}
+	return "http://" + net.JoinHostPort(host, port) + webui.MountPath
 }

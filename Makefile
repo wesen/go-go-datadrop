@@ -1,4 +1,4 @@
-.PHONY: gifs logcopter-generate logcopter-check
+.PHONY: gifs logcopter-generate logcopter-check ui ui-test ui-dev
 
 all: gifs
 
@@ -33,6 +33,21 @@ test:
 build:
 	GOWORK=off go generate ./...
 	GOWORK=off go build ./...
+
+# The web UI. Deliberately NOT wired into `build` or into `go generate`: the
+# built assets are committed, so a Go build — and a `go install` of this module
+# — must not require bun. Run this after changing anything under ui/.
+ui:
+	bun --cwd ui install --frozen-lockfile
+	bun --cwd ui run build
+
+ui-test:
+	bun --cwd ui run typecheck
+	bun --cwd ui test
+
+# Vite with HMR on :5173, proxying /v1 to a `datadrop serve` on :8080.
+ui-dev:
+	bun --cwd ui run dev
 
 logcopter-generate:
 	GOWORK=off go generate ./...

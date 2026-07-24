@@ -23,6 +23,7 @@ import (
 	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 	"github.com/go-go-golems/go-go-datadrop/pkg/stream"
+	"github.com/go-go-golems/go-go-datadrop/pkg/webui"
 )
 
 // Config holds the knobs `datadrop serve` exposes.
@@ -39,6 +40,15 @@ type Config struct {
 	// hub's default. A subscriber that overflows it is disconnected and
 	// expected to resume from its last sequence.
 	StreamBuffer int
+
+	// DisableUI leaves the /ui and /static routes unregistered. Mounting them
+	// is free when the assets are missing, but an operator running a headless
+	// ingest node may prefer the routes gone entirely.
+	DisableUI bool
+
+	// UIDir serves the frontend from a directory instead of from the embedded
+	// copy, so a developer can point a running server at a fresh build.
+	UIDir string
 
 	// MaxUploadBytes caps a dataset file upload. Zero selects
 	// DefaultMaxUploadBytes.
@@ -145,6 +155,12 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("HEAD /v1/blobs/{digest}", s.handleHeadBlob)
 	mux.HandleFunc("POST /v1/blobs/gc", s.handleGarbageCollect)
+
+	// The web UI, mounted last so that it is visibly subordinate to the API.
+	// It claims /ui, /static and the bare root; nothing under /v1.
+	if !s.cfg.DisableUI {
+		webui.Register(mux, s.cfg.UIDir)
+	}
 
 	// Outermost first: a panic in any handler must still produce a response
 	// carrying the request ID that the log line will reference.
