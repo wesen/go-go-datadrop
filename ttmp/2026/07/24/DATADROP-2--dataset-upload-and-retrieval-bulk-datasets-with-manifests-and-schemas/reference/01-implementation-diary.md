@@ -676,3 +676,198 @@ unauthenticated upload    → 401
 | `application/octet-stream` | `.csv` | `text/csv` — likewise |
 | *(none)* | `.csv` | `text/csv` |
 | `text/csv` | *(none)* | `text/csv` |
+
+---
+
+## Step 5: Tasks 8–11 — client, CLI, materialization, GC, and acceptance
+
+The remaining four tasks: the typed client and CLI that drive the staged upload,
+the bridge that turns dataset rows into events, blob garbage collection, and the
+end-to-end tests that prove the whole thing. DATADROP-2 is complete.
+
+The step's most useful output is a number. The staged upload protocol was
+justified in the specification by an argument about re-uploading unchanged
+files; it now has a measurement.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Commits (code):** `fad864a` (task 8), `2e93cab` (task 9), `59f13ae` (task 10),
+`1d4b314` (task 11)
+
+### What I did
+
+- `pkg/client/datasets.go` — the staged push (`PushDataset`), upload, mount,
+  download, archive, import, GC, plus `HashFile` and `VerifyFile`.
+- `pkg/cli/dataset.go` — `push`, `list`, `show`, `get`, `import`, `rm`, `gc`.
+- `pkg/server/handlers_import.go` — CSV and NDJSON materialization with
+  provenance and deterministic identifiers.
+- `pkg/server/handlers_gc.go` — the sweep endpoint.
+- Exported `store.Audit`, which the v0.1 guide listed as public API but which
+  existed only in unexported form.
+- `cmd/datadrop/dataset_smoke_test.go` — three end-to-end tests.
+- Rewrote the README around the stream-vs-dataset distinction.
+
+### What worked
+
+- **The dedup claim, measured.** Publishing a 645 KB CSV plus a README, then
+  editing only the README and republishing:
+
+  ```
+  uploaded 1 file(s) (71 B), reused 1 already-stored file(s) (644.6 KiB)
+  ```
+
+  Three blobs on disk for two versions of two files; 692 KB rather than 1.3 MB.
+  The end-to-end test asserts both the message and the blob count, so the
+  specification's central argument is now a regression test rather than a claim.
+
+- **The integrity check, proven to fire.** `dataset get` verifies each
+  downloaded digest, and it is easy to write such a check and never learn
+  whether it works. The test corrupts a blob on disk and re-downloads:
+
+  ```
+  datadrop: integrity check failed for .../readings.csv:
+    content hashes to sha256:ab2b49b0…, manifest says sha256:3accaa4c…
+  exit code 1
+  ```
+
+- **Deterministic import identifiers.** Deriving the event ID from
+  `sha256(digest + "#" + row)` means a re-run replays the same identifiers and
+  the v0.1 append path returns the originals. An interrupted import is re-run
+  rather than repaired, and the second run reports `appended=0 skipped=2`. This
+  reuses v0.1's idempotency rather than adding new machinery, which is the whole
+  reason that behaviour was built in v0.1.
+
+- Deriving the identifier from the **digest** rather than the dataset name means
+  the same content imported under two names produces the same identifiers, so
+  importing a renamed copy does not duplicate events.
+
+### What didn't work
+
+- **I wrote a tautological test and staticcheck caught it.** Asserting
+  determinism as `importEventID(d, 1) != importEventID(d, 1)` compares a pure
+  function to itself; it cannot fail. `SA4000` flagged the identical
+  expressions.
+
+  The property actually worth pinning is *stability across releases*: changing
+  the derivation silently breaks idempotency for every already-imported dataset,
+  because a re-run would produce new identifiers and duplicate every row. That
+  needs a golden value. I then wrote the golden value from memory, it failed,
+  and I derived the correct one independently in Python
+  (`"ds-" + sha256(digest + "#1").hexdigest()[:32]`) rather than copying what
+  the implementation printed — copying the output of the code under test would
+  have made the test assert only that the code does what it does.
+
+- I initially invented a `schemaValidator` interface wrapping a `schemaResult`
+  type, neither of which exists. `pkg/schema` already exports `Compiled` and
+  `Result`; the wrapper was pure ceremony. Deleted.
+
+- A `nonamedreturns` lint issue reached a commit before I noticed. Amended
+  rather than adding a "fix lint" commit, since nothing had been pushed.
+
+### What I learned
+
+- **CSV needs type inference or schemas can never match.** CSV has no types, so
+  a naive import makes every field a string, and a dataset schema declaring
+  `"type": "number"` can never be satisfied — the schema feature would be
+  useless in exactly the case it is most wanted. `csvValue` parses numbers and
+  booleans and leaves everything else a string.
+
+  The sharp edge is that `strconv.ParseFloat` is more permissive than JSON:
+  it accepts hex-float syntax like `0x1p-2`, which JSON cannot represent and
+  which is far more likely to be an identifier than a number. That form is
+  excluded explicitly and the test pins it.
+
+### What was tricky to build
+
+**Deciding what a dataset schema violation should mean.** Strict rejection is
+the obvious answer and it is wrong for imports: a 100,000-row file with one bad
+row would abort partway, having already appended 40,000 events, leaving the
+stream in a state the user did not ask for and cannot easily undo. Permissive is
+the default, so the import completes and reports warnings; `?strict=true` opts
+into rejection for callers who would rather have nothing than something partial.
+
+Note this differs from the v0.1 ingest default, where a single event either
+belongs in the stream or does not. The difference is that a bulk operation has a
+partial-failure state and a single append does not.
+
+**The GC endpoint must not be able to request the unsafe behaviour.** The Go API
+accepts a negative minimum age to disable the age check, which the tests need
+and production must never do. Over HTTP, `min_age_seconds=0` selects the default
+rather than disabling the check, so there is no request that turns it off. The
+distinction matters because the age check is what stops a sweep from deleting an
+in-flight upload, and an operator debugging a full disk is exactly the person
+who would reach for a "just delete everything unreferenced" flag.
+
+### What warrants a second pair of eyes
+
+- Import holds the blob open and appends events one at a time, with no
+  transaction spanning the rows. A failure partway leaves the events that
+  already committed. That is intended — they are individually valid and the
+  re-run resumes — but it is a partial-success mode, and the result document is
+  the only place that says so.
+- `PushDataset` returns its partial `PushResult` alongside an error when a file
+  fails midway, so a caller can see what did transfer. The CLI currently
+  discards it on the error path and prints only the error.
+- The dataset schema cache key reuses the `Stream` field to hold
+  `"<dataset>#v<version>"`. It works and is version-keyed, but it is a field
+  being used for something other than its name.
+
+### What should be done in the future
+
+- Expire abandoned drafts, which currently pin their blobs against the sweep
+  forever.
+- Background import jobs with progress, per the upstream design.
+- A `Content-Digest` response header on download, so a client can verify without
+  having first fetched the manifest.
+
+### Code review instructions
+
+- `pkg/client/datasets.go` `PushDataset` — hash, precheck, mount-or-upload.
+- `pkg/server/handlers_import.go` `materialize` and `importEventID` — the
+  provenance meta and the deterministic identifier.
+- `csvValue` — the typing rule, against `TestCSVValueTyping`.
+- `pkg/server/handlers_gc.go` — `min_age_seconds=0` meaning "default", not
+  "disabled".
+
+```bash
+GOWORK=off go test ./... -count=1
+GOWORK=off go test ./cmd/datadrop -run TestDataset -v
+```
+
+### Technical details
+
+**End-to-end evidence**
+
+```
+push v1                → uploaded 2 file(s), 2 blobs on disk
+edit README, push v2   → uploaded 1 file(s) (71 B), reused 1 (644.6 KiB)
+                       → 3 blobs on disk for 2 versions × 2 files
+get --output           → byte-identical to the source
+corrupt a blob, get    → exit 1, "integrity check failed"
+import                 → appended 2, provenance meta on every event
+import again           → appended 0, skipped 2; stream still holds 2
+rm --version 1         → bytes survive (deletion does not sweep)
+gc --min-age-seconds 1 → deleted 1, 0 blobs remain
+```
+
+**Final test inventory**
+
+| Package | Tests |
+|---|---:|
+| `pkg/blob` | 20 |
+| `pkg/datadrop` | 11 |
+| `pkg/store` | 56 |
+| `pkg/schema` | 12 |
+| `pkg/stream` | 8 |
+| `pkg/server` | 81 |
+| `pkg/client` | 10 |
+| `pkg/cli` | 9 |
+| `cmd/datadrop` | 6 |
+| **total** | **213** |
+
+**New endpoints**
+
+Thirteen: eleven dataset routes plus `HEAD /v1/blobs/{digest}` and
+`POST /v1/blobs/gc`.

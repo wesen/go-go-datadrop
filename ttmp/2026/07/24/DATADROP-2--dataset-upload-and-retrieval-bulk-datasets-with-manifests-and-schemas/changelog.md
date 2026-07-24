@@ -33,3 +33,14 @@ Tasks 4-7 (commit 8e25f80): the dataset HTTP surface — staged upload with a di
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_blobs.go — Upload, download, archive
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_datasets.go — Dataset metadata endpoints
 
+
+## 2026-07-24
+
+Tasks 8-11 (commits fad864a, 2e93cab, 59f13ae, 1d4b314): client and CLI with the staged push, materialization of dataset rows into streams with provenance and deterministic identifiers, blob garbage collection, and end-to-end acceptance tests. DATADROP-2 complete: 213 tests, golangci-lint clean. Measured dedup: republishing with one changed file transferred 71 B instead of 645 KB.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/cmd/datadrop/dataset_smoke_test.go — Acceptance tests
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/dataset.go — Dataset CLI
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_import.go — Materialization with provenance
+

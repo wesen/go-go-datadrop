@@ -30,7 +30,24 @@ WhenToUse: ""
 
 ## Status
 
-Current status: **active**
+Current status: **complete**. All eleven tasks are done. The server stores
+content-addressed blobs, immutable versioned datasets with manifests and
+schemas, streams uploads and downloads without buffering, serves `Range`
+requests, materializes dataset rows into v0.1 event streams with full
+provenance, and reclaims unreferenced bytes.
+
+Verified by 213 tests across nine packages including three end-to-end
+acceptance tests, plus `golangci-lint` and `logcopter-check` clean.
+
+Measured: republishing a two-file dataset with one file changed transfers only
+the changed file (71 B rather than 645 KB), and three blobs back two versions
+of two files.
+
+Deferred and documented in guide §15: S3 backend, chunked resumable upload,
+Parquet/columnar query, background import jobs, reference-counted deletion,
+signed manifests, and per-dataset access control. Also open: abandoned drafts
+are never expired, so they pin their blobs against the sweep.
+
 
 ## Topics
 
