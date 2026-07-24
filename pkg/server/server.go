@@ -19,6 +19,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 	"github.com/go-go-golems/go-go-datadrop/pkg/stream"
@@ -38,25 +39,42 @@ type Config struct {
 	// hub's default. A subscriber that overflows it is disconnected and
 	// expected to resume from its last sequence.
 	StreamBuffer int
+
+	// MaxUploadBytes caps a dataset file upload. Zero selects
+	// DefaultMaxUploadBytes.
+	//
+	// This is deliberately separate from MaxBodyBytes. Conflating them would
+	// either cripple uploads or strip the small-body protection from every
+	// other endpoint.
+	MaxUploadBytes int64
 }
 
 // DefaultMaxBodyBytes is the ingest body cap when Config.MaxBodyBytes is unset.
 const DefaultMaxBodyBytes int64 = 1 << 20 // 1 MiB
+
+// DefaultMaxUploadBytes is the dataset upload cap when Config.MaxUploadBytes is
+// unset. It is a policy choice rather than a technical limit, and it is the
+// only thing standing between a public deployment and a filled disk.
+const DefaultMaxUploadBytes int64 = 5 << 30 // 5 GiB
 
 // Server wires the store, the schema cache, and the live hub to the HTTP
 // surface.
 type Server struct {
 	cfg     Config
 	store   *store.Store
+	blobs   *blob.Store
 	schemas *schema.Cache
 	hub     *stream.Hub
 	http    *http.Server
 }
 
 // New builds a Server. It does not bind a socket; call Serve for that.
-func New(cfg Config, st *store.Store) (*Server, error) {
+func New(cfg Config, st *store.Store, blobs *blob.Store) (*Server, error) {
 	if st == nil {
 		return nil, errors.New("server: store is required")
+	}
+	if blobs == nil {
+		return nil, errors.New("server: blob store is required")
 	}
 	if cfg.Addr == "" {
 		cfg.Addr = ":8080"
@@ -64,10 +82,14 @@ func New(cfg Config, st *store.Store) (*Server, error) {
 	if cfg.MaxBodyBytes <= 0 {
 		cfg.MaxBodyBytes = DefaultMaxBodyBytes
 	}
+	if cfg.MaxUploadBytes <= 0 {
+		cfg.MaxUploadBytes = DefaultMaxUploadBytes
+	}
 
 	s := &Server{
 		cfg:     cfg,
 		store:   st,
+		blobs:   blobs,
 		schemas: schema.NewCache(),
 		hub:     stream.NewHub(cfg.StreamBuffer),
 	}
@@ -100,6 +122,21 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("PUT /v1/drops/{name}/schemas/{stream}", s.handlePutSchema)
 	mux.HandleFunc("GET /v1/drops/{name}/schemas/{stream}", s.handleGetSchema)
+
+	// Datasets: large, finite, immutable bodies of data (DATADROP-2).
+	mux.HandleFunc("GET /v1/drops/{name}/datasets", s.handleListDatasets)
+	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}", s.handleGetDataset)
+	mux.HandleFunc("PUT /v1/drops/{name}/datasets/{dataset}/data", s.handlePutDatasetData)
+	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions", s.handleOpenDatasetVersion)
+	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}", s.handleGetDatasetVersion)
+	mux.HandleFunc("DELETE /v1/drops/{name}/datasets/{dataset}/versions/{version}", s.handleDeleteDatasetVersion)
+	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions/{version}/commit", s.handleCommitDatasetVersion)
+	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/archive", s.handleDatasetArchive)
+	// {path...} is a trailing wildcard, so logical paths containing slashes work.
+	mux.HandleFunc("PUT /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleUploadDatasetFile)
+	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleDownloadDatasetFile)
+
+	mux.HandleFunc("HEAD /v1/blobs/{digest}", s.handleHeadBlob)
 
 	// Outermost first: a panic in any handler must still produce a response
 	// carrying the request ID that the log line will reference.

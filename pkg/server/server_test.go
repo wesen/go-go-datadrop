@@ -9,19 +9,29 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 )
 
 func newTestServer(t *testing.T) *Server {
 	t.Helper()
 
-	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "datadrop.db"))
+	dir := t.TempDir()
+
+	st, err := store.Open(context.Background(), filepath.Join(dir, "datadrop.db"))
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	srv, err := New(Config{Addr: "127.0.0.1:0", Token: testToken}, st)
+	// The blob store shares the temp directory, so it is on the same filesystem
+	// as the database, which is what the atomic-rename publish requires.
+	blobs, err := blob.Open(filepath.Join(dir, "blobs"))
+	if err != nil {
+		t.Fatalf("blob.Open: %v", err)
+	}
+
+	srv, err := New(Config{Addr: "127.0.0.1:0", Token: testToken}, st, blobs)
 	if err != nil {
 		t.Fatalf("server.New: %v", err)
 	}
@@ -54,20 +64,42 @@ func TestHealthz(t *testing.T) {
 	}
 }
 
-func TestNewRequiresStore(t *testing.T) {
-	if _, err := New(Config{}, nil); err == nil {
+func TestNewRequiresItsDependencies(t *testing.T) {
+	blobs, err := blob.Open(filepath.Join(t.TempDir(), "blobs"))
+	if err != nil {
+		t.Fatalf("blob.Open: %v", err)
+	}
+
+	if _, err := New(Config{}, nil, blobs); err == nil {
 		t.Fatal("expected an error when the store is nil")
 	}
-}
 
-func TestNewAppliesDefaults(t *testing.T) {
 	st, err := store.Open(context.Background(), filepath.Join(t.TempDir(), "datadrop.db"))
 	if err != nil {
 		t.Fatalf("store.Open: %v", err)
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	srv, err := New(Config{}, st)
+	if _, err := New(Config{}, st, nil); err == nil {
+		t.Fatal("expected an error when the blob store is nil")
+	}
+}
+
+func TestNewAppliesDefaults(t *testing.T) {
+	dir := t.TempDir()
+
+	st, err := store.Open(context.Background(), filepath.Join(dir, "datadrop.db"))
+	if err != nil {
+		t.Fatalf("store.Open: %v", err)
+	}
+	t.Cleanup(func() { _ = st.Close() })
+
+	blobs, err := blob.Open(filepath.Join(dir, "blobs"))
+	if err != nil {
+		t.Fatalf("blob.Open: %v", err)
+	}
+
+	srv, err := New(Config{}, st, blobs)
 	if err != nil {
 		t.Fatalf("server.New: %v", err)
 	}
@@ -76,6 +108,10 @@ func TestNewAppliesDefaults(t *testing.T) {
 	}
 	if srv.cfg.MaxBodyBytes != DefaultMaxBodyBytes {
 		t.Fatalf("MaxBodyBytes = %d, want %d", srv.cfg.MaxBodyBytes, DefaultMaxBodyBytes)
+	}
+	// The upload cap is separate from the body cap, and much larger.
+	if srv.cfg.MaxUploadBytes != DefaultMaxUploadBytes {
+		t.Fatalf("MaxUploadBytes = %d, want %d", srv.cfg.MaxUploadBytes, DefaultMaxUploadBytes)
 	}
 }
 

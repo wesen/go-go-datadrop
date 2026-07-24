@@ -4,22 +4,26 @@ import (
 	"context"
 	"net"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/server"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 )
 
 func newServeCmd(opts *globalOptions) *cobra.Command {
 	var (
-		listenAddr   string
-		dbPath       string
-		token        string
-		maxBodyBytes int64
+		listenAddr     string
+		dbPath         string
+		blobDir        string
+		token          string
+		maxBodyBytes   int64
+		maxUploadBytes int64
 	)
 
 	cmd := &cobra.Command{
@@ -37,10 +41,12 @@ command is safe to re-run against the same file.`,
 				token = opts.token
 			}
 			return runServe(cmd.Context(), serveOptions{
-				listenAddr:   listenAddr,
-				dbPath:       dbPath,
-				token:        token,
-				maxBodyBytes: maxBodyBytes,
+				listenAddr:     listenAddr,
+				dbPath:         dbPath,
+				blobDir:        blobDir,
+				token:          token,
+				maxBodyBytes:   maxBodyBytes,
+				maxUploadBytes: maxUploadBytes,
 			})
 		},
 	}
@@ -48,17 +54,23 @@ command is safe to re-run against the same file.`,
 	flags := cmd.Flags()
 	flags.StringVar(&listenAddr, "addr", ":8080", "listen address")
 	flags.StringVar(&dbPath, "db", "./datadrop.db", "path to the SQLite database file")
+	flags.StringVar(&blobDir, "blobs", "", "directory holding dataset file bytes (default: <db-dir>/blobs)")
 	flags.StringVar(&token, "token", "", "static bearer token required for writes (empty disables auth)")
-	flags.Int64Var(&maxBodyBytes, "max-body-bytes", server.DefaultMaxBodyBytes, "maximum accepted request body size")
+	flags.Int64Var(&maxBodyBytes, "max-body-bytes", server.DefaultMaxBodyBytes,
+		"maximum accepted JSON request body size")
+	flags.Int64Var(&maxUploadBytes, "max-upload-bytes", server.DefaultMaxUploadBytes,
+		"maximum accepted dataset file upload size")
 
 	return cmd
 }
 
 type serveOptions struct {
-	listenAddr   string
-	dbPath       string
-	token        string
-	maxBodyBytes int64
+	listenAddr     string
+	dbPath         string
+	blobDir        string
+	token          string
+	maxBodyBytes   int64
+	maxUploadBytes int64
 }
 
 func runServe(ctx context.Context, opts serveOptions) error {
@@ -80,11 +92,24 @@ func runServe(ctx context.Context, opts serveOptions) error {
 		log.Warn().Msg("no --token configured: write endpoints are unauthenticated")
 	}
 
+	// Blobs default to a sibling of the database so that a single --db path is
+	// enough to run the server, and so that the two stay on one filesystem —
+	// which the blob store's atomic-rename publish depends on.
+	blobDir := opts.blobDir
+	if blobDir == "" {
+		blobDir = filepath.Join(filepath.Dir(st.Path()), "blobs")
+	}
+	blobs, err := blob.Open(blobDir)
+	if err != nil {
+		return err
+	}
+
 	srv, err := server.New(server.Config{
-		Addr:         opts.listenAddr,
-		Token:        opts.token,
-		MaxBodyBytes: opts.maxBodyBytes,
-	}, st)
+		Addr:           opts.listenAddr,
+		Token:          opts.token,
+		MaxBodyBytes:   opts.maxBodyBytes,
+		MaxUploadBytes: opts.maxUploadBytes,
+	}, st, blobs)
 	if err != nil {
 		return err
 	}
@@ -95,6 +120,7 @@ func runServe(ctx context.Context, opts serveOptions) error {
 			log.Info().
 				Str("addr", addr.String()).
 				Str("db", st.Path()).
+				Str("blobs", blobs.Root()).
 				Msg("datadrop ready")
 		})
 	})
