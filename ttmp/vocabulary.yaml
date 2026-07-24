@@ -5,6 +5,12 @@ topics:
       description: Backend services
     - slug: websocket
       description: WebSocket lifecycle & events
+    - slug: mvp
+      description: Minimum viable product slice
+    - slug: server
+      description: HTTP/API server component
+    - slug: design
+      description: Architecture and design documents
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
