@@ -36,6 +36,15 @@ WhenToUse: "Read before touching DATADROP-2. Sections 5-13 are the specification
 > modelled as a stream. §5–§13 are the specification — data model, blob store,
 > HTTP surface, CLI, package plan. §14 is testing and review. §15 lists what is
 > deliberately deferred.
+>
+> **Implementation status (2026-07-24): built.** All eleven tasks in §13.2 are
+> done and the acceptance criteria are automated tests. This guide remains the
+> specification and the onboarding path — read it to understand *why* the code
+> is shaped as it is — but where it says "you will build", read "the code does".
+> Two things changed during implementation and are marked inline: the version
+> allocator became a counter on the `datasets` row rather than `MAX(version)+1`
+> (§7), and a dataset schema violation is advisory by default during import
+> rather than fatal (§11).
 
 ---
 
@@ -690,7 +699,10 @@ for each row in the file:
     payload = decode the row          -- CSV → object using the header row
                                       -- NDJSON → the line itself
     if a schema is attached:
-        validate; strict rejects the row, permissive warns
+        validate. CHANGED DURING IMPLEMENTATION: permissive is the DEFAULT and
+        strict is opt-in via ?strict=true. A bulk operation has a partial-failure
+        state that a single append does not: aborting a 100,000-row import on row
+        40,000 leaves the stream in a state nobody asked for.
 
     AppendEvent({
         drop:   drop,
