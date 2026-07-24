@@ -201,7 +201,7 @@ flowchart TD
     CURL["curl -T bigfile.csv"] --> HTTP
 
     subgraph SERVER["datadrop serve"]
-        HTTP["PUT .../versions/{v}/files/{path}"] --> AUTH
+        HTTP["PUT .../versions/N/files/PATH"] --> AUTH
         AUTH["auth middleware"] --> UPLOAD
 
         UPLOAD["upload handler<br/>io.Copy through a hashing writer"]
@@ -213,7 +213,7 @@ flowchart TD
 
         COMMIT["POST .../commit<br/>manifest + schema<br/>state: draft → committed"] --> META
 
-        DOWNLOAD["GET .../files/{path}<br/>http.ServeContent"] --> BLOB
+        DOWNLOAD["GET .../files/PATH<br/>http.ServeContent"] --> BLOB
         DOWNLOAD --> META
 
         IMPORT["POST .../import<br/>rows → events, with provenance"] --> BLOB
@@ -533,19 +533,19 @@ sequenceDiagram
     participant D as SQLite
 
     Note over C,D: Phase 1 — open a draft
-    C->>S: POST /datasets/{name}/versions
+    C->>S: POST /datasets/NAME/versions
     S->>D: INSERT dataset_versions (state='draft', version=MAX+1)
     S-->>C: 201 {version: 3, state: "draft"}
 
     Note over C,D: Phase 2 — upload each file
-    C->>S: HEAD /v1/blobs/sha256:abcd…
+    C->>S: HEAD /v1/blobs/sha256-abcd
     alt server already has these bytes
         S-->>C: 200 (exists)
-        C->>S: PUT .../files/data.csv?digest=sha256:abcd…  (no body)
+        C->>S: PUT .../files/data.csv?digest=sha256-abcd (no body)
         S->>D: INSERT dataset_files (mount existing blob)
     else server does not have them
         S-->>C: 404
-        C->>S: PUT .../files/data.csv?digest=sha256:abcd…  (streaming body)
+        C->>S: PUT .../files/data.csv?digest=sha256-abcd (streaming body)
         S->>B: io.Copy through sha256 → temp → fsync → verify → rename
         S->>D: INSERT blobs, INSERT dataset_files
     end
@@ -553,7 +553,7 @@ sequenceDiagram
 
     Note over C,D: Phase 3 — commit
     C->>S: POST .../versions/3/commit  {manifest, schema}
-    S->>D: validate manifest; UPDATE state='committed', committed_at=now
+    S->>D: validate manifest, then UPDATE state='committed'
     S-->>C: 200 {version: 3, state: "committed", file_count, total_bytes}
 ```
 
