@@ -51,7 +51,9 @@ See `sources/README.md` for the full inventory. Key sources:
 ## Documents in this ticket
 
 - `design/01-mvp-design.md` — v0.1 scope, architecture, data model, decision records, phased plan.
+- `design/02-intern-implementation-guide.md` — **start here to implement.** Full onboarding + specification: product rationale, conceptual model, the two reference implementations and the patterns to port, corrected data model, HTTP/CLI API reference, package-by-package pseudocode, review checklist, and the known inconsistencies between the ticket's own documents.
 - `reference/01-investigation-diary.md` — how the sources were retrieved and scope decided.
+- `reference/02-implementation-diary.md` — chronological implementation record; append a step per change.
 - `sources/` — imported ChatGPT artifacts (see `sources/README.md`).
 - `tasks.md` — MVP task breakdown.
 - `changelog.md` — recent changes.
