@@ -17,7 +17,10 @@ func TestOpenCreatesAndMigrates(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	for _, table := range []string{"drops", "events", "stream_heads", "schemas", "audit_log", "schema_migrations"} {
+	for _, table := range []string{
+		"drops", "events", "stream_heads", "schemas", "audit_log", "schema_migrations",
+		"blobs", "datasets", "dataset_versions", "dataset_files",
+	} {
 		var name string
 		err := st.DB().QueryRowContext(ctx,
 			`SELECT name FROM sqlite_master WHERE type='table' AND name=?`, table).Scan(&name)
@@ -26,13 +29,21 @@ func TestOpenCreatesAndMigrates(t *testing.T) {
 		}
 	}
 
+	// Assert against the embedded set rather than a literal, so that adding a
+	// migration does not require editing this test.
+	migrations, err := loadMigrations()
+	if err != nil {
+		t.Fatalf("loadMigrations: %v", err)
+	}
+	want := migrations[len(migrations)-1].version
+
 	var version int
 	if err := st.DB().QueryRowContext(ctx,
 		`SELECT MAX(version) FROM schema_migrations`).Scan(&version); err != nil {
 		t.Fatalf("read schema version: %v", err)
 	}
-	if version != 1 {
-		t.Fatalf("schema version = %d, want 1", version)
+	if version != want {
+		t.Fatalf("schema version = %d, want %d (the highest embedded migration)", version, want)
 	}
 }
 
@@ -56,13 +67,20 @@ func TestOpenIsIdempotent(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = second.Close() })
 
+	migrations, err := loadMigrations()
+	if err != nil {
+		t.Fatalf("loadMigrations: %v", err)
+	}
+
+	// Each migration must be recorded exactly once, no matter how many times
+	// the store is opened.
 	var applied int
 	if err := second.DB().QueryRowContext(ctx,
 		`SELECT COUNT(*) FROM schema_migrations`).Scan(&applied); err != nil {
 		t.Fatalf("count migrations: %v", err)
 	}
-	if applied != 1 {
-		t.Fatalf("migration applied %d times, want 1", applied)
+	if applied != len(migrations) {
+		t.Fatalf("%d migration rows after re-opening, want %d", applied, len(migrations))
 	}
 }
 
