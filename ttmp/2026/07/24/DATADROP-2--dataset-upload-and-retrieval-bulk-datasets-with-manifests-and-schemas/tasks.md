@@ -9,7 +9,7 @@
 - [x] 5. Download endpoints: http.ServeContent with Range/ETag, latest resolution, HEAD /v1/blobs/{digest} (guide §10) <!-- t:4bx3 -->
 - [x] 6. Listing and inspection: datasets, versions, file lists (guide §12.1) <!-- t:wowd -->
 - [x] 7. Archive: streaming tar of manifest + schema + files (guide §10.3) <!-- t:330p -->
-- [ ] 8. CLI: dataset push/list/show/get/rm/gc with local hashing and digest verification (guide §12.3) <!-- t:tynj -->
-- [ ] 9. Import: materialize CSV/NDJSON rows into a stream with provenance meta (guide §11) <!-- t:qop1 -->
-- [ ] 10. Deletion and GC endpoints + command <!-- t:lgwu -->
-- [ ] 11. Tests + docs: blob/store/handler tests, end-to-end smoke (dedup republish, ranged download, import), README <!-- t:k7xc -->
+- [x] 8. CLI: dataset push/list/show/get/rm/gc with local hashing and digest verification (guide §12.3) <!-- t:tynj -->
+- [x] 9. Import: materialize CSV/NDJSON rows into a stream with provenance meta (guide §11) <!-- t:qop1 -->
+- [x] 10. Deletion and GC endpoints + command <!-- t:lgwu -->
+- [x] 11. Tests + docs: blob/store/handler tests, end-to-end smoke (dedup republish, ranged download, import), README <!-- t:k7xc -->

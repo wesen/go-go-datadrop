@@ -8,11 +8,25 @@ events over SSE, and exports open formats.
 Inspired by Wolfram Data Drop; designed to be ordinary enough to work with
 `curl`, pipes, and SQL, and open enough to self-host and export.
 
-> **Status: v0.1 complete.** Ingest, JSON Schema validation, queries, live SSE
-> streaming, export, bearer auth, and the audit log are all implemented and
-> covered by tests, including an end-to-end CLI smoke test. See
-> [`design/02-intern-implementation-guide.md`](ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/design/02-intern-implementation-guide.md)
-> for the full design and API reference.
+> **Status: v0.2.** v0.1 (event streams) and v0.2 (bulk datasets) are both
+> complete and covered by tests, including end-to-end CLI smoke tests. See the
+> [v0.1 guide](ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/design/02-intern-implementation-guide.md)
+> and the [v0.2 guide](ttmp/2026/07/24/DATADROP-2--dataset-upload-and-retrieval-bulk-datasets-with-manifests-and-schemas/design/01-intern-implementation-guide.md)
+> for the full design and API references.
+
+The server holds two kinds of data, and the distinction is the main thing to
+understand before using it:
+
+| | **Stream** (v0.1) | **Dataset** (v0.2) |
+|---|---|---|
+| Shape | unbounded, append-only, live | finite, versioned, immutable |
+| Unit | one small JSON event | a body of files with a manifest |
+| Identity | a server-assigned sequence | the content's SHA-256 digest |
+| Correction | append a superseding event | publish a new version |
+| Read | latest-N, time range, live SSE | whole file, or a byte range |
+
+A dataset can be *materialized* into a stream, so a published CSV becomes events
+that each point back at the exact bytes and row they came from.
 
 ## Quick start
 
@@ -21,6 +35,10 @@ Inspired by Wolfram Data Drop; designed to be ordinary enough to work with
 go build -o dist/datadrop ./cmd/datadrop
 ./dist/datadrop serve --addr :8080 --db ./datadrop.db --token secret
 ```
+
+Dataset file bytes are stored beside the database by default; `--blobs DIR`
+overrides the location and `--max-upload-bytes` caps an upload (separately from
+`--max-body-bytes`, which governs JSON request bodies).
 
 In another shell:
 
@@ -57,6 +75,11 @@ Use `--string k=v` to force a string.
 | `datadrop tail DROP [--follow]` | Recent events, optionally streaming |
 | `datadrop export DROP --format csv\|ndjson\|json` | Export |
 | `datadrop schema put\|show DROP` | Manage JSON Schema contracts |
+| `datadrop dataset push DROP DATASET` | Publish a dataset version |
+| `datadrop dataset list\|show DROP` | Inspect datasets |
+| `datadrop dataset get DROP DATASET` | Download, verifying digests |
+| `datadrop dataset import DROP DATASET` | Materialize rows into a stream |
+| `datadrop dataset rm\|gc` | Delete a version; reclaim unreferenced bytes |
 
 Exit codes are stable, so scripts can branch on them without parsing stderr:
 `0` success, `1` generic error, `2` usage, `3` auth, `4` not found,
@@ -114,6 +137,83 @@ automatically via `Last-Event-ID`. A subscriber that cannot keep up receives an
 `event: reset` frame carrying its cursor and is disconnected; it resumes from
 the durable log rather than being buffered without bound.
 
+## Datasets
+
+A dataset is a named, versioned collection of files inside a drop. Publishing
+hashes each file locally, asks whether the server already holds those bytes, and
+transfers only what is new:
+
+```bash
+datadrop dataset push greenhouse readings-2026 \
+    --file data/readings.csv --file README.md \
+    --title "Greenhouse readings, 2026 season" --license CC-BY-4.0
+
+# Edit only the README and republish:
+datadrop dataset push greenhouse readings-2026 --file data/readings.csv --file README.md
+# uploaded 1 file(s) (71 B), reused 1 already-stored file(s) (644.6 KiB)
+
+datadrop dataset list greenhouse
+datadrop dataset show greenhouse readings-2026
+datadrop dataset get greenhouse readings-2026 --output ./downloaded/
+datadrop dataset get greenhouse readings-2026 --archive -o v2.tar
+
+# Turn the rows into events, each carrying provenance back to the source bytes.
+datadrop dataset import greenhouse readings-2026 --path data/readings.csv
+
+datadrop dataset rm greenhouse readings-2026 --version 1
+datadrop dataset gc
+```
+
+`dataset get` recomputes each downloaded file's digest and fails loudly if it
+does not match, so corruption is caught at the point of use.
+
+### Dataset HTTP endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/v1/drops/{drop}/datasets` | List datasets |
+| `GET` | `/v1/drops/{drop}/datasets/{name}` | Dataset and its committed versions |
+| `POST` | `/v1/drops/{drop}/datasets/{name}/versions` | Open a draft version |
+| `PUT` | `/v1/drops/{drop}/datasets/{name}/versions/{v}/files/{path...}` | Upload or mount a file |
+| `POST` | `/v1/drops/{drop}/datasets/{name}/versions/{v}/commit` | Commit with a manifest and schema |
+| `GET` | `/v1/drops/{drop}/datasets/{name}/versions/{v}` | Version manifest and file list |
+| `GET` | `/v1/drops/{drop}/datasets/{name}/versions/{v}/files/{path...}` | Download (Range, ETag) |
+| `GET` | `/v1/drops/{drop}/datasets/{name}/versions/{v}/archive` | Stream the version as tar |
+| `POST` | `/v1/drops/{drop}/datasets/{name}/versions/{v}/import` | Materialize rows into a stream |
+| `DELETE` | `/v1/drops/{drop}/datasets/{name}/versions/{v}` | Delete a version |
+| `PUT` | `/v1/drops/{drop}/datasets/{name}/data` | Single-shot: upload one file and commit |
+| `HEAD` | `/v1/blobs/{digest}` | Does the server already hold these bytes? |
+| `POST` | `/v1/blobs/gc` | Delete unreferenced bytes |
+
+`{v}` accepts a version number or the literal `latest`, which resolves to the
+highest **committed** version — a draft never shadows it.
+
+Uploading with `curl` directly:
+
+```bash
+curl -T readings.csv -H "Authorization: Bearer secret" \
+     "localhost:8080/v1/drops/greenhouse/datasets/readings/data?path=readings.csv"
+
+# Resume an interrupted download:
+curl -H "Authorization: Bearer secret" -H "Range: bytes=104857600-" \
+     "localhost:8080/v1/drops/greenhouse/datasets/readings/versions/latest/files/readings.csv"
+```
+
+### How dataset storage works
+
+Bytes are stored once per distinct SHA-256 digest under `<db-dir>/blobs`, so
+two versions sharing an unchanged file occupy one copy. The digest is
+simultaneously the storage key, the integrity check, and the `ETag`.
+
+A version is a **draft** until it is committed, and drafts are invisible to
+every read path — serving a half-uploaded dataset would produce silently wrong
+results rather than an error. Committed versions are immutable; a correction is
+a new version.
+
+Deleting a version leaves its bytes in place, because other versions may share
+them. `datadrop dataset gc` reclaims the ones nothing references, skipping any
+blob younger than a grace period so that an in-flight upload is never swept.
+
 ## Concepts
 
 | Term | Meaning |
@@ -123,6 +223,9 @@ the durable log rather than being buffered without bound.
 | **Event** | One immutable record. Carries a CloudEvents-compatible envelope plus a JSON payload. |
 | **Sequence** | A server-assigned, monotonically increasing integer per `(drop, stream)`. The authoritative ordering — device clocks are not. |
 | **Schema** | A versioned JSON Schema contract for a stream's payloads, in `strict` or `permissive` mode. |
+| **Dataset** | A named, versioned collection of files inside a drop. |
+| **Dataset version** | An immutable snapshot: a manifest, an optional schema, and files. |
+| **Blob** | File bytes, addressed by their SHA-256 digest and shared across versions. |
 
 Two timestamps are recorded per event and are never conflated: `time` is when
 the producer observed it, `received_at` is when the server durably stored it.
@@ -168,9 +271,10 @@ lsof-who -p 8080 -k
 ## Layout
 
 ```text
-cmd/datadrop/     entry point + end-to-end smoke test
-pkg/datadrop/     shared domain types (envelope, drop, schema, query)
+cmd/datadrop/     entry point + end-to-end smoke tests
+pkg/datadrop/     shared domain types (envelope, drop, schema, query, dataset)
 pkg/store/        SQLite persistence, embedded forward-only migrations
+pkg/blob/         content-addressed blob store for dataset file bytes
 pkg/schema/       JSON Schema compilation, validation, and a compiled cache
 pkg/stream/       in-process fan-out hub for live subscribers
 pkg/server/       net/http ServeMux HTTP surface
@@ -192,3 +296,10 @@ The design work lives in the docmgr ticket workspace under
 - `reference/02-implementation-diary.md` — chronological implementation record.
 - `sources/` — the imported OpenDrop design documents and the two Go reference
   implementations the design is derived from.
+
+And under `ttmp/2026/07/24/DATADROP-2--dataset-upload-and-retrieval-bulk-datasets-with-manifests-and-schemas/`:
+
+- `design/01-intern-implementation-guide.md` — the dataset layer: why a dataset
+  is not a stream, the content-addressed blob store, the staged upload protocol,
+  retrieval, and materialization.
+- `reference/01-implementation-diary.md` — chronological implementation record.
