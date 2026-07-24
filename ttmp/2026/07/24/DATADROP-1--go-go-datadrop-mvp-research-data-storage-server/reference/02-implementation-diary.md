@@ -10,16 +10,32 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://cmd/datadrop/smoke_test.go
+      Note: 'End-to-end acceptance test: the README quick start against a real binary (commit a78f08e)'
     - Path: repo://pkg/cli/root.go
       Note: Cobra root, exit-code contract, logcopter logging setup (commit 52e3950)
     - Path: repo://pkg/cli/serve.go
       Note: signal.NotifyContext -> store.Open -> server.New -> errgroup wiring (commit 52e3950)
+    - Path: repo://pkg/datadrop/event.go
+      Note: 'Shared domain vocabulary: envelope, defaults, name validation (commit d7696da)'
+    - Path: repo://pkg/schema/validate.go
+      Note: JSON Schema compile/validate with a version-keyed cache (commit a78f08e)
+    - Path: repo://pkg/server/handlers_events.go
+      Note: 'Ingest: both request shapes, validate then commit then publish (commit a78f08e)'
+    - Path: repo://pkg/server/handlers_export.go
+      Note: CSV/NDJSON/JSON export and the CSV flattening contract (commit a78f08e)
+    - Path: repo://pkg/server/handlers_stream.go
+      Note: 'SSE: subscribe before replay, dedupe the overlap by sequence (commit a78f08e)'
     - Path: repo://pkg/server/server.go
       Note: net/http ServeMux surface, /healthz, context-driven graceful shutdown; WriteTimeout deliberately unset for SSE (commit 52e3950)
+    - Path: repo://pkg/store/events.go
+      Note: AppendEvent sequence reservation + idempotent replay; QueryEvents parameter binding (commit d7696da)
     - Path: repo://pkg/store/migrations/0001_init.sql
       Note: Full v0.1 schema incl. the corrected events.stream column and stream_heads allocator (commit 52e3950)
     - Path: repo://pkg/store/store.go
       Note: SQLite Open/Close + forward-only embedded migrations; driver-specific DSN pragmas (commit 52e3950)
+    - Path: repo://pkg/stream/hub.go
+      Note: Fan-out hub; slow subscribers are evicted, not buffered (commit a78f08e)
     - Path: repo://ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/design/01-mvp-design.md
       Note: The v0.1 scope and decision records this implementation follows
     - Path: repo://ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/design/02-intern-implementation-guide.md
@@ -33,6 +49,7 @@ LastUpdated: 2026-07-24T00:00:00Z
 WhatFor: Record what was built, what failed, and what a reviewer should check while implementing DATADROP-1.
 WhenToUse: Read before resuming DATADROP-1 implementation; append a step after every meaningful change.
 ---
+
 
 
 # Implementation diary
@@ -685,3 +702,421 @@ writer := logcopter.WriterForFormat(logcopter.WriterForOutput(cfg.Output),
 base := zerolog.New(writer).With().Timestamp().Logger()
 return logcopter.Configure(base, cfg)   // ← without this, every log is dropped
 ```
+
+---
+
+## Step 4: MVP task 2 — the store, and the invariant everything else rests on
+
+This step implements the persistence layer against the schema shipped in Step 3:
+drops, events with per-`(drop, stream)` sequence reservation, immutable schema
+versions, and the audit log. It also introduces `pkg/datadrop` as a leaf package
+holding the shared domain vocabulary, so the client can later speak the same
+types without importing the persistence layer.
+
+The reason this task is worth doing carefully rather than quickly is that four
+later tasks read from it and none of them can fix a wrong ordering guarantee.
+The tests are therefore written against invariants rather than against methods:
+sequences are dense and monotonic under concurrent writers, a duplicate ID
+returns the original event without burning a sequence, cursor paging visits
+every event exactly once, and `from`/`to` are inclusive/exclusive respectively.
+
+### Prompt Context
+
+**User prompt (verbatim):** "do the entire MVP, 1 - 8, keep a detailed frequent diary as you work"
+
+**Assistant interpretation:** Implement every remaining task in the ticket's MVP
+plan (2 through 8, task 1 already being done), appending a diary step as each
+lands rather than writing the diary up at the end.
+
+**Inferred user intent:** Get a working v0.1 rather than a partial one, and keep
+the process reviewable step by step — the diary is a deliverable, not a
+postscript.
+
+**Commit (code):** `d7696da` — "feat(DATADROP-1): MVP task 2 — store CRUD, sequence reservation, schemas, audit"
+
+### What I did
+
+- Added `pkg/datadrop` with `Envelope`, `Drop`, `DropStats`, `Schema`, `Mode`,
+  `EventQuery`, `Violation`, `AuditRecord`, plus name/retention validation and
+  the `Order`/`TimeField` allowlist parsers.
+- `pkg/store/events.go`: `AppendEvent` (reservation + insert + audit in one
+  transaction), `reserveSequence`, `GetEvent`, `QueryEvents`, and `EachEvent`
+  for paging past the row cap.
+- `pkg/store/drops.go`: `CreateDrop`, `GetDrop`, `ListDrops`, `DropStats`.
+- `pkg/store/schemas.go`: `PutSchema` (immutable `MAX(version)+1`),
+  `ActiveSchema`.
+- `pkg/store/helpers.go`: ULID event IDs, context-carried audit actor,
+  `compactJSON`, nullable-column helpers.
+- `pkg/store/errors.go`: `ErrNotFound` / `ErrAlreadyExists` plus SQLite
+  constraint-message classification.
+- Moved the IMMEDIATE transaction lock into the DSN as `_txlock=immediate`.
+- Resolved ticket tasks 9–11 and removed `cmd/go-go-datadrop/`.
+- Tests: `events_test.go` and `schemas_test.go`, 20 cases.
+
+### Why
+
+`design/01-mvp-design.md` §5.1 gives a schema but no behaviour. The behaviour
+that matters is not CRUD, it is the three guarantees the rest of the system
+assumes: an acknowledged event is durably ordered, a retried write is a no-op,
+and a cursor is a stable resumption point. Everything in tasks 3–6 is a
+presentation layer over those.
+
+### What worked
+
+- Putting the domain types in a leaf package rather than in `pkg/store` paid off
+  immediately in task 4: `pkg/client` imports `pkg/datadrop` and gets the exact
+  types the server serializes, with no translation layer and no risk of the two
+  drifting.
+- The concurrency test (8 goroutines × 25 appends, asserting the assigned
+  sequences are exactly 1..200 with no repeats) passed first try, which is the
+  evidence that `SetMaxOpenConns(1)` plus in-transaction reservation is
+  genuinely sufficient rather than merely plausible.
+- Making `Violation` a comparable struct let the deduplication in
+  `violationsOf` (task 3) be a plain `map[Violation]struct{}` instead of a
+  hand-rolled key.
+
+### What didn't work
+
+- **`beginImmediate` did not begin immediately.** My first version called
+  `db.BeginTx` and then executed `SELECT 1`, with a comment claiming this took
+  the write lock up front. It does not: `database/sql` issues a plain `BEGIN`
+  (deferred) and there is no API for SQLite's `BEGIN IMMEDIATE`. Reading a row
+  does not acquire a write lock either, so the function was a no-op with a
+  confident comment — the worst kind. Fixed by moving the lock mode to the
+  connection via `_txlock=immediate` in the DSN, which modernc.org/sqlite
+  supports (verified against the driver source: `sqlite.go` accepts
+  `deferred`, `immediate`, `exclusive`). `beginImmediate` is now three lines
+  and its comment says where the real behaviour comes from.
+
+- **A zero-width space in an identifier.** I typed `store​WithActor` in
+  `schemas_test.go` with a U+200B between `store` and `WithActor`, producing a
+  compile error that read as `undefined: store` — invisible in the editor and
+  in the error message. Found it by `grep -P '\x{200b}'`; fixed with
+  `perl -CSD -i -pe 's/store\x{200b}WithActor/WithActor/g'`.
+
+- `golangci-lint` flagged `if !(earlier < later)` (staticcheck QF1001, De
+  Morgan). Rewritten as `if earlier >= later`.
+
+### What I learned
+
+- `database/sql` genuinely has no hook for SQLite's `BEGIN` variants, so lock
+  mode is necessarily a connection-level DSN concern. Any Go SQLite code that
+  claims to use `BEGIN IMMEDIATE` from a `BeginTx` call is wrong; check the DSN.
+- modernc.org/sqlite reports constraint failures only through the error
+  message, with no exported code type to switch on. `isUniqueViolation` has to
+  match text. Narrow and ugly, but the alternative — treating every insert
+  failure as a duplicate — would silently swallow real errors, so the ugliness
+  is in the right place.
+
+### What was tricky to build
+
+**The rollback ordering in the duplicate-ID path.** When the insert fails on the
+`events.id` primary key, the natural next step is "read the original event and
+return it". But the failed statement leaves the transaction in an aborted state,
+so any query on that `*sql.Tx` fails too — and the error you get back is about
+the aborted transaction, not about the duplicate, which sends you looking in
+completely the wrong place. The fix is to `tx.Rollback()` *first*, then re-read
+via `s.GetEvent` on a fresh connection. There is a second subtlety: the deferred
+rollback must be suppressed afterwards, or it runs against an already-rolled-back
+transaction. I used an explicit `committed` flag rather than a bare
+`defer tx.Rollback()` so both the success and the duplicate path are explicit
+about which one owns the unwind.
+
+`TestAppendEventReplayDoesNotConsumeASequence` is the regression test: append a
+fixed ID, replay it, then append a fresh event and assert it gets sequence 2, not
+3. Without the rollback the reservation would have been committed.
+
+**`compactJSON` distinguishing absent from null.** `json.Compact` on the literal
+`null` yields `null`, which would store a JSON null in a column meant to be SQL
+NULL — and then `meta` round-trips as the four bytes `null` instead of being
+absent, which changes the shape of every serialized envelope. `compactJSON`
+returns `nil` for empty, whitespace, and literal `null` inputs specifically so
+`nullableJSON` can map it to SQL NULL.
+
+### What warrants a second pair of eyes
+
+- `isUniqueViolation` / `isForeignKeyViolation` match on error text. If the
+  driver ever rewords its messages these silently stop classifying, and a
+  duplicate append would surface as a 500 instead of a 200. A driver upgrade
+  should re-run `TestAppendEventIsIdempotentByID`, which is the canary.
+- `Store.DB()` still exposes the raw handle for tests. Worth narrowing now that
+  the real query methods exist.
+- `EachEvent` overrides `Limit` to `MaxLimit` and `Order` to ascending,
+  ignoring whatever the caller set. That is right for export but surprising as
+  a general-purpose method; the doc comment says so but the signature does not.
+
+### What should be done in the future
+
+- Retention is stored and validated but nothing enforces it (README says so).
+- The full `Idempotency-Key` ledger from design §10.4 — keyed by writer,
+  endpoint, and content hash, so key reuse with *different* content is a
+  conflict rather than a silent no-op. v0.1 only covers same-ID replay.
+
+### Code review instructions
+
+- `pkg/store/events.go` `AppendEvent` and `reserveSequence` — the invariant.
+  Read the duplicate-ID branch alongside `TestAppendEventReplayDoesNotConsumeASequence`.
+- `pkg/store/store.go` `dsnForPath` — the `_txlock` and pragma settings, with
+  `TestOpenAppliesPragmas` as the proof they took effect.
+- `pkg/store/events.go` `QueryEvents` — confirm `TimeField` and `Order` are the
+  only interpolated fragments and that both are allowlisted in
+  `EventQuery.Normalize`.
+
+```bash
+GOWORK=off go test ./pkg/store/... -count=1 -race
+```
+
+### Technical details
+
+**Test coverage of the invariants**
+
+| Invariant | Test |
+|---|---|
+| Sequences dense and monotonic | `TestAppendEventSequenceIsMonotonic` |
+| …under 8 concurrent writers | `TestAppendEventSequenceIsMonotonicUnderConcurrency` |
+| Per-stream, not per-drop | `TestAppendEventSequencesArePerStream` |
+| Duplicate ID returns the original | `TestAppendEventIsIdempotentByID` |
+| …without burning a sequence | `TestAppendEventReplayDoesNotConsumeASequence` |
+| Producer time ≠ receive time | `TestAppendEventPreservesProducerTime` |
+| Cursor paging visits each event once | `TestQueryEventsCursorPagingIsStable` |
+| `from` inclusive, `to` exclusive | `TestQueryEventsTimeRangeBoundaries` |
+| Schema versions immutable and monotonic | `TestPutSchemaVersionsMonotonically` |
+| `x-drop-*` survives storage | `TestPutSchemaPreservesExtensionKeywords` |
+| Every mutation audited | `TestMutationsAreAudited` |
+| A rolled-back append is not audited | `TestReplayedAppendIsNotAudited` |
+
+---
+
+## Step 5: MVP tasks 3–8 — the HTTP surface, the CLI, and the acceptance test
+
+This step is the rest of the MVP: schema validation, the ingest endpoint, the
+query endpoint, the realtime hub and SSE feed, all three export formats, bearer
+auth, and the end-to-end smoke test. It is one diary step rather than six
+because the pieces were built and verified as one vertical slice — the HTTP
+handler for each capability, the client method, and the CLI command land
+together, and testing any of them in isolation would have meant stubbing the
+others.
+
+The v0.1 acceptance criterion is the README quick start running against one
+binary and one SQLite file. That now passes as an automated test
+(`cmd/datadrop/smoke_test.go`) and was also verified by hand under tmux across
+every endpoint.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Continue through tasks 3–8 and finish the MVP.
+
+**Inferred user intent:** A working, tested v0.1.
+
+**Commit (code):** `a78f08e` — "feat(DATADROP-1): MVP tasks 3-8 — ingest, query, SSE, export, auth, tests"
+
+### What I did
+
+- `pkg/schema/validate.go` — `Compile`, `Validate`, and a version-keyed
+  `Cache`. Validation returns a `Result`, never an error, for an invalid
+  payload; mode handling lives in the handler.
+- `pkg/server/problem.go` — the problem-document contract and the
+  sentinel→status mapping. Every error path goes through `writeProblem`.
+- `pkg/server/middleware.go` — recover, request ID, access log, bearer auth,
+  `authorizeRead` for `public_read`, and `pathName` validation.
+- `pkg/server/handlers_{drops,events,schema,stream,export}.go` — the nine
+  endpoints from the guide §10.
+- `pkg/stream/hub.go` — the fan-out hub with slow-subscriber eviction.
+- `pkg/client/client.go` — typed client including a hand-written SSE parser.
+- `pkg/cli/{output,push,read}.go` — the real commands, replacing `stubs.go`.
+- `exitCodeFor` now maps `*client.APIError` statuses onto the documented codes.
+- Tests: `handlers_test.go` (28 cases), `handlers_stream_test.go` (6, against a
+  real listener), `hub_test.go` (8), `validate_test.go` (12),
+  `smoke_test.go` (3 end-to-end).
+- Rewrote the README with the command table, HTTP reference, and SSE contract.
+
+### Why
+
+Tasks 3–7 are each a thin layer over the store, and the interesting decisions
+are all at the boundaries — which shape a request is, what an invalid payload
+means, when to publish relative to commit, what a CSV cell contains. Those are
+the things the tests pin down.
+
+### What worked
+
+- **`httptest.ResponseRecorder` is unusable for SSE**, which turned out to be a
+  useful forcing function: `handlers_stream_test.go` starts a real listener via
+  `srv.Serve` with a `ready func(net.Addr)` callback, which is exactly the
+  wiring `runServe` uses. The streaming tests therefore exercise the real
+  server lifecycle rather than a handler in isolation.
+- Writing the SSE client parser by hand (≈40 lines: accumulate `event:`/`data:`,
+  dispatch on a blank line, skip `:` comments) was less work than evaluating a
+  dependency, and made the heartbeat and `reset` frames trivial to handle.
+- Discriminating request shape on content-type *and* `specversion` *and* an
+  explicit `?mode=` covers the ambiguity honestly. `TestDecodeIngestDiscriminatesShapes`
+  includes the pathological case — a payload whose own top-level field is
+  called `specversion` — and `mode=simple` stores it as data.
+- Verifying by hand under tmux caught the timestamp-precision bug below, which
+  no unit test was looking for.
+
+### What didn't work
+
+- **Nanosecond timestamps in create/append responses.** `datadrop create`
+  returned `"created_at": "2026-07-24T16:52:50.167495568Z"` while the stored
+  value was millisecond-truncated, so a subsequent `inspect` reported a
+  *different* timestamp for the same drop. The struct was returned from
+  `CreateDrop` before ever round-tripping through storage. Fixed by making
+  `Store.Now()` truncate to `time.Millisecond` — the clock's resolution is now
+  the storage resolution, everywhere, by construction rather than by remembering
+  to truncate at each call site.
+
+- **A test called `t.Fatalf` from a goroutine.** In
+  `TestStreamIsScopedToOneStream` I spawned `readFrames` (which fatals on a read
+  error) on a goroutine to assert that *nothing* arrives. `t.Fatalf` off the
+  test goroutine is undefined behaviour and would have produced a confusing
+  failure. Rewritten to read raw lines on the goroutine and report the first
+  `event: append` line through a channel, leaving all assertions on the test
+  goroutine.
+
+- **A nonsense type assertion.** The same test had
+  `if err := resp.Body.(interface{ Close() error }); err != nil` — a type
+  assertion whose result I then compared to nil as though it were an error. It
+  compiled, did nothing, and was pure noise. Deleted.
+
+- `golangci-lint` found four issues on the first full run: an unchecked
+  `fmt.Fprint` in the SSE prologue, two named string returns in the smoke test
+  (`nonamedreturns`), and a parameter called `max` shadowing the predeclared
+  identifier (`predeclared`). All four fixed; second run clean.
+
+### What I learned
+
+- The `predeclared` linter is on in this repo, so `min`/`max`/`len`-style
+  parameter names are rejected. Worth knowing before naming a parameter `max`.
+- `http.MaxBytesError` is what `errors.As` should target to distinguish "body
+  too large" from a generic read failure; matching on the message would break
+  across Go versions.
+- Wrapping a `ResponseWriter` for the access log **breaks SSE unless the wrapper
+  forwards `Flush`**. `statusRecorder` implements `http.Flusher` and delegates;
+  without that, `w.(http.Flusher)` in the stream handler fails the type
+  assertion and the endpoint returns 500 `StreamingUnavailable`. This is a
+  silent, action-at-a-distance failure: the middleware looks unrelated to the
+  handler it breaks.
+
+### What was tricky to build
+
+**The CSV column union versus streaming.** CSV needs a header before any row,
+but the header is the union of every payload key across the whole result — which
+is unknowable until every row has been read. The three options were: buffer
+everything (unbounded memory), scan twice (double the query cost), or bound the
+export. I bounded it at `datadrop.MaxLimit` rows and said so in the doc comment,
+because silently truncating would be the one genuinely bad outcome. NDJSON and
+JSON have no such constraint and stream properly via `EachEvent`. The guide
+§10.6 already flagged this tension, which is why the decision was cheap to make.
+
+**Ordering `tail` output.** `tail --limit 10` fetches the *newest* ten, which
+means a descending query — but a human reading a follow expects chronological
+order, and the follow cursor must be the highest sequence seen. So the query is
+descending and the render is reversed, with the cursor taken from the last
+element after reversing. Getting this backwards produces a tail that prints
+newest-first and then appends live events at the bottom, which reads as
+scrambled.
+
+**Subscribe-before-replay, and proving it.** The hub subscription must be
+registered before the durable replay, or an event committed in between is lost
+to that subscriber forever. This is easy to write correctly and easy to *test*
+incorrectly: a test that appends and then immediately opens a stream cannot tell
+the two orderings apart. `TestStreamIsScopedToOneStream` polls
+`hub.Subscribers(...)` until the subscription is registered before publishing,
+so the assertion is actually about delivery rather than about a race it happened
+to win.
+
+### What warrants a second pair of eyes
+
+- **`authorizeRead` grants access to any valid token before checking the drop.**
+  Correct for a single-token deployment, but when per-capability tokens arrive
+  in v0.2 this function is the place that has to change, and its current shape
+  makes the token look like a superuser credential. It is.
+- **CSV export is capped at 1000 rows** (see above). Anyone raising
+  `datadrop.MaxLimit` must revisit `exportCSV`, or exports start silently
+  omitting data — the one outcome the current code is written to avoid.
+- **The `mode=simple`/`specversion` heuristic.** The fallback is a guess. It is
+  tested, documented, and has an escape hatch, but it is still a guess about
+  user intent based on a field name.
+- **`decodeJSON` rejects unknown fields** on `POST /v1/drops`. Deliberate — a
+  misspelled `public_reed` would otherwise create a drop with the wrong policy
+  silently — but it does mean a client sending a field we add later against an
+  older server gets a 400 rather than having it ignored.
+- The audit log is written but has no read endpoint; `store.ListAudit` exists
+  and only tests call it.
+
+### What should be done in the future
+
+- An audit read endpoint (`GET /v1/audit`), since the data is already there.
+- Retention enforcement.
+- The full idempotency ledger (design §10.4).
+- Raise `SetMaxOpenConns` above 1 and re-verify the sequence invariant under
+  real concurrency, if throughput ever matters.
+
+### Code review instructions
+
+Start with the two ordering-critical paths:
+
+- `pkg/server/handlers_events.go` `handleAppendEvent` — validate → commit →
+  publish → respond. The publish must be after the commit.
+- `pkg/server/handlers_stream.go` `handleStreamEvents` — subscribe → replay →
+  tail, with the `e.Seq <= cursor` dedupe covering the overlap.
+
+Then:
+
+- `pkg/stream/hub.go` `Publish` — the `default:` branch is the backpressure
+  policy; `TestSlowSubscriberIsEvictedRatherThanBuffered` is its spec.
+- `pkg/server/middleware.go` `statusRecorder.Flush` — deleting it silently
+  breaks SSE.
+- `pkg/server/handlers_export.go` `flattenValue` — the CSV interoperability
+  contract, specified by `TestExportCSVFlattening`.
+
+```bash
+GOWORK=off go test ./... -count=1
+make lint && make logcopter-check
+
+# The acceptance test on its own:
+GOWORK=off go test ./cmd/datadrop -run TestQuickStartEndToEnd -v
+```
+
+### Technical details
+
+**Manual verification (tmux, per AGENT.md)**
+
+```
+create          → {"name":"greenhouse", ...}
+push key=value  → 01KYAGPFX3DW5A2SGAP9DFS6E0 seq=1
+push --stdin    → seq=2
+push --ndjson   → seq=3, seq=4, "pushed 2 events"
+query           → table, descending, seq 4..1
+schema put strict     → version 1
+push temperature=warm → SchemaValidationFailed, /temperature: got string, want number, exit=5
+schema put permissive → version 2
+push temperature=warm → warning on stderr, seq=2 on stdout, exit=0
+tail --follow   → replayed 1,2 then printed 3,4 live as they were pushed
+export csv      → id,drop,stream,seq,...,data.location.lat,data.tags,data.temperature
+export ndjson   → one envelope per line, meta.warnings preserved
+no token        → Unauthorized, exit=3
+missing drop    → NotFound,     exit=4
+replayed id     → first HTTP 201, second HTTP 200
+public_read     → readable with no token; writes still 401
+2 MB body       → HTTP 413
+```
+
+**Final test inventory**
+
+| Package | Tests | Covers |
+|---|---|---|
+| `pkg/store` | 26 | migrations, pragmas, sequence invariants, idempotency, cursors, ranges, schema versioning, audit |
+| `pkg/schema` | 12 | strict/permissive results, extension keywords, malformed schemas, cache keying |
+| `pkg/stream` | 8 | fan-out, topic scoping, eviction, non-blocking publish, idempotent cancel |
+| `pkg/server` | 34 | auth, token non-leakage, both ingest shapes, idempotency, validation modes, query params, public_read, all three export formats, CSV flattening, SSE replay/tail/resume/scoping |
+| `cmd/datadrop` | 3 | the README quick start, exit codes, stdout/stderr separation |
+
+**Dependencies added in this step**
+
+| Module | Version | Why |
+|---|---|---|
+| `github.com/santhosh-tekuri/jsonschema/v6` | v6.0.2 | Draft 2020-12 validation |
+| `github.com/oklog/ulid/v2` | v2.1.2 | Time-sortable event IDs |

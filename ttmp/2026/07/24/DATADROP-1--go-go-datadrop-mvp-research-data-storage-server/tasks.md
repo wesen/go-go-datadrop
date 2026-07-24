@@ -5,13 +5,13 @@
 ### MVP v0.1 — research data storage server
 
 - [x] 1. Skeleton: `cmd/datadrop/main.go` with cobra `serve`/`create`/`push`/`tail`/`query`/`export` stubs; `net/http` ServeMux; SQLite open/close (see design/01 §7.1)
-- [ ] 2. Store: `pkg/store` with drops, events, schemas, audit tables + migrations (design/01 §5.1)
-- [ ] 3. Ingest: `POST /v1/drops/{name}/events`; CloudEvents envelope; ULID id; per-drop sequence; JSON Schema validation strict/permissive (design/01 §5.2, §5.3)
-- [ ] 4. Query: latest-N and time-range; `datadrop query`/`tail` (design/01 §5.4)
-- [ ] 5. Stream: SSE hub; `datadrop tail --follow`
-- [ ] 6. Export: CSV/NDJSON/JSON from query results
-- [ ] 7. Auth + audit: bearer token middleware; audit log writes (DR-3)
-- [ ] 8. Tests + docs: service/store tests (mirror tinyidp-opendrop test split); README quickstart; end-to-end CLI smoke test
+- [x] 2. Store: `pkg/store` with drops, events, schemas, audit tables + migrations (design/01 §5.1)
+- [x] 3. Ingest: `POST /v1/drops/{name}/events`; CloudEvents envelope; ULID id; per-drop sequence; JSON Schema validation strict/permissive (design/01 §5.2, §5.3)
+- [x] 4. Query: latest-N and time-range; `datadrop query`/`tail` (design/01 §5.4)
+- [x] 5. Stream: SSE hub; `datadrop tail --follow`
+- [x] 6. Export: CSV/NDJSON/JSON from query results
+- [x] 7. Auth + audit: bearer token middleware; audit log writes (DR-3)
+- [x] 8. Tests + docs: service/store tests (mirror tinyidp-opendrop test split); README quickstart; end-to-end CLI smoke test
 
 ### Decisions to confirm
 

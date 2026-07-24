@@ -35,3 +35,24 @@ Step 3 / MVP task 1 (commit 52e3950): datadrop skeleton — cmd/datadrop cobra t
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/store/migrations/0001_init.sql — v0.1 schema with the corrected events.stream column and stream_heads allocator
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/store/store.go — SQLite open/migrate; pure-Go driver DSN pragmas per DR-2
 
+
+## 2026-07-24
+
+Step 4 / MVP task 2 (commit d7696da): store layer — pkg/datadrop domain types, AppendEvent with in-transaction per-(drop,stream) sequence reservation and idempotent replay, QueryEvents/EachEvent, immutable schema versions, audit log. Resolved DR-1/DR-3/binary-name decisions and removed cmd/go-go-datadrop.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/datadrop/event.go — Shared domain vocabulary
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/store/events.go — The core storage invariant
+
+
+## 2026-07-24
+
+Step 5 / MVP tasks 3-8 (commit a78f08e): v0.1 complete — JSON Schema validation (strict/permissive), ingest accepting both request shapes, query with cursors and time ranges, SSE hub with slow-subscriber eviction and Last-Event-ID resume, CSV/NDJSON/JSON export, bearer auth with public_read, and an end-to-end CLI acceptance test. golangci-lint clean; 83 tests passing.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/cmd/datadrop/smoke_test.go — v0.1 acceptance test
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_events.go — Ingest ordering: validate, commit, publish
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_stream.go — SSE replay-then-tail
+

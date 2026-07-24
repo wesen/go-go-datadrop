@@ -58,19 +58,32 @@ See `sources/README.md` for the full inventory. Key sources:
 - `tasks.md` — MVP task breakdown.
 - `changelog.md` — recent changes.
 
-## Key decisions (proposed)
+## Key decisions (accepted)
 
 - **DR-1:** Standalone `datadrop` binary in this repo (not a TinyIDP overlay). Reference slice reused for patterns.
 - **DR-2:** SQLite only for v0.1 (pure-Go `modernc.org/sqlite`).
 - **DR-3:** Bearer token auth for v0.1; DPoP + browser sessions deferred to v0.2.
 - **DR-4:** Adopt a minimal CloudEvents-style event envelope.
 
-See `design/01-mvp-design.md` §6 for full decision records.
+See `design/01-mvp-design.md` §6 for full decision records, and
+`design/02-intern-implementation-guide.md` §16 for two documented deviations
+adopted during implementation (an added `events.stream` column, and
+`santhosh-tekuri/jsonschema/v6` in place of the draft-07-only `xeipuuv`).
 
 ## Status
 
-Current status: **active**. Sources imported; v0.1 design drafted; implementation
-not started.
+Current status: **v0.1 complete**. All 14 tasks are done. The binary accepts
+append-only events over HTTP and CLI, validates them against JSON Schema in
+strict or permissive mode, serves latest-N/time-range/cursor queries, streams
+live events over SSE with resumable cursors, exports CSV/NDJSON/JSON, gates
+writes behind a bearer token, and records an audit log. Verified by 83 tests
+including an end-to-end CLI acceptance test, plus `golangci-lint` and
+`logcopter-check` clean.
+
+Deferred to later milestones, and documented as such: retention enforcement
+(the field is stored but inert), the full `Idempotency-Key` ledger (v0.1 covers
+same-ID replay only), an audit read endpoint, and everything in
+`design/01-mvp-design.md` §2 "out of scope".
 
 ## Topics
 
