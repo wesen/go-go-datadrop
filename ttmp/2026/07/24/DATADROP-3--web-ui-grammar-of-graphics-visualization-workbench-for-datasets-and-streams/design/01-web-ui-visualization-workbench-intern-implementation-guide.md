@@ -478,6 +478,14 @@ inferFieldType(name, schemaProps, observed) -> (FieldType, TypeSource)
        otherwise                    -> (n, values)
 ```
 
+Getting the *type* right is not the whole job. A schema that declares
+`station_id` a string must also reach the **CSV reader**, because `CSVValue`
+coerces `"001"` to the number 1 and by the time a row is a JSON object the
+original text no longer exists. `ReadOptions.TextColumns` carries the schema's
+string columns down to the reader for exactly this reason. Typing a column
+correctly while having already destroyed its contents is a subtle way to solve
+half a problem.
+
 Notes an intern will trip over:
 
 - **Step 2 only applies to dataset sources.** An event stream may have a schema
@@ -569,11 +577,14 @@ reported as Truncated rather than passed over in silence"*. Do the same here, an
 carry it all the way to the screen:
 
 - the JSON payload sets `"truncated": true` and names the `"strategy"`;
-- the UI renders a persistent amber banner above the chart: *"showing the first
-  2 000 of at least 2 000 rows (strategy: head) — this chart describes a sample,
-  not the file"*;
+- the UI renders a persistent amber banner above the chart: *"This chart
+  describes a sample, not the whole source. Showing the first 2 000 of at least
+  2 000 rows (strategy: head)."*;
 - the banner is **not** dismissible, because a user who dismisses it and then
-  screenshots the chart has produced a misleading artifact.
+  screenshots the chart has produced a misleading artifact;
+- and the source picker carries a **row-budget control** (500 / 2 000 / 10 000 /
+  50 000), because the banner tells the user to raise the limit and advice that
+  cannot be acted on is worse than no advice.
 
 Note the phrasing "at least". A streaming reader that stops at the cap does not
 know the total. Claiming a total you did not count is worse than admitting you
@@ -736,15 +747,18 @@ handleStreamTable:
     dropName  := pathName(...)                      // validates the name
     authorizeRead(dropName)                          // 401 unless public_read
     query     := s.parseEventQuery(w, r, dropName)   // existing helper
-    query.Limit = clampTableLimit(r)                 // NOT the 1000 event cap
+    limit     := parseTableLimit(r)                  // NOT the 1000 event cap
+
+    // Ask for one row MORE than the budget. Getting it back proves a remainder
+    // exists; not getting it proves one does not.
+    query.Limit    = limit + 1
+    query.LimitCap = tabular.MaxTableRows + 1
 
     if _, err := s.store.GetDrop(...); err != nil { writeStoreError; return }
 
     events := s.store.QueryEvents(ctx, query)
-
-    // The store returns at most Limit rows; asking for one more is how you
-    // learn whether there were more without counting them.
-    truncated := len(events) == query.Limit
+    truncated := len(events) > limit
+    if truncated { events = events[:limit] }
 
     table := tabular.FromEvents(ref, events)
     table.Truncated = truncated
@@ -752,12 +766,22 @@ handleStreamTable:
     writeJSON(200, table)
 ```
 
-The one subtlety: `parseEventQuery` calls `EventQuery.Normalize()`, which clamps
-`Limit` to `datadrop.MaxLimit` (1000). A table wants a larger budget than a JSON
-page of envelopes does, so the handler sets `query.Limit` **after** normalization,
-from its own clamp. Write a test that asks for 5 000 rows and asserts it gets
-5 000 — otherwise the next person to touch `Normalize` will silently cap every
-chart at a thousand points and nothing will fail.
+Two subtleties, both discovered by a failing test rather than by reasoning.
+
+**The limit clamp.** `parseEventQuery` calls `EventQuery.Normalize()`, which
+clamps `Limit` to `datadrop.MaxLimit` (1000) — and so does `QueryEvents`, which
+normalizes again. Setting `query.Limit` after `parseEventQuery` is therefore not
+enough: the store clamps it straight back. The shipped answer is a new
+`EventQuery.LimitCap` field that the handler sets and no URL can, so one query
+path and one clamp serve two different budgets. Write a test that asks for 5 000
+rows and asserts it gets 5 000 — otherwise the next person to touch `Normalize`
+will silently cap every chart at a thousand points and nothing will fail.
+
+**Truncation is answered, not guessed.** Treating a full page as evidence of a
+remainder reports truncation for a stream holding exactly `limit` events, which
+is a lie in the direction that makes users stop believing the banner. Asking for
+`limit + 1` costs one row and gives an exact answer — and it matches
+`tabular.FromRows`, where the reader hits EOF and genuinely knows.
 
 Rows are returned in the order the store produced them. For `order=desc` that
 means newest first, which is wrong for a line chart; the browser sorts by the `x`
@@ -858,72 +882,56 @@ points at the right prefix. Nothing under `/v1/` is touched, and because the SPA
 handler is registered at `/ui/` rather than `/`, it cannot shadow an API route —
 which is the failure mode the skill warns about.
 
-### 10.2 Embed with a disk fallback
+### 10.2 Embed always, override at runtime
+
+*(This section describes what shipped. The design first proposed a pair of
+`//go:build embed` / `//go:build !embed` files, per the `go-web-frontend-embed`
+skill. That pattern exists to give a developer a disk-backed asset path without
+a rebuild — but the Vite dev server on :5173, proxying `/v1` to the Go server,
+gives the same thing with hot reload and no build tags at all. Two build
+configurations that must both compile is a real cost; a runtime flag is not.)*
 
 ```go
-// pkg/webui/embed.go
-//go:build embed
+// pkg/webui/webui.go
 
-package webui
-
-import (
-    "embed"
-    "io/fs"
-)
-
+// "all:" matters. Without it embed skips names beginning with "_" or ".", and
+// Vite emits such names often enough that a chunk goes missing and the failure
+// only appears as a 404 in a browser console.
+//
 //go:embed all:dist
-var embedded embed.FS
+var assets embed.FS
 
-func assets() (fs.FS, bool) {
-    sub, err := fs.Sub(embedded, "dist")
+// Assets returns the filesystem the UI is served from. A non-empty dir serves
+// from disk instead, so a running server can be pointed at a fresh build.
+func Assets(dir string) fs.FS {
+    if dir != "" {
+        return os.DirFS(dir)
+    }
+    sub, err := fs.Sub(assets, "dist")
     if err != nil {
-        return nil, false
+        return assets // unreachable: "dist" is embedded above
     }
-    return sub, true
+    return sub
 }
 ```
 
-```go
-// pkg/webui/embed_none.go
-//go:build !embed
+`pkg/webui/dist` is committed, which is what makes this work: embedding needs the
+files present at compile time, and a `go install` of this module must not require
+a JavaScript toolchain. Until `make ui` is first run, `dist/index.html` is a
+placeholder that says so — the API starts and serves regardless.
 
-package webui
+`serve` gains `--ui-dir` (serve from a directory) and `--no-ui` (do not mount the
+routes at all).
 
-import (
-    "io/fs"
-    "os"
-)
+### 10.3 The build step
 
-// Without the embed tag the assets come from disk, so `go run` picks up a
-// `bun run build` without a recompile. Missing assets are not an error: the
-// server must still start and serve the API.
-func assets() (fs.FS, bool) {
-    if _, err := os.Stat("pkg/webui/dist/index.html"); err != nil {
-        return nil, false
-    }
-    return os.DirFS("pkg/webui/dist"), true
-}
-```
+`make ui` runs `bun --cwd ui install --frozen-lockfile` then `bun --cwd ui run
+build`, and Vite writes straight into `pkg/webui/dist` — no copy step between
+`ui/dist` and the Go tree, because a copy step is one more thing that can be
+stale.
 
-Two rules that follow from `AGENT.md`'s *"make sure the software compiles without
-the tag as well"*:
-
-- **The API must start without any UI assets.** If `assets()` returns false,
-  register a handler at `/ui/` that returns a 503 problem document explaining
-  that the UI was not built, and log one warning at startup. A missing frontend
-  must never prevent `datadrop serve` from serving data.
-- **`//go:embed all:dist`, not `//go:embed dist`.** Without the `all:` prefix,
-  `embed` skips files whose names begin with `_` or `.`, and Vite emits such
-  names often enough that you will lose a chunk and not find out until a
-  production build 404s in the browser.
-
-### 10.3 The generate step
-
-`pkg/webui/generate.go` carries `//go:generate go run ./generate_build.go`; the
-program locates the repo root by walking up to `go.mod`, runs `bun run build` in
-`ui/`, removes `pkg/webui/dist`, and copies `ui/dist` into it. `make ui` wraps it.
-The build output is **committed**, because `go:embed` needs the files present at
-compile time and because a `go install` of this module must not require bun.
+It is deliberately **not** wired into `make build` or into `go generate ./...`.
+Both are run by anyone building the Go module, and neither may require bun.
 
 ### 10.4 The SPA handler
 
@@ -1120,9 +1128,20 @@ interface ChartSpec {
 
 `defaultChart(table)` picks something drawable rather than something empty: a
 temporal field on `x` if one exists (and then `geom: "line"`), otherwise the
-first quantitative field; the first-or-second quantitative field on `y`; the
-first nominal field on `color`. A workbench that opens on a blank canvas with
-five empty dropdowns teaches nothing.
+first quantitative field; the first-or-second quantitative field on `y`; a
+nominal field on `color`. A workbench that opens on a blank canvas with five
+empty dropdowns teaches nothing.
+
+Two ranking rules turned out to be necessary, and both were found by opening the
+result rather than by reading the code:
+
+- **Payload columns outrank envelope columns.** "First quantitative field" on a
+  stream table is `seq`, and "first nominal field" is `id`. The naive rule
+  produced a chart of the row number against time — a straight line that says
+  nothing — with a legend holding one entry per row.
+- **A colour candidate must have between 2 and 8 distinct values.** The server
+  reports `Field.Distinct`, so a 120-value identifier column can be skipped
+  instead of producing a legend longer than the chart.
 
 Channel type rules, enforced in the editor by filtering the dropdown rather than
 by rejecting a selection:
@@ -1190,8 +1209,23 @@ with a silent `NaN` in the transform is not.
 
 - **x, quantitative** — linear over `[min, max]` padded by 5% each side; a
   degenerate domain (`min == max`) is widened by ±1 so the division is defined.
-- **x, nominal or temporal** — a band scale over the sorted distinct values;
-  position is `(i + 0.5) / n`, which centres marks in their band.
+- **x, temporal** — *continuous*, not a band. Values parse to epoch milliseconds
+  and scale linearly, and ticks land on round **units of time** (1s, 5s, 15s,
+  30s, 1m, 5m, …, 1h, 3h, 6h, 12h, 1d, 7d, 1mo, 1y) rather than on round numbers
+  of milliseconds — see `ui/src/model/time.ts`.
+
+  The reference artifact bands a temporal x, which is right for twenty-four
+  monthly buckets and wrong for a sensor stream: it gives one slot per reading,
+  draws uneven intervals evenly, and labels the axis with full ISO strings. The
+  exception is `geom: "bar"`, which keeps the band because a bar needs a discrete
+  slot to have a width — and a bar chart of a raw timestamp column is almost
+  always a missing `summarize` step.
+
+  Everything is UTC. The table view shows the stored timestamps verbatim, and an
+  axis that silently shifted them into the reader's zone would disagree with the
+  rows underneath it.
+- **x, nominal** — a band scale over the sorted distinct values; position is
+  `(i + 0.5) / n`, which centres marks in their band.
 - **y** — always quantitative. `bar` and `area` extend the domain to include
   zero, because a bar whose baseline is not zero misrepresents magnitude. Log
   scale is honoured only when the domain is strictly positive; otherwise it is
@@ -1243,7 +1277,8 @@ Only for stream sources, and only behind an explicit toggle.
 ```
 onEnable:
     es = new EventSource(`/v1/drops/${drop}/events/stream?stream=${s}&after=${table.next_after}`)
-    es.onmessage = (m) => {
+    // addEventListener("append"), NOT onmessage — see below.
+    es.addEventListener("append", (m) => {
         env = JSON.parse(m.data)
         if (env.seq > lastSeq + 1) markGap(lastSeq, env.seq)
         lastSeq = env.seq
@@ -1254,8 +1289,14 @@ onDisable / unmount:
     es.close()
 ```
 
-Four things this design must be honest about.
+Five things this design must be honest about.
 
+- **The frames are named, so `onmessage` never fires.** The server writes
+  `event: append` (`pkg/server/handlers_stream.go:106`), and
+  `EventSource.onmessage` fires only for *unnamed* frames. Using it produces a
+  connection that opens, stays open, reports no error, and delivers nothing —
+  which is considerably harder to notice than a failure would be. Listen with
+  `addEventListener("append", …)`.
 - **`EventSource` cannot send an `Authorization` header.** This is a hard browser
   limitation, not an oversight. For a token-protected drop the live toggle is
   therefore disabled with the tooltip *"live tail needs a public-read drop"*. The
@@ -1269,10 +1310,24 @@ Four things this design must be honest about.
   *"reload table"* — never quietly interpolate across it.
 - **Projection happens twice.** The server projects the initial page; the browser
   projects each arriving envelope. That is a violation of DR-1 in miniature, and
-  it is accepted only because the alternative is a round trip per event. Contain
-  it: `projectEnvelope` in `model/table.ts` implements exactly the flattening
-  rules of §3.2 and nothing else, and `test/infer.test.ts` asserts it agrees with
-  a fixture generated by the Go implementation.
+  it is accepted only because the alternative is a round trip per event. It is
+  contained by `ui/src/model/live.ts` implementing exactly the flattening rules
+  of §3.2 and nothing else, and by `pkg/tabular/fixture_test.go` writing both the
+  input envelopes and the projection it produced into
+  `ui/test/fixtures/envelope-projection.json`, which `ui/test/live.test.ts`
+  asserts against. Regenerate with:
+
+  ```bash
+  go test ./pkg/tabular -run TestWriteLiveProjectionFixture -update
+  ```
+
+  Building that fixture immediately found a divergence worth knowing about: the
+  SSE endpoint marshals an envelope with Go's default time encoding, which is
+  RFC3339Nano and strips trailing zeros, so the instant the table endpoint
+  reports as `…05.100Z` arrives over SSE as `…05.1Z`. Two spellings of one
+  instant in one column, which a nominal axis renders as two categories.
+  `canonicalTime` normalizes via `Date#toISOString`, which happens to produce
+  exactly the canonical form.
 - **New columns can appear.** An arriving event may have a payload key no earlier
   row had. Add the field (typed by observation, `inferred_from: "values"`) and
   leave earlier rows missing it. Do not re-request the table; do not drop the
@@ -1351,9 +1406,14 @@ from drifting.
   returns a `problems` entry; a facet with three values returns three panels
   sharing a y domain; size is sqrt-scaled (radius ratio for values 1 and 4 is 2,
   not 4).
-- `infer.test.ts` — `projectEnvelope` agrees with a Go-generated fixture
-  (`test/fixtures/envelope-projection.json`, written by a Go test with
-  `-update`).
+- `live.test.ts` — `projectEnvelope` agrees with the Go-generated fixture
+  (`test/fixtures/envelope-projection.json`); `canonicalTime` normalizes the SSE
+  spelling onto the table spelling; `appendEnvelope` adds new columns, holds the
+  row budget, and reports a sequence gap.
+- `time.test.ts` — the tick ladder, label granularity, and that 120 timestamps
+  produce a handful of ticks rather than 120 slots.
+- `export.test.ts` — RFC 4180 quoting, and that a permalink round-trips and
+  never carries a credential.
 
 Derive golden values **independently** — by hand or with a separate tool — not by
 printing what the implementation currently produces. A golden copied from the
@@ -1548,6 +1608,8 @@ frontend can be developed against a real server from task 4 onward.
 | Multiple charts side by side | the reference artifact's tiling window manager is ~400 lines and orthogonal to everything here | after the single-chart path is proven |
 | Deck/slide export | `SERVE-20260723-PBUI-GOG` design-doc/02 has a full design ready to port | when someone wants to present from datadrop |
 | gzip on table responses | JSON tables compress ~8:1 and `net/http` will not do it automatically | measured latency on a real network, not a localhost benchmark |
+| Surfacing the 2^53 integer limit in the UI | the server preserves a 17-digit identifier exactly; `JSON.parse` cannot, so the table view shows it approximately. Affects display, not the chart | a user reports an identifier that does not match their source |
+| A `Map` instead of `indexOf` in `buildPlot` | `categories.indexOf` and `xCategories.indexOf` run inside per-mark loops; colour is bounded at 8 but the x category list is not | the row budget rises, or a bar chart over a high-cardinality x feels slow |
 
 ---
 
@@ -1558,6 +1620,32 @@ frontend can be developed against a real server from task 4 onward.
 - `ttmp/2026/07/24/DATADROP-3--*/design/01-web-ui-visualization-workbench-intern-implementation-guide.md` — this document
 - `ttmp/2026/07/24/DATADROP-3--*/reference/01-implementation-diary.md` — the diary; write a step per commit
 - `ttmp/2026/07/24/DATADROP-3--*/tasks.md` — the eleven tasks
+
+### 20.1a What shipped
+
+This guide has been reconciled with the implementation; the places where the
+design changed under contact are marked in the text above. The code:
+
+| File | What it is |
+|---|---|
+| `pkg/tabular/table.go` | `Table`, `Field`, `SourceRef`, the row budget |
+| `pkg/tabular/flatten.go` | the dotted-path walker, shared with the CSV export |
+| `pkg/tabular/rows.go` | CSV / NDJSON / JSON readers, `TextColumns` |
+| `pkg/tabular/infer.go` | the type ladder and its provenance |
+| `pkg/tabular/builder.go` | column ordering and per-column statistics |
+| `pkg/tabular/project.go` | `FromEvents`, `FromRows` |
+| `pkg/tabular/fixture_test.go` | writes the fixture the browser is tested against |
+| `pkg/server/handlers_table.go` | the three endpoints |
+| `pkg/store/events.go` | `ListStreams` |
+| `pkg/webui/webui.go` | the embedded UI and its mounts |
+| `ui/src/model/table.ts` | the wire types and cell helpers |
+| `ui/src/model/pipeline.ts` | the five verbs, `evaluate`, `schemaAfter` |
+| `ui/src/model/chart.ts` | `ChartSpec`, channel rules, `defaultChart` |
+| `ui/src/model/plot.ts` | `buildPlot` — spec to geometry |
+| `ui/src/model/time.ts` | the continuous time axis |
+| `ui/src/model/live.ts` | the browser-side envelope projection |
+| `ui/src/model/permalink.ts` | the URL-fragment codec |
+| `cmd/datadrop/table_smoke_test.go` | the end-to-end acceptance test |
 
 ### 20.2 Existing code to read before writing any
 
