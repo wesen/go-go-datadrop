@@ -23,3 +23,15 @@ Added intern implementation guide (design/02) reconciling the OpenDrop design wi
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/design/02-intern-implementation-guide.md — Intern-facing spec for the v0.1 MVP
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/reference/02-implementation-diary.md — Chronological implementation record
 
+
+## 2026-07-24
+
+Step 3 / MVP task 1 (commit 52e3950): datadrop skeleton — cmd/datadrop cobra tree with serve implemented and six client commands stubbed, net/http ServeMux with /healthz and graceful shutdown, and pkg/store with the full v0.1 SQLite schema behind a forward-only embedded migration runner. Verified: build, tests, golangci-lint 0 issues, logcopter-check, tmux smoke test.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/cmd/datadrop/main.go — New binary entry point per design 01 §5.4
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/server.go — HTTP surface and lifecycle
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/store/migrations/0001_init.sql — v0.1 schema with the corrected events.stream column and stream_heads allocator
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/store/store.go — SQLite open/migrate; pure-Go driver DSN pragmas per DR-2
+

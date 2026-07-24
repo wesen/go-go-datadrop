@@ -4,7 +4,7 @@
 
 ### MVP v0.1 — research data storage server
 
-- [ ] 1. Skeleton: `cmd/datadrop/main.go` with cobra `serve`/`create`/`push`/`tail`/`query`/`export` stubs; `net/http` ServeMux; SQLite open/close (see design/01 §7.1)
+- [x] 1. Skeleton: `cmd/datadrop/main.go` with cobra `serve`/`create`/`push`/`tail`/`query`/`export` stubs; `net/http` ServeMux; SQLite open/close (see design/01 §7.1)
 - [ ] 2. Store: `pkg/store` with drops, events, schemas, audit tables + migrations (design/01 §5.1)
 - [ ] 3. Ingest: `POST /v1/drops/{name}/events`; CloudEvents envelope; ULID id; per-drop sequence; JSON Schema validation strict/permissive (design/01 §5.2, §5.3)
 - [ ] 4. Query: latest-N and time-range; `datadrop query`/`tail` (design/01 §5.4)
