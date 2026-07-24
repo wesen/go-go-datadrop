@@ -19,7 +19,9 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
+	"github.com/go-go-golems/go-go-datadrop/pkg/stream"
 )
 
 // Config holds the knobs `datadrop serve` exposes.
@@ -31,16 +33,24 @@ type Config struct {
 	Token string
 	// MaxBodyBytes caps request bodies. Zero selects DefaultMaxBodyBytes.
 	MaxBodyBytes int64
+
+	// StreamBuffer is the per-SSE-subscriber channel depth. Zero selects the
+	// hub's default. A subscriber that overflows it is disconnected and
+	// expected to resume from its last sequence.
+	StreamBuffer int
 }
 
 // DefaultMaxBodyBytes is the ingest body cap when Config.MaxBodyBytes is unset.
 const DefaultMaxBodyBytes int64 = 1 << 20 // 1 MiB
 
-// Server wires the store to the HTTP surface.
+// Server wires the store, the schema cache, and the live hub to the HTTP
+// surface.
 type Server struct {
-	cfg   Config
-	store *store.Store
-	http  *http.Server
+	cfg     Config
+	store   *store.Store
+	schemas *schema.Cache
+	hub     *stream.Hub
+	http    *http.Server
 }
 
 // New builds a Server. It does not bind a socket; call Serve for that.
@@ -55,7 +65,12 @@ func New(cfg Config, st *store.Store) (*Server, error) {
 		cfg.MaxBodyBytes = DefaultMaxBodyBytes
 	}
 
-	s := &Server{cfg: cfg, store: st}
+	s := &Server{
+		cfg:     cfg,
+		store:   st,
+		schemas: schema.NewCache(),
+		hub:     stream.NewHub(cfg.StreamBuffer),
+	}
 	s.http = &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           s.Handler(),
@@ -70,8 +85,29 @@ func New(cfg Config, st *store.Store) (*Server, error) {
 // without binding a socket.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
+
 	mux.HandleFunc("GET /healthz", s.handleHealth)
-	return mux
+
+	mux.HandleFunc("POST /v1/drops", s.handleCreateDrop)
+	mux.HandleFunc("GET /v1/drops", s.handleListDrops)
+	mux.HandleFunc("GET /v1/drops/{name}", s.handleGetDrop)
+
+	mux.HandleFunc("POST /v1/drops/{name}/events", s.handleAppendEvent)
+	mux.HandleFunc("GET /v1/drops/{name}/events", s.handleQueryEvents)
+	mux.HandleFunc("GET /v1/drops/{name}/events/stream", s.handleStreamEvents)
+
+	mux.HandleFunc("GET /v1/drops/{name}/export", s.handleExport)
+
+	mux.HandleFunc("PUT /v1/drops/{name}/schemas/{stream}", s.handlePutSchema)
+	mux.HandleFunc("GET /v1/drops/{name}/schemas/{stream}", s.handleGetSchema)
+
+	// Outermost first: a panic in any handler must still produce a response
+	// carrying the request ID that the log line will reference.
+	return chain(mux,
+		s.recoverMiddleware,
+		s.requestIDMiddleware,
+		s.loggingMiddleware,
+	)
 }
 
 // Addr reports the configured listen address.

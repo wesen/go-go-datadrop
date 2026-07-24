@@ -21,7 +21,7 @@ func newTestServer(t *testing.T) *Server {
 	}
 	t.Cleanup(func() { _ = st.Close() })
 
-	srv, err := New(Config{Addr: "127.0.0.1:0", Token: "test-token"}, st)
+	srv, err := New(Config{Addr: "127.0.0.1:0", Token: testToken}, st)
 	if err != nil {
 		t.Fatalf("server.New: %v", err)
 	}

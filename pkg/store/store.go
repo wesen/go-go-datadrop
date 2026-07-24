@@ -143,8 +143,15 @@ func (s *Store) SetClock(now func() time.Time) {
 	}
 }
 
-// Now returns the current time according to the store's clock.
-func (s *Store) Now() time.Time { return s.now().UTC() }
+// Now returns the current time according to the store's clock, truncated to
+// the storage resolution.
+//
+// The truncation matters: without it a value returned from a create/append
+// call carries nanoseconds while the same value re-read from the database
+// carries milliseconds, so a caller comparing the two sees them differ.
+func (s *Store) Now() time.Time {
+	return s.now().UTC().Truncate(time.Millisecond)
+}
 
 // dsnForPath builds a modernc.org/sqlite DSN.
 //

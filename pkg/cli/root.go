@@ -3,14 +3,12 @@
 // The command surface follows design/01-mvp-design.md §5.4: one binary that is
 // both the server (`datadrop serve`) and a thin client of the public HTTP API
 // (everything else). Client subcommands must never reach into the SQLite file
-// directly — if `datadrop push` works, `curl` works.
-//
-// In this first MVP slice only `serve` is implemented; the client commands are
-// registered as stubs so the command tree, flag names and help text are fixed
-// before handlers depend on them.
+// directly — if `datadrop push` works, `curl` works, because both exercise the
+// same endpoints.
 package cli
 
 import (
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -19,6 +17,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
+
+	"github.com/go-go-golems/go-go-datadrop/pkg/client"
 )
 
 // ExitCode values are part of the CLI contract (guide §11.4). Scripts depend
@@ -39,11 +39,6 @@ type globalOptions struct {
 	logLevel string
 	output   string
 }
-
-// ErrNotImplemented marks a command that exists to fix the interface but has
-// no behaviour yet. Stub commands return it so `datadrop push` fails loudly
-// rather than appearing to succeed.
-var ErrNotImplemented = errors.New("not implemented yet in this MVP slice")
 
 // NewRootCmd builds the full command tree.
 func NewRootCmd() *cobra.Command {
@@ -90,6 +85,8 @@ Then, from another shell:
 	root.AddCommand(
 		newServeCmd(opts),
 		newCreateCmd(opts),
+		newListCmd(opts),
+		newInspectCmd(opts),
 		newPushCmd(opts),
 		newQueryCmd(opts),
 		newTailCmd(opts),
@@ -111,13 +108,22 @@ func Execute() int {
 	return ExitOK
 }
 
+// exitCodeFor maps an error onto the documented exit codes, so a script can
+// branch on why a command failed without parsing its stderr.
 func exitCodeFor(err error) int {
-	switch {
-	case errors.Is(err, ErrNotImplemented):
-		return ExitError
-	default:
-		return ExitError
+	var apiErr *client.APIError
+	if errors.As(err, &apiErr) {
+		switch apiErr.Status {
+		case http.StatusUnauthorized, http.StatusForbidden:
+			return ExitAuth
+		case http.StatusNotFound:
+			return ExitNotFound
+		case http.StatusBadRequest, http.StatusUnprocessableEntity,
+			http.StatusConflict, http.StatusRequestEntityTooLarge:
+			return ExitValidation
+		}
 	}
+	return ExitError
 }
 
 // configureLogging installs a console writer on stderr at the requested level.
