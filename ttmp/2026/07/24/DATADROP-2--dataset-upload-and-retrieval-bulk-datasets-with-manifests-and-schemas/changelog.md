@@ -23,3 +23,13 @@ Tasks 1-3 (commits 7174ee6, d30c44c): content-addressed blob store with atomic p
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/blob/store.go — Content-addressed store
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/store/datasets.go — Draft/committed state machine and version allocation
 
+
+## 2026-07-24
+
+Tasks 4-7 (commit 8e25f80): the dataset HTTP surface — staged upload with a digest-precheck mount fast path, single-shot PUT, http.ServeContent download with Range/ETag/304, listing, and a streaming tar archive. Fixed two bugs found by manual testing: client-default Content-Type being recorded as fact into an immutable version, and a test that lowered the JSON body cap before its own JSON setup.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_blobs.go — Upload, download, archive
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_datasets.go — Dataset metadata endpoints
+

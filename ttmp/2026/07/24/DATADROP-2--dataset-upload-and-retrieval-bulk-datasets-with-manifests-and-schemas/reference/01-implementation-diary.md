@@ -498,3 +498,181 @@ UPDATE datasets SET next_version = ? WHERE drop_name = ? AND name = ?
 | `pkg/blob` | 20 |
 | `pkg/store` (datasets) | 29 |
 | everything else (v0.1) | 125 |
+
+---
+
+## Step 4: Tasks 4–7 — the HTTP surface
+
+Eleven `/v1` endpoints plus `HEAD /v1/blobs/{digest}`: open a draft, upload or
+mount a file, commit, read metadata, download bytes with `Range`, stream a tar
+archive, list, and delete. This is the step where the specification's three-phase
+upload protocol becomes something a client can actually drive.
+
+Two bugs surfaced, both only under manual testing against a real server, and
+both of the kind a unit test would not have been written for because neither is
+a case anyone anticipates until they see the output.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Commit (code):** `8e25f80` — "feat(DATADROP-2): tasks 4-7 — upload, download, listing, and archive"
+
+### What I did
+
+- `pkg/server/handlers_datasets.go` — list, get, open draft, get version, commit,
+  delete, plus `resolveVersion` (which understands `latest`) and
+  `writeDatasetError` (which maps the immutability sentinel to 409).
+- `pkg/server/handlers_blobs.go` — upload with both the streamed and mounted
+  forms, the single-shot convenience form, download via `http.ServeContent`,
+  `HEAD /v1/blobs`, and the streaming tar archive.
+- Wired `*blob.Store` into `Server` and added `--blobs` and
+  `--max-upload-bytes` to `serve`.
+- `pkg/server/handlers_datasets_test.go` — 24 tests.
+
+### Why
+
+The staged protocol only pays for itself if the digest precheck exists, so
+`HEAD /v1/blobs` and the bodyless mount landed in the same step as the upload
+handler rather than as a later optimization. Without them the protocol is three
+requests where one would do, which would be a fair criticism.
+
+### What worked
+
+- **`http.ServeContent` was the right call and cost nothing.** `Range`,
+  `If-None-Match`, `If-Modified-Since`, `Accept-Ranges` and `Content-Length` all
+  work correctly without a line of parsing. Verified against a live server:
+  `Range: bytes=0-11` returned `206` with `Content-Range: bytes 0-11/41`, and
+  `If-None-Match` on the digest returned `304`.
+- **The ETag being the digest.** Two responses with the same ETag are
+  byte-identical by construction rather than by convention, which is a stronger
+  guarantee than most ETag implementations can make.
+- Implementing the single-shot form *in terms of* the staged operations. There
+  is one `CommitDatasetVersion` call site per path and one state transition, so
+  the convenience endpoint cannot drift from the protocol it wraps.
+- The end-to-end smoke run: two versions sharing an unchanged file produced
+  exactly two blobs on disk, and the second version's upload reported
+  `"deduplicated": true` with no body sent.
+
+### What didn't work
+
+- **The media type recorded a client's default Content-Type as fact.** Uploading
+  `README.md` with `curl --data-binary` and no explicit `-H` stored
+  `media_type: application/x-www-form-urlencoded` — which is what curl sends when
+  it has no opinion, not a claim about the content. Because versions are
+  immutable, that wrong value would have been permanent.
+
+  The fix distinguishes a *deliberate* Content-Type from a *default* one. A
+  deliberate type wins, because it is the only thing that can describe a file
+  with no extension; the two known client defaults
+  (`application/octet-stream`, `application/x-www-form-urlencoded`) lose to the
+  filename extension, because they carry no information. `README.md` now records
+  `text/markdown` and a `data.bin` uploaded as `text/csv` still records
+  `text/csv`.
+
+- **The upload-cap test failed for the wrong reason.** It set
+  `MaxBodyBytes = 16` before seeding the drop, and the seed request is itself
+  JSON larger than 16 bytes, so the setup 413'd. Reordered so the cap drops only
+  after setup. The test as written was asserting nothing about uploads.
+
+### What I learned
+
+- **`http.ServeMux` cleans the request path before routing.** A `PUT` to
+  `.../files/../../escape.md` never reaches the handler: the path collapses to
+  something matching no `PUT` route, and the mux returns `405`. So the URL-path
+  traversal vector is closed by the standard library before any validation runs.
+
+  This matters because it means `ValidateDatasetPath` is *not* redundant, but its
+  real job is a different vector: the `?path=` query parameter on the
+  single-shot endpoint, which is not normalized by anything. That is the form the
+  test targets, and all four hostile values return `400`. Had I only tested the
+  URL-path form I would have concluded the validation worked while leaving the
+  vector that actually needs it unverified.
+
+### What was tricky to build
+
+**Distinguishing the mount request from an empty upload.** Both are a `PUT` with
+no body. The discriminator is `?digest=` combined with `ContentLength == 0`: a
+digest with no body means "you already have this, record it", while no digest
+and no body means "store zero bytes", which is legal. Getting this backwards
+would either make zero-byte files impossible or turn a failed upload into a
+silent mount of whatever digest the client named.
+
+The mount path still has to do real work — verify the blob exists, `Stat` it for
+the size, and insert the `dataset_files` row. It is a metadata operation, not a
+no-op, and a `404` when the digest is absent is what tells the client to retry
+with the body.
+
+**Where to check that the version is still a draft.** The check has to happen
+*before* the body is read, or a client streams 400 MB only to be told the
+version was committed. But `GetDatasetVersion` with `includeDrafts: true` is
+also the only place a draft is legitimately readable, so the flag exists purely
+for this call site and is `false` everywhere else.
+
+### What warrants a second pair of eyes
+
+- `handlePutDatasetData` deliberately leaves the draft behind when the upload
+  fails. Deleting it would race with a client retrying, and an abandoned draft is
+  invisible to every reader — but nothing expires them, so a client that fails
+  repeatedly accumulates drafts that pin blobs against garbage collection.
+- `handleHeadBlob` gates existence on the instance token with no per-drop check,
+  because a blob is shared across drops and has no owning drop. That is correct
+  for a single-token deployment and becomes a question when per-capability tokens
+  arrive: existence of a digest is a small information leak.
+- The archive writes `files/<path>` entries under a `files/` prefix, with
+  `manifest.json` and `schema.json` at the root. That layout should be confirmed
+  against the upstream `.dropbundle` format before anything depends on it.
+
+### What should be done in the future
+
+- Expire abandoned drafts.
+- Consider a `Content-Digest` response header on download so a client can verify
+  without having recorded the manifest.
+
+### Code review instructions
+
+- `handlers_blobs.go` `storeUploadedBytes` — the mount/stream discriminator and
+  the `MaxBytesReader` wrapping.
+- `uploadMediaType` and `defaultMediaTypes` — the deliberate-vs-default rule.
+- `handleDownloadDatasetFile` — `ServeContent`, and the ETag being the digest.
+- `handlers_datasets.go` `resolveVersion` vs `parseVersionNumber`: `latest` is
+  meaningless on write paths, because it resolves over committed versions only.
+
+```bash
+GOWORK=off go test ./pkg/server/... -count=1
+```
+
+### Technical details
+
+**Verified by hand against a live server**
+
+```
+open draft (no drop)      → 404 NotFound
+open draft                → 201 {"version":1,"state":"draft"}
+HEAD blob (not present)   → 404
+PUT file ?digest=…        → 201 {"deduplicated":false}
+commit                    → 200 {"state":"committed","file_count":2,"total_bytes":73}
+GET .../latest/files/…    → the uploaded bytes
+Range: bytes=0-11         → 206, Content-Range: bytes 0-11/41
+If-None-Match: "<digest>" → 304
+HEAD blob (now present)   → 200
+v2 mount (no body)        → 201 {"deduplicated":true}
+blobs on disk             → 2 files for 2 versions sharing one file
+GET .../latest            → version 2
+archive                   → manifest.json, files/README.md, files/data/readings.csv
+add file to committed v1  → 409 VersionImmutable
+digest mismatch           → 400 DigestMismatch, nothing stored at that digest
+mount an absent digest    → 404 "send the body to upload it"
+?path=../../escape.csv    → 400 InvalidRequest
+unauthenticated upload    → 401
+```
+
+**The media-type rule**
+
+| Declared Content-Type | Extension | Recorded |
+|---|---|---|
+| `text/csv` | `.bin` | `text/csv` — a deliberate type wins |
+| `application/x-www-form-urlencoded` | `.md` | `text/markdown` — a client default loses |
+| `application/octet-stream` | `.csv` | `text/csv` — likewise |
+| *(none)* | `.csv` | `text/csv` |
+| `text/csv` | *(none)* | `text/csv` |
