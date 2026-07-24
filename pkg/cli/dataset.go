@@ -35,6 +35,7 @@ version is finite and immutable: correcting it means publishing a new version.`,
 		newDatasetGetCmd(opts),
 		newDatasetImportCmd(opts),
 		newDatasetRmCmd(opts),
+		newDatasetGCCmd(opts),
 	)
 	return cmd
 }
@@ -552,5 +553,43 @@ skipped.
 	flags.IntVar(&maxRows, "max-rows", 0, "maximum rows to import (default: the server's limit)")
 	flags.BoolVar(&strict, "strict", false, "reject the import if any row fails the dataset schema")
 
+	return cmd
+}
+
+func newDatasetGCCmd(opts *globalOptions) *cobra.Command {
+	var minAge int
+
+	cmd := &cobra.Command{
+		Use:   "gc",
+		Short: "Delete stored bytes that no dataset references",
+		Long: `Delete stored bytes that no dataset version references.
+
+Deleting a dataset version leaves its bytes in place, because other versions may
+share them. This sweep reclaims the ones nothing references any more.
+
+Blobs younger than the minimum age are never deleted: a file uploaded into a
+draft that has not yet recorded its metadata row is momentarily unreferenced,
+and the age check is what keeps a sweep from destroying an in-flight upload.`,
+		Args: cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			api, err := newClient(opts)
+			if err != nil {
+				return err
+			}
+
+			result, err := api.GarbageCollect(cmd.Context(), minAge)
+			if err != nil {
+				return err
+			}
+
+			fmt.Fprintf(cmd.ErrOrStderr(),
+				"scanned %d blob(s), %d referenced, deleted %d, freed %s\n",
+				result.Scanned, result.Referenced, result.Deleted, humanBytes(result.FreedBytes))
+			return renderJSON(cmd.OutOrStdout(), result)
+		},
+	}
+
+	cmd.Flags().IntVar(&minAge, "min-age-seconds", 0,
+		"minimum age before an unreferenced blob may be deleted (default: the server's grace period)")
 	return cmd
 }

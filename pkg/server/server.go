@@ -138,6 +138,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleDownloadDatasetFile)
 
 	mux.HandleFunc("HEAD /v1/blobs/{digest}", s.handleHeadBlob)
+	mux.HandleFunc("POST /v1/blobs/gc", s.handleGarbageCollect)
 
 	// Outermost first: a panic in any handler must still produce a response
 	// carrying the request ID that the log line will reference.

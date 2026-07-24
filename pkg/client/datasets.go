@@ -357,3 +357,23 @@ func (c *Client) ImportDataset(
 		c.versionPath(drop, dataset, version)+"/import", query, nil, &result)
 	return result, err
 }
+
+// GCResult summarizes a garbage-collection sweep.
+type GCResult struct {
+	Scanned    int   `json:"scanned"`
+	Referenced int   `json:"referenced"`
+	Deleted    int   `json:"deleted"`
+	FreedBytes int64 `json:"freed_bytes"`
+}
+
+// GarbageCollect asks the server to delete unreferenced stored bytes.
+func (c *Client) GarbageCollect(ctx context.Context, minAgeSeconds int) (GCResult, error) {
+	query := url.Values{}
+	if minAgeSeconds > 0 {
+		query.Set("min_age_seconds", strconv.Itoa(minAgeSeconds))
+	}
+
+	var result GCResult
+	err := c.doJSON(ctx, http.MethodPost, "/v1/blobs/gc", query, nil, &result)
+	return result, err
+}
