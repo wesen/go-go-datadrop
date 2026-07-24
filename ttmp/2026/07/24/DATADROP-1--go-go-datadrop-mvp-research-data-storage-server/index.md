@@ -76,9 +76,10 @@ Current status: **v0.1 complete**. All 14 tasks are done. The binary accepts
 append-only events over HTTP and CLI, validates them against JSON Schema in
 strict or permissive mode, serves latest-N/time-range/cursor queries, streams
 live events over SSE with resumable cursors, exports CSV/NDJSON/JSON, gates
-writes behind a bearer token, and records an audit log. Verified by 83 tests
-including an end-to-end CLI acceptance test, plus `golangci-lint` and
-`logcopter-check` clean.
+writes behind a bearer token, and records an audit log. Verified by 125 test
+functions (148 including subtests) across all eight packages, including an
+end-to-end CLI acceptance test, plus `golangci-lint` and `logcopter-check`
+clean.
 
 Deferred to later milestones, and documented as such: retention enforcement
 (the field is stored but inert), the full `Idempotency-Key` ledger (v0.1 covers

@@ -56,3 +56,14 @@ Step 5 / MVP tasks 3-8 (commit a78f08e): v0.1 complete — JSON Schema validatio
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_events.go — Ingest ordering: validate, commit, publish
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_stream.go — SSE replay-then-tail
 
+
+## 2026-07-24
+
+Step 6: closed the direct-test gap in pkg/datadrop, pkg/client, and pkg/cli (30 new tests). Corrected the test count in the ticket index from 83 to 125 (148 including subtests). The pkg/cli tests specify the key=value JSON heuristic that the README describes in prose.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/push_test.go — Specification of the key=value typing heuristic
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/client/client_test.go — Auth header, problem-document decoding, SSE parsing
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/datadrop/datadrop_test.go — Allowlist and query-normalization boundaries, incl. SQL-injection cases
+

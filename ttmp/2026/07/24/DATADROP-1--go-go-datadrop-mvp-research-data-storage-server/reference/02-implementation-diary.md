@@ -1107,12 +1107,16 @@ public_read     → readable with no token; writes still 401
 **Final test inventory**
 
 | Package | Tests | Covers |
-|---|---|---|
-| `pkg/store` | 26 | migrations, pragmas, sequence invariants, idempotency, cursors, ranges, schema versioning, audit |
+|---|---:|---|
+| `pkg/datadrop` | 11 | name/retention validation, mode/order/time-field allowlists, query normalization and limit clamping |
+| `pkg/store` | 36 | migrations, pragmas, sequence invariants, idempotency, cursors, ranges, schema versioning, audit |
 | `pkg/schema` | 12 | strict/permissive results, extension keywords, malformed schemas, cache keying |
 | `pkg/stream` | 8 | fan-out, topic scoping, eviction, non-blocking publish, idempotent cancel |
-| `pkg/server` | 34 | auth, token non-leakage, both ingest shapes, idempotency, validation modes, query params, public_read, all three export formats, CSV flattening, SSE replay/tail/resume/scoping |
+| `pkg/server` | 36 | auth, token non-leakage, both ingest shapes, idempotency, validation modes, query params, public_read, all three export formats, CSV flattening, SSE replay/tail/resume/scoping |
+| `pkg/client` | 10 | auth header, problem-document decoding, non-JSON error bodies, explicit push mode, query encoding, SSE parsing |
+| `pkg/cli` | 9 | the key=value JSON heuristic, --string override, envelope construction, output formats, exit-code mapping |
 | `cmd/datadrop` | 3 | the README quick start, exit codes, stdout/stderr separation |
+| **total** | **125** | 148 including subtests |
 
 **Dependencies added in this step**
 
@@ -1120,3 +1124,168 @@ public_read     → readable with no token; writes still 401
 |---|---|---|
 | `github.com/santhosh-tekuri/jsonschema/v6` | v6.0.2 | Draft 2020-12 validation |
 | `github.com/oklog/ulid/v2` | v2.1.2 | Time-sortable event IDs |
+
+---
+
+## Step 6: Close the direct-test gap in the three untested packages
+
+Counting test functions to check a claim I had already written into the ticket
+index turned up two things: the number was wrong (I wrote 83; it was 95), and
+three packages — `pkg/datadrop`, `pkg/client`, `pkg/cli` — had **zero** direct
+tests. Their logic was exercised indirectly through the store, server, and smoke
+tests, which is why everything passed, but indirect coverage is not the same as
+a specification: nothing pinned down what `temperature=21.7` should become, or
+that `ParseTimeField` rejects an injection attempt.
+
+This step adds 30 tests across those three packages and corrects the counts in
+the ticket documents. The `pkg/cli` tests are the most valuable of the three —
+`payloadFromFields` implements a heuristic whose behaviour a user has to be able
+to predict, and it now has ten cases saying exactly what it does.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 4)
+
+**Assistant interpretation:** Finish the MVP properly, which includes not
+leaving load-bearing logic untested.
+
+**Inferred user intent:** A v0.1 that is actually done, not one that merely
+passes.
+
+### What I did
+
+- `pkg/datadrop/datadrop_test.go` (11 tests): `ValidateName` boundary cases
+  including the 63/64-character limit, `NormalizeStream`, `ValidateRetention`,
+  the three allowlist parsers, and `EventQuery.Normalize` defaults, clamping,
+  and rejections. `TestParseTimeFieldIsAnAllowlist` includes SQL-injection
+  strings, since that function's output is the one fragment interpolated into a
+  query.
+- `pkg/client/client_test.go` (10 tests): base-URL normalization, the
+  Authorization header being present with a token and *absent* without one,
+  problem-document decoding into a typed `*APIError`, a non-JSON error body
+  falling back to the status text, `Push` declaring `mode` explicitly, query
+  encoding round-trips, and `parseSSE` against a body containing heartbeats, an
+  append pair, and a reset frame.
+- `pkg/cli/push_test.go` (9 tests): the `key=value` heuristic table, the
+  `--string` override, positional-beats-`--string` precedence, malformed
+  arguments, envelope construction and attribute omission, `parseOutput`, and
+  the HTTP-status → exit-code mapping.
+- Corrected "83 tests" to 125 (148 with subtests) in `index.md` and replaced the
+  per-package inventory table in Step 5 with accurate figures.
+
+### Why
+
+I had asserted a specific number in a document a reviewer would trust. Checking
+it was cheap; the check found both a wrong number and a real gap. The gap
+mattered most in `pkg/cli`, because `payloadFromFields` is the function whose
+behaviour users will be surprised by, and "surprising but documented" is only
+true if something enforces the documentation.
+
+### What worked
+
+- Writing `TestParseTimeFieldIsAnAllowlist` with actual injection payloads
+  (`"time; DROP TABLE events"`, `"time)) OR 1=1 --"`) rather than just one bad
+  value. The function is a security boundary and the test now reads like one.
+- Table-driven cases keyed by a prose description (`"an explicitly quoted number
+  stays a string"`) make the failure output name the rule that broke.
+- Testing that the client sends **no** `Authorization` header when it has no
+  token, not just that it sends the right one when it does. The negative case is
+  the one that would leak an empty `Bearer ` header.
+
+### What didn't work
+
+Three self-inflicted errors, all caught before running anything:
+
+- I wrote `&apiErrorWithStatus(status).APIError` in the exit-code test —
+  referencing a helper that did not exist, in a form that is not valid Go
+  anyway. Replaced with a plain `&client.APIError{Status: status}`.
+- I hand-rolled `contains`/`indexOf` helpers in the `pkg/datadrop` test instead
+  of importing `strings`. Deleted.
+- My "too long name" case was `string(make([]byte, 64))` — 64 NUL bytes, which
+  the regex rejects for containing invalid characters rather than for being too
+  long, so the test would have passed for the wrong reason. Replaced with
+  `strings.Repeat("a", 64)`, and added `strings.Repeat("a", 63)` to the valid
+  set so the boundary is actually pinned on both sides.
+
+### What I learned
+
+- The "too long" case above is the general trap in negative tests: a case can
+  pass because of a property other than the one you meant to exercise, and
+  nothing tells you. Pinning the boundary from *both* sides (63 valid, 64
+  invalid) is what makes the assertion mean what it says.
+- `errors.As` against `*client.APIError` works through the client's own wrapping,
+  so the CLI's `exitCodeFor` needs no unwrapping logic of its own.
+
+### What was tricky to build
+
+**Testing `parseSSE`'s cancellation path.** The obvious test — cancel the context
+and check for an error — passes trivially if `parseSSE` happens to return before
+ever consulting the context. To make the test meaningful the frame channel has to
+be **unbuffered**, so the send blocks and the function is forced into its
+`select` on `ctx.Done()`. With a buffered channel the send succeeds immediately
+and the test proves nothing. This is the same category of mistake as the "too
+long" name above: a green test that is not testing the thing.
+
+### What warrants a second pair of eyes
+
+- `pkg/cli`'s command wiring (the `RunE` bodies) is still only covered
+  end-to-end by `cmd/datadrop/smoke_test.go`. The helpers underneath are now
+  unit-tested, but flag registration and command composition are not. Acceptable
+  — the smoke test does exercise the real binary — but worth knowing.
+- `TestPayloadFromFieldsPositionalOverridesString` documents that a positional
+  `key=value` beats a `--string` with the same key. That is the current
+  behaviour and arguably the right one, but it was incidental (positional fields
+  are applied second), not designed. Now that a test asserts it, it is a
+  contract.
+
+### What should be done in the future
+
+- Consider whether a positional/`--string` collision should be an error rather
+  than a silent precedence rule.
+
+### Code review instructions
+
+```bash
+GOWORK=off go test ./pkg/datadrop/... ./pkg/client/... ./pkg/cli/... -count=1 -v
+```
+
+Read `pkg/cli/push_test.go` `TestPayloadFromFieldsTypesValues` first — it is the
+specification of the `key=value` heuristic that the README describes in prose.
+
+### Technical details
+
+**Final verification, all packages**
+
+```
+$ make lint
+0 issues.
+
+$ make logcopter-check
+(exit 0)
+
+$ GOWORK=off go test ./... -count=1
+ok  	github.com/go-go-golems/go-go-datadrop/cmd/datadrop	1.817s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/cli	0.011s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/client	0.006s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/datadrop	0.006s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/schema	0.011s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/server	0.805s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/store	0.987s
+ok  	github.com/go-go-golems/go-go-datadrop/pkg/stream	0.003s
+```
+
+**The `key=value` rule, as now specified by test**
+
+| Argument | Stored value | Why |
+|---|---|---|
+| `temperature=21.7` | `21.7` (number) | valid JSON |
+| `count=3` | `3` (number) | valid JSON |
+| `note=hello` | `"hello"` (string) | not valid JSON → string |
+| `ok=true` | `true` (bool) | valid JSON |
+| `missing=null` | `null` | valid JSON |
+| `tags=["a","b"]` | array | valid JSON |
+| `location={"lat":52.5}` | object | valid JSON |
+| `raw="21.7"` | `"21.7"` (string) | explicitly quoted JSON string |
+| `equation=a=b` | `"a=b"` | split on the first `=` only |
+| `note=` | `""` | empty value is an empty string |
+| `--string temperature=21.7` | `"21.7"` (string) | override |
