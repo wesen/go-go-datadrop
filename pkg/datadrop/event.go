@@ -140,3 +140,24 @@ func ParseTime(s string) (time.Time, error) {
 	}
 	return t.UTC(), nil
 }
+
+// StreamInfo describes one stream within a drop.
+//
+// Streams are created implicitly by appending to them, so this is derived from
+// stream_heads rather than from a registry: there is no moment at which a
+// stream is declared.
+type StreamInfo struct {
+	Stream string `json:"stream"`
+
+	// Sequence is the high-water mark of allocated sequences.
+	Sequence int64 `json:"sequence"`
+
+	// EventCount is how many events are currently stored. It can be lower than
+	// Sequence — a retention sweep lowers the count and must never lower the
+	// head — and the divergence is worth showing rather than hiding.
+	EventCount int64 `json:"event_count"`
+
+	// LastReceivedAt is the ingest time of the newest stored event, absent when
+	// the stream holds none.
+	LastReceivedAt *time.Time `json:"last_received_at,omitempty"`
+}

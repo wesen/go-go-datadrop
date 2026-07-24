@@ -300,3 +300,57 @@ func scanEvent(sc scanner) (datadrop.Envelope, error) {
 	}
 	return e, nil
 }
+
+// ListStreams reports every stream in a drop, with its sequence head, its
+// current event count, and the ingest time of its newest event.
+//
+// Streams have no registry — appending to a name creates it — so stream_heads
+// is the only record that a stream ever existed. That matters for a stream
+// whose events have all been swept: the head remains and the count is zero,
+// which is a true statement about the drop that a query over `events` alone
+// could not make.
+//
+// Cost: the two correlated subqueries are O(events in the stream). This is a
+// catalogue endpoint called once when a picker opens, not per keystroke. If it
+// ever becomes a problem the answer is an explicit "without counts" mode, not a
+// cached counter column that can drift away from the rows it counts.
+func (s *Store) ListStreams(ctx context.Context, drop string) ([]datadrop.StreamInfo, error) {
+	if err := datadrop.ValidateName("drop", drop); err != nil {
+		return nil, err
+	}
+
+	rows, err := s.db.QueryContext(ctx, `
+		SELECT h.stream,
+		       h.sequence,
+		       (SELECT COUNT(*) FROM events e
+		         WHERE e.drop_name = h.drop_name AND e.stream = h.stream),
+		       (SELECT MAX(e.received_at) FROM events e
+		         WHERE e.drop_name = h.drop_name AND e.stream = h.stream)
+		  FROM stream_heads h
+		 WHERE h.drop_name = ?
+		 ORDER BY h.stream`, drop)
+	if err != nil {
+		return nil, errors.Wrapf(err, "store: list streams in %s", drop)
+	}
+	defer func() { _ = rows.Close() }()
+
+	streams := []datadrop.StreamInfo{}
+	for rows.Next() {
+		var (
+			info     datadrop.StreamInfo
+			lastSeen sql.NullString
+		)
+		if err := rows.Scan(&info.Stream, &info.Sequence, &info.EventCount, &lastSeen); err != nil {
+			return nil, errors.Wrap(err, "store: scan stream")
+		}
+		if lastSeen.Valid {
+			parsed, err := ParseTime(lastSeen.String)
+			if err != nil {
+				return nil, err
+			}
+			info.LastReceivedAt = &parsed
+		}
+		streams = append(streams, info)
+	}
+	return streams, errors.Wrapf(rows.Err(), "store: list streams in %s", drop)
+}

@@ -120,6 +120,11 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /v1/drops/{name}/export", s.handleExport)
 
+	// Tables: any source projected into the shape a chart consumes
+	// (DATADROP-3). Reads only — the web UI never mutates.
+	mux.HandleFunc("GET /v1/drops/{name}/streams", s.handleListStreams)
+	mux.HandleFunc("GET /v1/drops/{name}/table", s.handleStreamTable)
+
 	mux.HandleFunc("PUT /v1/drops/{name}/schemas/{stream}", s.handlePutSchema)
 	mux.HandleFunc("GET /v1/drops/{name}/schemas/{stream}", s.handleGetSchema)
 
@@ -133,6 +138,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions/{version}/commit", s.handleCommitDatasetVersion)
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/archive", s.handleDatasetArchive)
 	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions/{version}/import", s.handleImportDataset)
+	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/table", s.handleDatasetTable)
 	// {path...} is a trailing wildcard, so logical paths containing slashes work.
 	mux.HandleFunc("PUT /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleUploadDatasetFile)
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleDownloadDatasetFile)

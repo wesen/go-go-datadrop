@@ -527,3 +527,70 @@ func seqsOf(events []datadrop.Envelope) []int64 {
 	}
 	return seqs
 }
+
+// A stream's sequence head is the high-water mark of allocations, not a count
+// of surviving rows. Reporting only one of the two would hide a retention sweep.
+func TestListStreamsSeparatesHeadFromCount(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := st.CreateDrop(ctx, datadrop.Drop{Name: "lab"}); err != nil {
+		t.Fatalf("create drop: %v", err)
+	}
+
+	for i := 0; i < 3; i++ {
+		if _, err := st.AppendEvent(ctx, datadrop.Envelope{
+			Drop: "lab", Stream: "temps", Data: []byte(`{"n":1}`),
+		}); err != nil {
+			t.Fatalf("append: %v", err)
+		}
+	}
+
+	streams, err := st.ListStreams(ctx, "lab")
+	if err != nil {
+		t.Fatalf("list streams: %v", err)
+	}
+	if len(streams) != 1 {
+		t.Fatalf("got %d streams, want 1: %+v", len(streams), streams)
+	}
+	if streams[0].Sequence != 3 || streams[0].EventCount != 3 {
+		t.Fatalf("seq %d / count %d, want 3 / 3", streams[0].Sequence, streams[0].EventCount)
+	}
+
+	// Delete the events out from under the head, the way a retention sweep
+	// would. The head must not move.
+	if _, err := st.DB().ExecContext(ctx, `DELETE FROM events WHERE drop_name = 'lab'`); err != nil {
+		t.Fatalf("delete events: %v", err)
+	}
+
+	streams, err = st.ListStreams(ctx, "lab")
+	if err != nil {
+		t.Fatalf("list streams: %v", err)
+	}
+	if streams[0].Sequence != 3 {
+		t.Fatalf("head moved to %d after a sweep, want 3", streams[0].Sequence)
+	}
+	if streams[0].EventCount != 0 {
+		t.Fatalf("count = %d after a sweep, want 0", streams[0].EventCount)
+	}
+	if streams[0].LastReceivedAt != nil {
+		t.Fatal("last_received_at is set for a stream holding no events")
+	}
+}
+
+func TestListStreamsOnADropWithNone(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := st.CreateDrop(ctx, datadrop.Drop{Name: "empty"}); err != nil {
+		t.Fatalf("create drop: %v", err)
+	}
+
+	streams, err := st.ListStreams(ctx, "empty")
+	if err != nil {
+		t.Fatalf("list streams: %v", err)
+	}
+	if len(streams) != 0 {
+		t.Fatalf("got %d streams, want 0: %+v", len(streams), streams)
+	}
+}

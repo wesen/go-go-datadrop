@@ -3,9 +3,9 @@
 ## TODO
 
 - [x] 1. pkg/tabular: Table/Field types, dotted-path flattening moved out of export, CSV/NDJSON/JSON readers moved out of import, typed inference with provenance (guide §6, §7) <!-- t:ta6w -->
-- [ ] 2. GET /v1/drops/{name}/streams — stream catalogue from stream_heads (guide §9.1) <!-- t:on88 -->
-- [ ] 3. GET /v1/drops/{name}/table — event stream projected to a typed table (guide §9.2) <!-- t:a3sj -->
-- [ ] 4. GET .../datasets/{dataset}/versions/{version}/table — dataset file projected to a typed table (guide §9.3) <!-- t:m1ql -->
+- [x] 2. GET /v1/drops/{name}/streams — stream catalogue from stream_heads (guide §9.1) <!-- t:on88 -->
+- [x] 3. GET /v1/drops/{name}/table — event stream projected to a typed table (guide §9.2) <!-- t:a3sj -->
+- [x] 4. GET .../datasets/{dataset}/versions/{version}/table — dataset file projected to a typed table (guide §9.3) <!-- t:m1ql -->
 - [ ] 5. pkg/webui: embed + disk FS, SPA handler at /ui, assets at /static, go:generate build (guide §10) <!-- t:9qpb -->
 - [ ] 6. Frontend scaffold: vite/bun/react/ts/rtk-query/bootstrap, token bar, source picker on live endpoints (guide §11) <!-- t:5int -->
 - [ ] 7. Frontend model: table types, pipeline engine, chart spec, plot engine — pure TS with bun tests (guide §12) <!-- t:wc14 -->

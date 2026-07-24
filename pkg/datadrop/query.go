@@ -79,6 +79,16 @@ type EventQuery struct {
 
 	Limit int
 	Order Order
+
+	// LimitCap bounds Limit after the default is applied. Zero selects
+	// MaxLimit.
+	//
+	// It exists because a page of envelopes and a table projection are
+	// different products with different failure modes: a thousand envelopes is
+	// a generous JSON page, and a thousand points is a sparse chart. The cap is
+	// set by the handler, never parsed from the URL, so a client cannot raise
+	// its own ceiling.
+	LimitCap int
 }
 
 // Normalize applies defaults and clamps, and validates the fields that are not
@@ -110,8 +120,12 @@ func (q *EventQuery) Normalize() error {
 	if q.Limit <= 0 {
 		q.Limit = DefaultLimit
 	}
-	if q.Limit > MaxLimit {
-		q.Limit = MaxLimit
+	ceiling := q.LimitCap
+	if ceiling <= 0 {
+		ceiling = MaxLimit
+	}
+	if q.Limit > ceiling {
+		q.Limit = ceiling
 	}
 
 	if !q.From.IsZero() && !q.To.IsZero() && !q.To.After(q.From) {
