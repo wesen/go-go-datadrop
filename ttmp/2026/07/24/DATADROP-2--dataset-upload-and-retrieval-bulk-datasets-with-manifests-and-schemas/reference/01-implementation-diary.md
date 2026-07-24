@@ -219,3 +219,282 @@ Nothing to review as code yet. To review the specification:
 | §12.4 | Imports; the provenance a generated event must carry |
 | §20.5 | Metadata database vs. object storage |
 | §22.3 | Export as "assets plus manifest" |
+
+---
+
+## Step 2: Task 1 — the content-addressed blob store
+
+The blob store is the foundation the rest of the ticket sits on, so it was built
+first and in isolation: no HTTP, no SQLite, no knowledge of what a dataset is. It
+maps a SHA-256 digest to bytes on the filesystem and exposes `Put`, `Open`,
+`Stat`, `Exists`, `Delete`, `GC`, and `SweepTemp`. That is the entire surface.
+
+Keeping it that narrow is deliberate. The eventual S3 backend has to replace
+exactly these seven operations and nothing else, and the way to guarantee that is
+to make it impossible for the package to depend on anything above it.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Build DATADROP-2, keep a frequent detailed diary,commit at appropriate intervals."
+
+**Assistant interpretation:** Implement the ticket task by task, appending a
+diary step as each lands rather than writing it up at the end, and committing at
+task boundaries.
+
+**Inferred user intent:** A working dataset layer, built from the specification
+written in Step 1, with the process reviewable as it happens.
+
+**Commit (code):** `7174ee6` — "feat(DATADROP-2): task 1 — content-addressed blob store"
+
+### What I did
+
+- `pkg/blob/digest.go` — `Digest`, `ParseDigest`, and the two-level fanout path
+  derivation.
+- `pkg/blob/store.go` — `Open` (which sweeps `tmp/`), `Put`, `Open`, `Stat`,
+  `Exists`, `Delete`, `GC`, `SweepTemp`.
+- `pkg/blob/store_test.go` — 20 tests.
+
+### Why
+
+Every later task depends on bytes being stored correctly, and "correctly" here
+means two properties that are invisible in normal operation and only manifest
+under failure: a partial upload must never become visible, and a caller must
+never be able to place chosen bytes at another file's address. Both are cheap to
+implement and expensive to retrofit, and neither is observable in a happy-path
+test, so both got dedicated tests.
+
+### What worked
+
+- Writing the tests against *properties* rather than methods. `TestFailedPutLeavesNoTrace`
+  and `TestInterruptedPutPublishesNothing` both assert on the state of the whole
+  store afterwards — zero blob files, zero temp files — rather than on a return
+  value. That is the only way to catch a cleanup path that is simply missing.
+- `countBlobFiles` walking the store and asserting `1` after writing identical
+  content twice. Deduplication is easy to claim and easy to get subtly wrong; a
+  file count is unambiguous.
+- Feeding `ParseDigest` genuinely hostile input, including `sha256:../../../../etc/passwd`.
+  The digest becomes a filesystem path, so the parser is the path-traversal
+  defence. Testing it with one malformed value would have proved much less.
+
+### What didn't work
+
+Nothing failed outright in this step. `mmdc` could not launch a browser in this
+environment, which mattered later (Step 4) but not here.
+
+### What I learned
+
+- The correct ordering in `Put` is *write, then check for an existing blob*, not
+  the reverse. Checking first and skipping the write looks like an optimization
+  and is a race: two concurrent writers of the same new blob both observe it
+  missing, and both proceed. Writing unconditionally and discarding on collision
+  is correct under concurrency and costs one temp file in the rare case where the
+  collision actually happens.
+
+### What was tricky to build
+
+**The interaction between `Sync`, `Rename`, and the deferred cleanup.** Three
+operations have to happen in one specific order and each guards a different
+failure:
+
+- `Sync` before `Rename`, because `os.Rename` is atomic with respect to the
+  *directory entry*, not with respect to the data. Renaming first and syncing
+  later leaves a window in which a crash produces a file that exists at its final
+  path with unwritten contents — which is precisely the "partial blob that a
+  reader treats as complete" case the design forbids.
+- The temp file must live on the same filesystem as the destination, because
+  `os.Rename` across filesystems either fails or degrades to a copy, and a copy
+  is not atomic. This is why `tmp/` is a subdirectory of the store root rather
+  than `os.TempDir()`.
+- The deferred cleanup needs a `renamed` flag. A bare `defer os.Remove(tempPath)`
+  would delete the blob it had just published, since after a successful rename
+  the temp path no longer refers to the temp file — it refers to nothing, but on
+  some orderings it would refer to the published file.
+
+**GC's grace period.** The naive sweep — delete everything not in the referenced
+set — deletes bytes out from under an in-flight upload, because a blob written
+moments ago for a draft version whose `dataset_files` row has not yet been
+inserted is legitimately unreferenced. The grace period is what closes that
+window, and `TestGCRespectsTheGracePeriod` is its specification. The test for the
+opposite behaviour passes `minAge = -1` to disable the check, which is documented
+as test-only precisely because using it in production would reintroduce the race.
+
+### What warrants a second pair of eyes
+
+- `GC` skips files whose names do not parse as digests and logs a warning rather
+  than deleting them. That is the conservative choice — never delete a file whose
+  provenance is unknown — but it means a corrupted store accumulates junk that
+  only a human will clear.
+- `TestPutHandlesLargeContent` uses 8 MiB and verifies the digest. It does not
+  measure memory, so a `ReadAll`-based implementation would also pass it. It is a
+  smoke test for the streaming path, not a proof, and the doc comment says so.
+
+### What should be done in the future
+
+- Decide whether `pkg/blob.Store` should become an interface now or when the S3
+  backend arrives. The guide §15 assumes the latter.
+
+### Code review instructions
+
+- `pkg/blob/store.go` `Put` — the four numbered details in the doc comment, each
+  with a corresponding test.
+- `pkg/blob/digest.go` `ParseDigest` — strictness is the traversal defence.
+- `GC`'s grace period, against `TestGCRespectsTheGracePeriod`.
+
+```bash
+GOWORK=off go test ./pkg/blob/... -count=1 -v
+```
+
+---
+
+## Step 3: Tasks 2 and 3 — schema, domain types, and the dataset store
+
+Migration 0002 adds `blobs`, `datasets`, `dataset_versions`, and
+`dataset_files`. `pkg/datadrop` gains the dataset types, manifest parsing, and
+logical-path validation. `pkg/store/datasets.go` implements the draft-to-
+committed state machine that the whole design rests on.
+
+This step produced the first genuine bug of the ticket, and it was found by a
+test written to assert a property the specification states rather than to
+exercise a method.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue through the task list.
+
+**Commit (code):** `d30c44c` — "feat(DATADROP-2): tasks 2-3 — dataset schema, domain types, and store"
+
+### What I did
+
+- `pkg/store/migrations/0002_datasets.sql` — four tables and two indexes.
+- `pkg/datadrop/dataset.go` — `Dataset`, `DatasetVersion`, `DatasetFile`,
+  `VersionState`, `Manifest`, `ParseManifest`, `ValidateDatasetPath`, the request
+  and result types, and five audit actions.
+- `pkg/store/datasets.go` — `OpenDatasetVersion`, `AddDatasetFile`,
+  `CommitDatasetVersion`, `GetDatasetVersion`, `ResolveLatestVersion`,
+  `GetDatasetFile`, `ListDatasetFiles`, `ListDatasets`, `GetDataset`,
+  `ListDatasetVersions`, `DeleteDatasetVersion`, `ReferencedDigests`.
+- `pkg/store/datasets_test.go` — 29 tests.
+- Relaxed two v0.1 migration tests that hardcoded a literal migration count.
+
+### Why
+
+Tasks 2 and 3 land together because the schema and the operations over it are one
+design: the `state` column is only meaningful if every read path filters on it,
+and that filtering is what the store package *is*.
+
+### What worked
+
+- Writing `TestDraftVersionsAreInvisible` as five subtests, one per read path
+  (`ListDatasetVersions`, `GetDatasetVersion`, `ResolveLatestVersion`,
+  `GetDatasetFile`, `GetDataset`). The commitment is "every read path filters on
+  committed", and the only honest way to test "every" is to enumerate them. A
+  future read path that forgets the filter will not be covered — which is why the
+  review checklist asks the question in prose as well.
+- `GetDatasetVersion` taking an explicit `includeDrafts bool` rather than
+  defaulting to including them. The one caller that legitimately needs a draft is
+  the upload handler assembling it; making it ask means the default is safe and
+  the exception is visible at the call site.
+
+### What didn't work
+
+- **Version numbers were reusable after deletion.** `OpenDatasetVersion`
+  originally allocated `MAX(version)+1` over `dataset_versions`. Deleting version
+  3 makes `MAX` return 2, so the next open hands out 3 again — and a citation to
+  "version 3 of readings-2026" silently starts resolving to different content,
+  which defeats the entire point of immutable versions.
+
+  This is the same failure mode the v0.1 event sequence avoids with
+  `stream_heads`, and it gets the same fix: a `next_version` counter on the
+  `datasets` row, advanced inside the allocating transaction. Migration 0002 is
+  unreleased, so the column was added in place rather than in an 0003.
+
+  The bug was caught by `TestOpenDatasetVersionIsMonotonic`, which was written to
+  assert monotonicity *across a deletion* specifically because the guide claims
+  version references are stable citations. A test that only opened three versions
+  in a row would have passed.
+
+- Two v0.1 tests failed on the new migration: `TestOpenCreatesAndMigrates`
+  asserted `schema version = 1` and `TestOpenIsIdempotent` asserted
+  `migration applied 1 time`. Both were over-specified — they pinned a literal
+  where the meaningful assertion is "matches the embedded set". Rewritten to
+  derive the expectation from `loadMigrations()`, so the next migration will not
+  edit them either.
+
+### What I learned
+
+- The "allocate from live rows" mistake is not obviously wrong when written. It
+  is only wrong in combination with deletion, and deletion is usually implemented
+  later than allocation. The general form worth remembering: **an allocator that
+  reads its next value from the rows it allocates for is correct only if those
+  rows are never deleted.** v0.1 hit this with sequences; v0.2 hit it again with
+  versions.
+
+### What was tricky to build
+
+**Deciding whether draft files count as referenced for garbage collection.** The
+intuitive answer is no — a draft is not visible, so its bytes are not really in
+use. That answer deletes data. A draft under construction holds `dataset_files`
+rows pointing at blobs that are, by definition, not yet reachable from any
+committed version, and sweeping them removes the bytes the client just uploaded.
+`ReferencedDigests` therefore does not filter on state, and
+`TestReferencedDigests` asserts specifically that a draft's digests appear. The
+blob store's grace period covers the narrower window before the row exists at
+all; the referenced set covers everything after it.
+
+**Path canonicalization.** `ValidateDatasetPath` rejects paths that `path.Clean`
+would change, rather than cleaning them silently. Accepting both `a/./b` and
+`a/b` would let two spellings of one logical path occupy two rows in a table
+whose primary key includes the path, so a version could contain the "same" file
+twice with different content. Rejecting non-canonical form is the only option
+that keeps the primary key meaningful.
+
+### What warrants a second pair of eyes
+
+- `ReferencedDigests` returns every digest in `dataset_files` with no filtering,
+  including from drafts. Correct, per the above, but it means an abandoned draft
+  pins its blobs forever. There is currently nothing that expires drafts.
+- The `datasets.next_version` counter is never reset, so a dataset whose versions
+  are all deleted still allocates from where it left off. That is intended, but
+  it means version numbers are not dense and a reader should not assume 1..N.
+
+### What should be done in the future
+
+- Expire abandoned drafts, which would also release their blobs to the sweep.
+- Consider whether deleting the last committed version of a dataset should also
+  delete the dataset row.
+
+### Code review instructions
+
+- `pkg/store/datasets.go` `OpenDatasetVersion` — the counter-based allocation and
+  its comment, against `TestOpenDatasetVersionIsMonotonic`.
+- Every read path in the file, checking for the `state = 'committed'` filter.
+  `TestDraftVersionsAreInvisible` enumerates the five that exist today.
+- `pkg/datadrop/dataset.go` `ValidateDatasetPath` — canonical-form rejection.
+
+```bash
+GOWORK=off go test ./pkg/store/... ./pkg/datadrop/... -count=1
+```
+
+### Technical details
+
+**The allocator, before and after**
+
+```sql
+-- WRONG: deleting version 3 lets the next open reuse the number
+SELECT COALESCE(MAX(version), 0) FROM dataset_versions
+ WHERE drop_name = ? AND dataset_name = ?
+
+-- RIGHT: a counter that only moves forward, advanced in the same transaction
+SELECT next_version FROM datasets WHERE drop_name = ? AND name = ?
+UPDATE datasets SET next_version = ? WHERE drop_name = ? AND name = ?
+```
+
+**Test coverage after this step**
+
+| Package | Tests |
+|---|---:|
+| `pkg/blob` | 20 |
+| `pkg/store` (datasets) | 29 |
+| everything else (v0.1) | 125 |
