@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
+	"github.com/go-go-golems/go-go-datadrop/pkg/tabular"
 )
 
 const testToken = "test-token"
@@ -513,7 +514,7 @@ func TestExportCSVFlattening(t *testing.T) {
 	}
 
 	// Fixed envelope columns come first, in order.
-	for i, want := range csvEnvelopeColumns {
+	for i, want := range tabular.EnvelopeColumns {
 		if header[i] != want {
 			t.Fatalf("column %d = %q, want %q", i, header[i], want)
 		}
@@ -531,7 +532,7 @@ func TestExportCSVFlattening(t *testing.T) {
 	}
 
 	// Payload columns are sorted among themselves.
-	payloadColumns := header[len(csvEnvelopeColumns):]
+	payloadColumns := header[len(tabular.EnvelopeColumns):]
 	for i := 1; i < len(payloadColumns); i++ {
 		if payloadColumns[i-1] > payloadColumns[i] {
 			t.Fatalf("payload columns are not sorted: %v", payloadColumns)

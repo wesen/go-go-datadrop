@@ -114,3 +114,29 @@ func NormalizeStream(stream string) string {
 	}
 	return DefaultStream
 }
+
+// TimeFormat is the canonical timestamp representation used everywhere in
+// datadrop: RFC3339, UTC, fixed-width millisecond precision.
+//
+// The fixed width matters. time.RFC3339Nano strips trailing zeros, which would
+// make "…:05.100Z" and "…:05.1Z" different strings that compare incorrectly in
+// a lexicographic range query.
+//
+// It lives in this package rather than in pkg/store because three layers need
+// it — the database, the CSV export, and the table projection — and a timestamp
+// format that two of them agree on is a bug waiting for the third.
+const TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+
+// FormatTime renders t in the canonical representation.
+func FormatTime(t time.Time) string {
+	return t.UTC().Format(TimeFormat)
+}
+
+// ParseTime parses a timestamp written by FormatTime.
+func ParseTime(s string) (time.Time, error) {
+	t, err := time.Parse(TimeFormat, s)
+	if err != nil {
+		return time.Time{}, errors.Wrapf(err, "parse timestamp %q", s)
+	}
+	return t.UTC(), nil
+}

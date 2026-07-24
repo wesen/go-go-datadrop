@@ -2,7 +2,7 @@
 
 ## TODO
 
-- [ ] 1. pkg/tabular: Table/Field types, dotted-path flattening moved out of export, CSV/NDJSON/JSON readers moved out of import, typed inference with provenance (guide §6, §7) <!-- t:ta6w -->
+- [x] 1. pkg/tabular: Table/Field types, dotted-path flattening moved out of export, CSV/NDJSON/JSON readers moved out of import, typed inference with provenance (guide §6, §7) <!-- t:ta6w -->
 - [ ] 2. GET /v1/drops/{name}/streams — stream catalogue from stream_heads (guide §9.1) <!-- t:on88 -->
 - [ ] 3. GET /v1/drops/{name}/table — event stream projected to a typed table (guide §9.2) <!-- t:a3sj -->
 - [ ] 4. GET .../datasets/{dataset}/versions/{version}/table — dataset file projected to a typed table (guide §9.3) <!-- t:m1ql -->

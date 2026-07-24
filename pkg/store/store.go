@@ -28,33 +28,25 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
+
 	_ "modernc.org/sqlite" // pure-Go SQLite driver (DR-2)
 )
 
 //go:embed migrations/*.sql
 var migrationFS embed.FS
 
-// TimeFormat is the canonical on-disk timestamp representation: RFC3339, UTC,
-// fixed-width millisecond precision.
-//
-// The fixed width matters. time.RFC3339Nano strips trailing zeros, which would
-// make "…:05.100Z" and "…:05.1Z" different strings that compare incorrectly in
-// a lexicographic range query.
-const TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+// TimeFormat is the canonical timestamp representation, defined once in
+// pkg/datadrop so that the store, the HTTP surface and the table projection
+// cannot disagree about it. Aliased here because most of the codebase reaches
+// for it as store.TimeFormat.
+const TimeFormat = datadrop.TimeFormat
 
-// FormatTime renders t in the canonical on-disk representation.
-func FormatTime(t time.Time) string {
-	return t.UTC().Format(TimeFormat)
-}
+// FormatTime renders t in the canonical representation.
+func FormatTime(t time.Time) string { return datadrop.FormatTime(t) }
 
 // ParseTime parses a timestamp written by FormatTime.
-func ParseTime(s string) (time.Time, error) {
-	t, err := time.Parse(TimeFormat, s)
-	if err != nil {
-		return time.Time{}, errors.Wrapf(err, "parse timestamp %q", s)
-	}
-	return t.UTC(), nil
-}
+func ParseTime(s string) (time.Time, error) { return datadrop.ParseTime(s) }
 
 // Store is a handle on the datadrop SQLite database.
 type Store struct {

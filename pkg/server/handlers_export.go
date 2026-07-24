@@ -12,6 +12,7 @@ import (
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
+	"github.com/go-go-golems/go-go-datadrop/pkg/tabular"
 )
 
 // Export formats. Principle §6.6: open formats are the exit strategy, so all
@@ -21,12 +22,6 @@ const (
 	FormatNDJSON = "ndjson"
 	FormatCSV    = "csv"
 )
-
-// csvEnvelopeColumns are the fixed leading columns of a CSV export, in order.
-// Payload columns follow, sorted, prefixed with "data.".
-var csvEnvelopeColumns = []string{
-	"id", "drop", "stream", "seq", "time", "received_at", "source", "type", "subject",
-}
 
 func (s *Server) handleExport(w http.ResponseWriter, r *http.Request) {
 	dropName, ok := pathName(w, r, "drop", "name")
@@ -178,7 +173,7 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request, q datadrop.Ev
 
 	for _, e := range events {
 		flat := map[string]string{}
-		if err := flattenJSON("", e.Data, flat); err != nil {
+		if err := tabular.FlattenStrings("", e.Data, flat); err != nil {
 			return errors.Wrapf(err, "flatten event %s", e.ID)
 		}
 		for key := range flat {
@@ -200,10 +195,10 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request, q datadrop.Ev
 	writer := csv.NewWriter(w)
 	defer writer.Flush()
 
-	header := make([]string, 0, len(csvEnvelopeColumns)+len(columns))
-	header = append(header, csvEnvelopeColumns...)
+	header := make([]string, 0, len(tabular.EnvelopeColumns)+len(columns))
+	header = append(header, tabular.EnvelopeColumns...)
 	for _, key := range columns {
-		header = append(header, "data."+key)
+		header = append(header, tabular.DataPrefix+key)
 	}
 	if err := writer.Write(header); err != nil {
 		return errors.Wrap(err, "write CSV header")
@@ -226,72 +221,4 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request, q datadrop.Ev
 
 	writer.Flush()
 	return errors.Wrap(writer.Error(), "flush CSV")
-}
-
-// flattenJSON walks a payload into dotted-path cells.
-//
-// Scalars become their natural string form; objects recurse; arrays and any
-// other composite are emitted as compact JSON, because there is no
-// non-arbitrary way to spread them across columns.
-func flattenJSON(prefix string, raw json.RawMessage, out map[string]string) error {
-	if len(raw) == 0 {
-		return nil
-	}
-
-	var value any
-	decoder := json.NewDecoder(strings.NewReader(string(raw)))
-	decoder.UseNumber() // keep 1e9 and 12345678901234567 exact rather than float64
-	if err := decoder.Decode(&value); err != nil {
-		return errors.Wrap(err, "decode payload")
-	}
-
-	return flattenValue(prefix, value, out)
-}
-
-func flattenValue(prefix string, value any, out map[string]string) error {
-	switch typed := value.(type) {
-	case map[string]any:
-		if len(typed) == 0 && prefix != "" {
-			out[prefix] = "{}"
-			return nil
-		}
-		for key, child := range typed {
-			childPrefix := key
-			if prefix != "" {
-				childPrefix = prefix + "." + key
-			}
-			if err := flattenValue(childPrefix, child, out); err != nil {
-				return err
-			}
-		}
-		return nil
-
-	case nil:
-		// A JSON null is an absent value, not the text "null".
-		if prefix != "" {
-			out[prefix] = ""
-		}
-		return nil
-
-	case string:
-		out[prefix] = typed
-		return nil
-
-	case bool:
-		out[prefix] = strconv.FormatBool(typed)
-		return nil
-
-	case json.Number:
-		out[prefix] = typed.String()
-		return nil
-
-	default:
-		// Arrays and anything else: compact JSON in the cell.
-		encoded, err := json.Marshal(typed)
-		if err != nil {
-			return errors.Wrapf(err, "encode value at %q", prefix)
-		}
-		out[prefix] = string(encoded)
-		return nil
-	}
 }

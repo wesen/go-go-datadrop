@@ -2,7 +2,6 @@ package server
 
 import (
 	"crypto/sha256"
-	"encoding/csv"
 	"encoding/hex"
 	"encoding/json"
 	"io"
@@ -16,6 +15,7 @@ import (
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
+	"github.com/go-go-golems/go-go-datadrop/pkg/tabular"
 )
 
 // DefaultImportMaxRows bounds a synchronous import.
@@ -83,11 +83,11 @@ func (s *Server) handleImportDataset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	format := strings.ToLower(strings.TrimSpace(params.Get("format")))
+	format := tabular.Format(strings.ToLower(strings.TrimSpace(params.Get("format"))))
 	if format == "" {
-		format = formatFromPath(logicalPath, file.MediaType)
+		format = tabular.FormatFromPath(logicalPath, file.MediaType)
 	}
-	if format != "csv" && format != "ndjson" {
+	if format != tabular.FormatCSV && format != tabular.FormatNDJSON {
 		writeProblem(w, r, http.StatusBadRequest, CodeInvalidRequest,
 			"cannot determine a row format for "+strconv.Quote(logicalPath)+
 				": pass format=csv or format=ndjson")
@@ -179,7 +179,7 @@ type materializeRequest struct {
 	logicalPath string
 	digest      string
 	stream      string
-	format      string
+	format      tabular.Format
 	maxRows     int
 	body        io.Reader
 	compiled    *schema.Compiled
@@ -257,128 +257,17 @@ func (s *Server) materialize(
 		return nil
 	}
 
-	var err error
-	switch req.format {
-	case "csv":
-		result.Truncated, err = readCSVRows(req.body, req.maxRows, emit)
-	default:
-		result.Truncated, err = readNDJSONRows(req.body, req.maxRows, emit)
-	}
+	// A dataset materialized into a stream must be row-oriented: a JSON array
+	// file is readable by pkg/tabular but is rejected above, because an import
+	// that silently accepted it would produce events whose provenance row
+	// numbers mean something different from the CSV case.
+	truncated, err := tabular.ReadRows(req.body, req.format, tabular.ReadOptions{MaxRows: req.maxRows},
+		func(row int, payload json.RawMessage) error { return emit(row, payload) })
+	result.Truncated = truncated
 	if err != nil {
 		return result, err
 	}
 	return result, nil
-}
-
-// readCSVRows turns each data row into a JSON object keyed by the header.
-func readCSVRows(body io.Reader, maxRows int, emit func(int, json.RawMessage) error) (bool, error) {
-	reader := csv.NewReader(body)
-	// Rows are allowed to differ in length; a short or long row is a data
-	// problem to report, not a parse error that aborts the file.
-	reader.FieldsPerRecord = -1
-	reader.ReuseRecord = true
-
-	header, err := reader.Read()
-	if err != nil {
-		if errors.Is(err, io.EOF) {
-			return false, nil // an empty file imports zero rows
-		}
-		return false, errors.Wrap(err, "read CSV header")
-	}
-
-	columns := make([]string, len(header))
-	copy(columns, header)
-	for i, name := range columns {
-		if strings.TrimSpace(name) == "" {
-			columns[i] = "column_" + strconv.Itoa(i+1)
-		}
-	}
-
-	row := 0
-	for {
-		record, err := reader.Read()
-		if errors.Is(err, io.EOF) {
-			return false, nil
-		}
-		if err != nil {
-			return false, errors.Wrapf(err, "read CSV row %d", row+1)
-		}
-		if row >= maxRows {
-			return true, nil
-		}
-		row++
-
-		payload := map[string]any{}
-		for i, value := range record {
-			name := "column_" + strconv.Itoa(i+1)
-			if i < len(columns) {
-				name = columns[i]
-			}
-			payload[name] = csvValue(value)
-		}
-
-		encoded, err := json.Marshal(payload)
-		if err != nil {
-			return false, errors.Wrapf(err, "encode CSV row %d", row)
-		}
-		if err := emit(row, encoded); err != nil {
-			return false, err
-		}
-	}
-}
-
-// csvValue types a CSV cell.
-//
-// CSV has no types, so a number that reads as a number becomes one and
-// everything else stays a string. Without this every field would be a string
-// and a JSON Schema declaring `"type": "number"` could never be satisfied.
-func csvValue(value string) any {
-	trimmed := strings.TrimSpace(value)
-	if trimmed == "" {
-		return ""
-	}
-	if number, err := strconv.ParseFloat(trimmed, 64); err == nil {
-		// Reject the forms ParseFloat accepts but JSON does not represent.
-		if !strings.ContainsAny(trimmed, "xXpP") && !isNonFinite(number) {
-			return number
-		}
-	}
-	switch strings.ToLower(trimmed) {
-	case "true":
-		return true
-	case "false":
-		return false
-	}
-	return value
-}
-
-func isNonFinite(f float64) bool {
-	return f != f || f > 1e308 || f < -1e308
-}
-
-// readNDJSONRows treats each non-empty line as one payload.
-func readNDJSONRows(body io.Reader, maxRows int, emit func(int, json.RawMessage) error) (bool, error) {
-	decoder := json.NewDecoder(body)
-
-	row := 0
-	for {
-		var payload json.RawMessage
-		err := decoder.Decode(&payload)
-		if errors.Is(err, io.EOF) {
-			return false, nil
-		}
-		if err != nil {
-			return false, errors.Wrapf(err, "decode NDJSON record %d", row+1)
-		}
-		if row >= maxRows {
-			return true, nil
-		}
-		row++
-
-		if err := emit(row, payload); err != nil {
-			return false, err
-		}
-	}
 }
 
 // importEventID derives a stable identifier from the source bytes and the row.
@@ -389,25 +278,6 @@ func readNDJSONRows(body io.Reader, maxRows int, emit func(int, json.RawMessage)
 func importEventID(digest string, row int) string {
 	sum := sha256.Sum256([]byte(digest + "#" + strconv.Itoa(row)))
 	return "ds-" + hex.EncodeToString(sum[:16])
-}
-
-// formatFromPath guesses the row format from the file name or media type.
-func formatFromPath(logicalPath, mediaType string) string {
-	lower := strings.ToLower(logicalPath)
-	switch {
-	case strings.HasSuffix(lower, ".csv"):
-		return "csv"
-	case strings.HasSuffix(lower, ".ndjson"), strings.HasSuffix(lower, ".jsonl"):
-		return "ndjson"
-	}
-
-	switch strings.ToLower(mediaType) {
-	case "text/csv":
-		return "csv"
-	case "application/x-ndjson", "application/jsonl":
-		return "ndjson"
-	}
-	return ""
 }
 
 func (s *Server) writeImportError(w http.ResponseWriter, r *http.Request, err error) {

@@ -276,44 +276,6 @@ func TestImportMissingFile(t *testing.T) {
 	}
 }
 
-func TestCSVValueTyping(t *testing.T) {
-	for input, want := range map[string]any{
-		"21.7":                 21.7,
-		"-3":                   float64(-3),
-		"1e3":                  float64(1000),
-		"":                     "",
-		"warm":                 "warm",
-		"true":                 true,
-		"false":                false,
-		"2026-07-01T00:00:00Z": "2026-07-01T00:00:00Z",
-		// ParseFloat accepts hex float syntax; JSON does not represent it, and
-		// a value like this is far more likely to be an identifier.
-		"0x1p-2": "0x1p-2",
-	} {
-		if got := csvValue(input); got != want {
-			t.Errorf("csvValue(%q) = %v (%T), want %v (%T)", input, got, got, want, want)
-		}
-	}
-}
-
-func TestFormatFromPath(t *testing.T) {
-	for _, tc := range []struct {
-		path, mediaType, want string
-	}{
-		{"data.csv", "", "csv"},
-		{"data.ndjson", "", "ndjson"},
-		{"data.jsonl", "", "ndjson"},
-		{"data", "text/csv", "csv"},
-		{"data", "application/x-ndjson", "ndjson"},
-		{"data", "", ""},
-		{"data.txt", "", ""},
-	} {
-		if got := formatFromPath(tc.path, tc.mediaType); got != tc.want {
-			t.Errorf("formatFromPath(%q, %q) = %q, want %q", tc.path, tc.mediaType, got, tc.want)
-		}
-	}
-}
-
 // Identifiers derive from the digest rather than the dataset name, so the same
 // content imported under two names does not duplicate the events.
 func TestImportEventIDDependsOnContentNotName(t *testing.T) {
