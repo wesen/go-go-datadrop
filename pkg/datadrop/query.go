@@ -1,0 +1,135 @@
+package datadrop
+
+import (
+	"time"
+
+	"github.com/pkg/errors"
+)
+
+// Order is the sort direction of a query result.
+type Order string
+
+const (
+	OrderAsc  Order = "asc"
+	OrderDesc Order = "desc"
+)
+
+// ParseOrder validates a sort direction. Empty defaults to descending, which
+// makes the bare query a "latest N".
+func ParseOrder(s string) (Order, error) {
+	switch Order(s) {
+	case OrderAsc:
+		return OrderAsc, nil
+	case OrderDesc, "":
+		return OrderDesc, nil
+	default:
+		return "", errors.Errorf("invalid order %q: expected %q or %q", s, OrderAsc, OrderDesc)
+	}
+}
+
+// TimeField selects which of an event's two timestamps a range filter applies
+// to. It is interpolated into SQL, so it must never be anything but one of
+// these constants — see ParseTimeField.
+type TimeField string
+
+const (
+	// TimeFieldTime filters on the producer's observation time.
+	TimeFieldTime TimeField = "time"
+	// TimeFieldReceivedAt filters on the server's ingest time.
+	TimeFieldReceivedAt TimeField = "received_at"
+)
+
+// ParseTimeField is the allowlist that keeps EventQuery.TimeField safe to
+// interpolate into a SQL statement. Every other query parameter is bound.
+func ParseTimeField(s string) (TimeField, error) {
+	switch TimeField(s) {
+	case TimeFieldTime, "":
+		return TimeFieldTime, nil
+	case TimeFieldReceivedAt:
+		return TimeFieldReceivedAt, nil
+	default:
+		return "", errors.Errorf("invalid time field %q: expected %q or %q",
+			s, TimeFieldTime, TimeFieldReceivedAt)
+	}
+}
+
+// Query limits. The server clamps regardless of what a client asks for.
+const (
+	DefaultLimit = 50
+	MaxLimit     = 1000
+)
+
+// EventQuery selects a window of a stream.
+//
+// From/To and After compose: "?after=100&to=…" means "events after sequence
+// 100 that were observed before that instant".
+type EventQuery struct {
+	Drop   string
+	Stream string
+
+	// After returns only events with a sequence strictly greater than this.
+	// Zero disables the filter. This is the cursor form used by tail/SSE.
+	After int64
+
+	// From is an inclusive lower bound, To an exclusive upper bound, both on
+	// TimeField. Zero values disable the respective bound.
+	From      time.Time
+	To        time.Time
+	TimeField TimeField
+
+	Limit int
+	Order Order
+}
+
+// Normalize applies defaults and clamps, and validates the fields that are not
+// bound parameters. Call it before handing a query to the store.
+func (q *EventQuery) Normalize() error {
+	if err := ValidateName("drop", q.Drop); err != nil {
+		return err
+	}
+
+	q.Stream = NormalizeStream(q.Stream)
+	if err := ValidateName("stream", q.Stream); err != nil {
+		return err
+	}
+
+	if q.TimeField == "" {
+		q.TimeField = TimeFieldTime
+	}
+	if _, err := ParseTimeField(string(q.TimeField)); err != nil {
+		return err
+	}
+
+	if q.Order == "" {
+		q.Order = OrderDesc
+	}
+	if _, err := ParseOrder(string(q.Order)); err != nil {
+		return err
+	}
+
+	if q.Limit <= 0 {
+		q.Limit = DefaultLimit
+	}
+	if q.Limit > MaxLimit {
+		q.Limit = MaxLimit
+	}
+
+	if !q.From.IsZero() && !q.To.IsZero() && !q.To.After(q.From) {
+		return errors.Errorf("invalid time range: --to (%s) must be after --from (%s)",
+			q.To.Format(time.RFC3339), q.From.Format(time.RFC3339))
+	}
+	return nil
+}
+
+// QueryResult is the GET /v1/drops/{name}/events response.
+type QueryResult struct {
+	Drop   string     `json:"drop"`
+	Stream string     `json:"stream"`
+	Count  int        `json:"count"`
+	Events []Envelope `json:"events"`
+
+	// NextAfter is the cursor to resume from: the lowest sequence in this page
+	// for descending order, the highest for ascending. Omitted when the page
+	// is empty.
+	NextAfter int64 `json:"next_after,omitempty"`
+}

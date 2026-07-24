@@ -158,6 +158,14 @@ func dsnForPath(absolutePath string) string {
 	q.Add("_pragma", "busy_timeout(5000)")
 	q.Add("_pragma", "foreign_keys(on)")
 	q.Add("_pragma", "synchronous(FULL)")
+
+	// Every transaction takes SQLite's write lock at BEGIN rather than lazily
+	// on its first write. Sequence reservation reads stream_heads before
+	// updating it, and a deferred transaction can fail to upgrade that read
+	// lock. With SetMaxOpenConns(1) this is belt-and-braces, but it is what
+	// keeps the reservation correct if the pool cap is ever raised.
+	q.Set("_txlock", "immediate")
+
 	return "file:" + absolutePath + "?" + q.Encode()
 }
 

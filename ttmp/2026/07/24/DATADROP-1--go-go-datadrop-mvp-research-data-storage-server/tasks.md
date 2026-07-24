@@ -15,9 +15,9 @@
 
 ### Decisions to confirm
 
-- [ ] DR-1: standalone binary vs. TinyIDP overlay (proposed: standalone)
-- [ ] DR-3: bearer token for v0.1, DPoP for v0.2 (proposed)
-- [ ] Binary name: `datadrop` vs `opendrop` (proposed: `datadrop`)
+- [x] DR-1: standalone binary vs. TinyIDP overlay (proposed: standalone)
+- [x] DR-3: bearer token for v0.1, DPoP for v0.2 (proposed)
+- [x] Binary name: `datadrop` vs `opendrop` (proposed: `datadrop`)
 
 ## DONE
 
