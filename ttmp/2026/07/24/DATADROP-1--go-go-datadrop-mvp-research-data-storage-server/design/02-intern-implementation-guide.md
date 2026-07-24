@@ -46,6 +46,15 @@ WhenToUse: "Read first, in full, before touching code on DATADROP-1. Use section
 > documents to trust for what. §7–§13 are the specification — keep them open
 > while coding. §14 is the review checklist. §15 is a glossary; skim it now and
 > come back when a term bites you.
+>
+> **Implementation status (2026-07-24): v0.1 is built.** Every task in §13 is
+> done and the acceptance demo in §1 runs as an automated test. This guide
+> remains the specification and the onboarding path — read it to understand
+> *why* the code is shaped the way it is — but where it says "you will build",
+> read "the code does". Three things changed during implementation and are
+> marked inline: the SQLite lock mode moved into the DSN (§12.2), the CSV
+> export is bounded rather than streamed (§10.6), and the package layout gained
+> a few files (§12.1). The deviations flagged in §16.1 and §16.4 were adopted.
 
 ---
 
@@ -1180,9 +1189,11 @@ CSV flattening rules (be explicit; this is where interoperability breaks):
   buffer the whole result set in memory.
 
 > Note the tension: computing the union of `data` keys requires seeing every row
-> before writing the header. For v0.1, page through the result set once to build
-> the header, then again to write rows — or accept buffering up to the `limit`
-> cap (1000 rows), which is what the MVP does. Document whichever you choose.
+> before writing the header. **What shipped:** CSV buffers up to the `limit` cap
+> (`datadrop.MaxLimit`, 1000 rows) rather than scanning twice, and says so in
+> the handler's doc comment. NDJSON and JSON have no such constraint and stream
+> properly via `store.EachEvent`. Anyone raising `MaxLimit` must revisit
+> `exportCSV`, or exports begin silently omitting rows.
 
 ### 10.7 `PUT /v1/drops/{name}/schemas/{stream}`
 
@@ -1299,44 +1310,57 @@ These are requirements, not suggestions:
 
 ## 12. Package-by-package implementation guide
 
-### 12.1 Proposed layout
+### 12.1 Layout (as built)
 
 ```text
 go-go-datadrop/
 ├── cmd/
 │   └── datadrop/
-│       └── main.go              # cobra root; wires all subcommands
+│       ├── main.go              # os.Exit(cli.Execute())
+│       └── smoke_test.go        # the §1 acceptance demo, end to end
 ├── pkg/
-│   ├── datadrop/
-│   │   └── event.go             # Envelope type, defaults, JSON marshalling
+│   ├── datadrop/                # shared domain vocabulary, no dependencies
+│   │   ├── event.go             # Envelope, EventMeta, Violation, AppendResult
+│   │   ├── drop.go              # Drop, DropStats, AuditRecord, audit actions
+│   │   ├── schema.go            # Schema, Mode, ParseMode
+│   │   └── query.go             # EventQuery, Order, TimeField, Normalize
 │   ├── store/
-│   │   ├── store.go             # Open, Close, migrate, injectable clock
-│   │   ├── drops.go             # CreateDrop, GetDrop, ListDrops
-│   │   ├── events.go            # AppendEvent, QueryEvents
+│   │   ├── store.go             # Open, Close, migrate, clock, time format
+│   │   ├── drops.go             # CreateDrop, GetDrop, ListDrops, DropStats
+│   │   ├── events.go            # AppendEvent, QueryEvents, EachEvent
 │   │   ├── schemas.go           # PutSchema, ActiveSchema
-│   │   ├── audit.go             # Append audit records
-│   │   ├── errors.go            # ErrNotFound, ErrAlreadyExists, sentinel mapping
-│   │   └── migrations/
-│   │       └── 0001_init.sql
+│   │   ├── helpers.go           # ULID, audit, actor context, compactJSON
+│   │   ├── errors.go            # sentinels + SQLite constraint classification
+│   │   └── migrations/0001_init.sql
 │   ├── schema/
-│   │   └── validate.go          # compile + validate; strict/permissive result
+│   │   └── validate.go          # Compile, Validate, version-keyed Cache
 │   ├── stream/
 │   │   └── hub.go               # Subscribe/Publish fan-out (§6.4)
 │   ├── server/
-│   │   ├── server.go            # Server struct, ServeMux routing, lifecycle
-│   │   ├── middleware.go        # auth, request id, recovery, logging
-│   │   ├── handlers_drops.go
+│   │   ├── server.go            # Server, ServeMux routing, lifecycle
+│   │   ├── middleware.go        # recover, request id, logging, auth
+│   │   ├── problem.go           # problem documents + sentinel mapping
+│   │   ├── handlers_drops.go    # create / list / inspect
 │   │   ├── handlers_events.go   # ingest + query
 │   │   ├── handlers_stream.go   # SSE
-│   │   ├── handlers_schema.go
-│   │   ├── handlers_export.go
-│   │   └── problem.go           # problem-document error responses
+│   │   ├── handlers_schema.go   # put / show
+│   │   └── handlers_export.go   # CSV / NDJSON / JSON
 │   ├── client/
-│   │   └── client.go            # typed HTTP client used by the CLI
+│   │   └── client.go            # typed HTTP client incl. an SSE parser
 │   └── cli/
-│       ├── root.go serve.go create.go push.go query.go tail.go export.go schema.go
+│       ├── root.go              # cobra root, flags, exit-code mapping
+│       ├── serve.go             # the server command
+│       ├── push.go              # create/list/inspect/push + key=value parsing
+│       ├── read.go              # query/tail/export/schema
+│       └── output.go            # table / json / ndjson rendering
 └── ttmp/…                       # docmgr workspace (this ticket)
 ```
+
+Two structural notes worth the extra files: `pkg/datadrop` is a dependency-free
+leaf so `pkg/client` can speak the server's exact types without importing the
+persistence layer, and the `pkg/cli` split is by *lifecycle* (serve vs. write
+vs. read vs. render) rather than one file per command, which keeps the shared
+flag structs next to their users.
 
 Rationale: `pkg/` (not `internal/`) matches AGENT.md and the repo template, and
 keeps the door open for third parties to import the client and the envelope type.
@@ -1429,11 +1453,15 @@ AppendEvent(ctx, e):
 
 Two notes:
 
-- **`BEGIN IMMEDIATE`, not `BEGIN`.** SQLite's deferred transactions acquire the
-  write lock lazily, which can produce `SQLITE_BUSY` on upgrade in some driver
-  configurations. `IMMEDIATE` takes the write lock up front. (With
-  `SetMaxOpenConns(1)` this is belt-and-braces, but it costs nothing and it is
-  what protects you if someone later raises the cap.)
+- **`BEGIN IMMEDIATE`, not `BEGIN` — and it has to come from the DSN.**
+  SQLite's deferred transactions acquire the write lock lazily, which can
+  produce `SQLITE_BUSY` when the reservation's read tries to upgrade.
+  `IMMEDIATE` takes the write lock up front. **`database/sql` has no API for
+  SQLite's `BEGIN` variants**, so this is necessarily a connection-level
+  setting: add `_txlock=immediate` to the DSN (modernc.org/sqlite accepts
+  `deferred`, `immediate`, `exclusive`). A helper that calls `BeginTx` and
+  claims to begin immediately is a no-op — that mistake was made and corrected
+  during implementation; see the diary Step 4.
 - **The `ErrAlreadyExists` path must roll back before re-reading**, otherwise the
   aborted statement leaves the transaction in an error state.
 
