@@ -92,6 +92,7 @@ Then, from another shell:
 		newTailCmd(opts),
 		newExportCmd(opts),
 		newSchemaCmd(opts),
+		newDatasetCmd(opts),
 	)
 
 	return root

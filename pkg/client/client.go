@@ -399,15 +399,7 @@ func (c *Client) do(
 
 	if resp.StatusCode >= 400 {
 		defer func() { _ = resp.Body.Close() }()
-
-		apiErr := &APIError{Status: resp.StatusCode}
-		raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-		if err := json.Unmarshal(raw, apiErr); err != nil || apiErr.Code == "" {
-			// Not a problem document — a proxy error page, most likely.
-			apiErr.Code = http.StatusText(resp.StatusCode)
-			apiErr.Detail = strings.TrimSpace(string(raw))
-		}
-		return nil, apiErr
+		return nil, apiErrorFrom(resp)
 	}
 
 	return resp, nil
