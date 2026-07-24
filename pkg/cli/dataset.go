@@ -33,6 +33,7 @@ version is finite and immutable: correcting it means publishing a new version.`,
 		newDatasetListCmd(opts),
 		newDatasetShowCmd(opts),
 		newDatasetGetCmd(opts),
+		newDatasetImportCmd(opts),
 		newDatasetRmCmd(opts),
 	)
 	return cmd
@@ -483,4 +484,73 @@ func humanBytes(n int64) string {
 		exp++
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(n)/float64(div), "KMGT"[exp])
+}
+
+func newDatasetImportCmd(opts *globalOptions) *cobra.Command {
+	var (
+		version     string
+		logicalPath string
+		streamName  string
+		format      string
+		maxRows     int
+		strict      bool
+	)
+
+	cmd := &cobra.Command{
+		Use:   "import DROP DATASET",
+		Short: "Materialize a dataset file's rows into an event stream",
+		Long: `Materialize a dataset file's rows into an event stream.
+
+Each row becomes one event carrying provenance back to the dataset version, the
+file, the row number, and the digest of the exact bytes it came from.
+
+Event identifiers are derived from (digest, row), so re-running an interrupted
+import resumes rather than duplicating: rows already imported are reported as
+skipped.
+
+    datadrop dataset import greenhouse readings-2026 --path data/readings.csv`,
+		Args: cobra.ExactArgs(2),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if logicalPath == "" {
+				return errors.New("--path is required: name the file within the dataset")
+			}
+			if version == "" {
+				version = datadrop.LatestVersion
+			}
+			api, err := newClient(opts)
+			if err != nil {
+				return err
+			}
+
+			result, err := api.ImportDataset(cmd.Context(), args[0], args[1], version,
+				logicalPath, streamName, format, maxRows, strict)
+			if err != nil {
+				return err
+			}
+
+			for _, warning := range result.Warnings {
+				location := warning.Path
+				if location == "" {
+					location = "(root)"
+				}
+				fmt.Fprintf(cmd.ErrOrStderr(), "warning: %s: %s\n", location, warning.Message)
+			}
+			if result.Truncated {
+				fmt.Fprintf(cmd.ErrOrStderr(),
+					"note: stopped at the %d-row limit; pass --max-rows to raise it\n", maxRows)
+			}
+
+			return renderJSON(cmd.OutOrStdout(), result)
+		},
+	}
+
+	flags := cmd.Flags()
+	flags.StringVar(&version, "version", "", `version to import from: a number or "latest" (default)`)
+	flags.StringVar(&logicalPath, "path", "", "file within the dataset to import (required)")
+	flags.StringVar(&streamName, "stream", datadrop.DefaultStream, "destination stream")
+	flags.StringVar(&format, "format", "", "row format: csv or ndjson (default: inferred from the file name)")
+	flags.IntVar(&maxRows, "max-rows", 0, "maximum rows to import (default: the server's limit)")
+	flags.BoolVar(&strict, "strict", false, "reject the import if any row fails the dataset schema")
+
+	return cmd
 }

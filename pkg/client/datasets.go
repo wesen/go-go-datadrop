@@ -331,3 +331,29 @@ func apiErrorFrom(resp *http.Response) error {
 	}
 	return apiErr
 }
+
+// ImportDataset materializes a dataset file's rows into an event stream.
+func (c *Client) ImportDataset(
+	ctx context.Context, drop, dataset, version, logicalPath, stream, format string,
+	maxRows int, strict bool,
+) (datadrop.ImportResult, error) {
+	query := url.Values{}
+	query.Set("path", logicalPath)
+	if stream != "" && stream != datadrop.DefaultStream {
+		query.Set("stream", stream)
+	}
+	if format != "" {
+		query.Set("format", format)
+	}
+	if maxRows > 0 {
+		query.Set("max_rows", strconv.Itoa(maxRows))
+	}
+	if strict {
+		query.Set("strict", "true")
+	}
+
+	var result datadrop.ImportResult
+	err := c.doJSON(ctx, http.MethodPost,
+		c.versionPath(drop, dataset, version)+"/import", query, nil, &result)
+	return result, err
+}

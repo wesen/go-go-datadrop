@@ -58,6 +58,15 @@ func (s *Store) audit(ctx context.Context, ex execer, rec datadrop.AuditRecord) 
 	return errors.Wrapf(err, "store: write audit record %q", rec.Action)
 }
 
+// Audit appends one write-log record outside of any caller transaction.
+//
+// Prefer recording an audit row inside the transaction that performs the change
+// — that is what the internal helper does — and use this only when the change
+// being recorded is not itself a single transaction, as with a bulk import.
+func (s *Store) Audit(ctx context.Context, rec datadrop.AuditRecord) error {
+	return s.audit(ctx, s.db, rec)
+}
+
 // ListAudit returns the most recent audit records, newest first.
 func (s *Store) ListAudit(ctx context.Context, drop string, limit int) ([]datadrop.AuditRecord, error) {
 	if limit <= 0 || limit > datadrop.MaxLimit {

@@ -132,6 +132,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /v1/drops/{name}/datasets/{dataset}/versions/{version}", s.handleDeleteDatasetVersion)
 	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions/{version}/commit", s.handleCommitDatasetVersion)
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/archive", s.handleDatasetArchive)
+	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions/{version}/import", s.handleImportDataset)
 	// {path...} is a trailing wildcard, so logical paths containing slashes work.
 	mux.HandleFunc("PUT /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleUploadDatasetFile)
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleDownloadDatasetFile)
