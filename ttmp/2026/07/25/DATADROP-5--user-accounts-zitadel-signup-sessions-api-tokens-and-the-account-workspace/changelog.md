@@ -24,3 +24,13 @@ Implemented all seven phases: pkg/auth pure core, migration 0003, authorization 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/deploy/compose/docker-compose.yml — the local stack, including the .test hostname finding
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/auth/role.go — EffectiveRole and Authorize — the whole decision
 
+
+## 2026-07-25
+
+Playbook: how to test it and how to run Storybook; fixed make ui-test/ui/ui-dev, which used a bun --cwd form that exits 0 without running the script; added make storybook and build-storybook
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/Makefile — bun --cwd=ui, with the equals sign; storybook targets
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ttmp/2026/07/25/DATADROP-5--user-accounts-zitadel-signup-sessions-api-tokens-and-the-account-workspace/scripts/sharing-matrix.py — the nine-row authorization matrix, made durable and re-runnable
+

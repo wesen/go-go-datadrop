@@ -1,4 +1,4 @@
-.PHONY: gifs logcopter-generate logcopter-check ui ui-test ui-dev compose-up compose-down compose-nuke compose-logs
+.PHONY: gifs logcopter-generate logcopter-check ui ui-test ui-dev storybook build-storybook compose-up compose-down compose-nuke compose-logs
 
 all: gifs
 
@@ -41,15 +41,28 @@ ui:
 	# `bun install --cwd ui`, not `bun --cwd ui install`: the latter makes bun
 	# look for a *script* named "install" and fail with "Script not found".
 	bun install --cwd ui --frozen-lockfile
-	bun --cwd ui run build
+	bun run --cwd=ui build
 
+# `--cwd=ui`, with the equals sign. `bun run --cwd ui typecheck` does NOT run
+# typecheck: bun takes the space-separated form as a request for help, prints
+# its usage page and the list of available scripts, and **exits 0**. A make
+# target written that way passes without having done anything, which is the
+# worst failure mode a check can have. Verified on bun 1.2.13.
 ui-test:
-	bun --cwd ui run typecheck
-	bun --cwd ui test
+	bun run --cwd=ui typecheck
+	bun test --cwd ui
 
 # Vite with HMR on :5173, proxying /v1 to a `datadrop serve` on :8080.
 ui-dev:
-	bun --cwd ui run dev
+	bun run --cwd=ui dev
+
+# The design system on :6006. The stories are the only place some states are
+# reachable at all — see ui/.storybook/main.ts.
+storybook:
+	bun run --cwd=ui storybook
+
+build-storybook:
+	bun run --cwd=ui build-storybook
 
 # The local stack: datadrop plus a self-hosted Zitadel (DATADROP-5).
 #
