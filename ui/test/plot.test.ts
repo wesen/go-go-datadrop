@@ -317,6 +317,40 @@ describe("defaultChart", () => {
     expect(chart.mapping.color).toBe("data.station");
   });
 
+  test("colours by a real dimension rather than a boolean flag", () => {
+    // The rule used to prefer the FEWEST distinct values, which reads as
+    // "keep the legend short" and turns out to mean "chart the flag": a
+    // two-valued data.ok beat a four-station data.station, producing a chart
+    // about a boolean instead of a chart about the sensors.
+    const t = tableOf(
+      [
+        { name: "time", type: "t", inferred_from: "envelope", distinct: 4 },
+        { name: "data.temp_c", type: "q", inferred_from: "values", distinct: 4 },
+        { name: "data.ok", type: "n", inferred_from: "values", distinct: 2 },
+        { name: "data.station", type: "n", inferred_from: "values", distinct: 4 },
+      ],
+      [{ time: "2026-07-24T00:00:00Z", "data.temp_c": 21, "data.ok": true, "data.station": "n" }],
+    );
+    expect(defaultChart(t).mapping.color).toBe("data.station");
+  });
+
+  test("never colours by an envelope column, however few its levels", () => {
+    // Ranking payload first does not survive sorting by distinct count: the
+    // sort reorders across the payload/envelope boundary. Here `stream` has
+    // fewer levels than `data.station`, so a rank-only rule would pick the
+    // delivery metadata. It has to be an exclusion, not a preference.
+    const t = tableOf(
+      [
+        { name: "stream", type: "n", inferred_from: "envelope", distinct: 2 },
+        { name: "time", type: "t", inferred_from: "envelope", distinct: 4 },
+        { name: "data.temp_c", type: "q", inferred_from: "values", distinct: 4 },
+        { name: "data.station", type: "n", inferred_from: "values", distinct: 4 },
+      ],
+      [{ stream: "temps", time: "2026-07-24T00:00:00Z", "data.temp_c": 21, "data.station": "n" }],
+    );
+    expect(defaultChart(t).mapping.color).toBe("data.station");
+  });
+
   test("skips a colour field with too many categories to encode", () => {
     const t = tableOf(
       [

@@ -31,10 +31,31 @@
    */
   --pbui-faint: #696e75;
 
+  /*
+   * Secondary text ON an inverted surface — the shell's two bars, and nothing
+   * else (rule 7). --pbui-faint is tuned for pale surfaces and measures 2.95:1
+   * against --pbui-ink, so a bar that reused it would be unreadable. This is
+   * the darkest value on the same hue line that clears 4.5:1 there.
+   *
+   * Surface's .inverted re-points --pbui-faint to this for its descendants, so
+   * nothing below has to know which kind of surface it is sitting on.
+   */
+  --pbui-faint-inverted: #918c85;
+
   --pbui-line: #d9d9d4; /* hairlines, grid lines, dotted rules */
   --pbui-selected: #fdeec6; /* selection and hover fill — the only one */
-  --pbui-danger: #c2503a;
-  --pbui-ok: #3f9d6b;
+  /*
+   * Semantic TEXT colours, and therefore held to 4.5:1 on both --pbui-pane and
+   * --pbui-pane-alt. The prototype's #c2503a and #3f9d6b measure 4.12 and 2.97
+   * on the alt surface; both were darkened until they clear it.
+   *
+   * Note that --pbui-tone-doc keeps the original #c2503a. A chip's 4px tone edge
+   * is a non-text graphic, which WCAG holds to 3:1, so the tones keep the
+   * prototype's exact hues while the text does not. The distinction is real and
+   * test/tokens.test.ts checks the two classes at their two thresholds.
+   */
+  --pbui-danger: #b64b37;
+  --pbui-ok: #317a53;
 
   /* ---- presentation-type tones: the 4px left border of every chip ------- */
   --pbui-tone-field: #7aa6c9;

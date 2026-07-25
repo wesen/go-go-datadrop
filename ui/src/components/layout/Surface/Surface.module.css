@@ -8,8 +8,31 @@
 
 .alt { background: var(--pbui-pane-alt); }
 .selected { background: var(--pbui-selected); }
-/* The only inverted surfaces in the interface are the shell's two bars. */
-.inverted { background: var(--pbui-ink); color: var(--pbui-paper); }
+
+/*
+ * The only inverted surfaces in the interface are the shell's two bars (rule 7).
+ *
+ * The override is on the DESCENDANTS, not on this element. Custom properties
+ * declared on an element apply to that element's own declarations too, so
+ * re-pointing --pbui-ink here would make `background: var(--pbui-ink)` resolve
+ * to paper and the bar would come out white.
+ *
+ * Re-pointing the tokens rather than only setting `color` is what makes this
+ * work for everything below without each component knowing which surface it is
+ * on: borders, faint text and any future token consumer all adapt. The first
+ * version set `color` alone, and every Text inside rendered ink-on-ink — 1.00:1,
+ * invisible, and found by looking at the story rather than by any test.
+ */
+.inverted {
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+}
+
+.inverted :where(*) {
+  --pbui-ink: var(--pbui-paper);
+  --pbui-faint: var(--pbui-faint-inverted);
+  --pbui-line: var(--pbui-faint-inverted);
+}
 
 .hair { border: var(--pbui-border-hair); }
 .firm { border: var(--pbui-border-firm); }

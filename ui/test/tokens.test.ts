@@ -96,6 +96,54 @@ describe("contrast of the text tokens", () => {
     expect(contrast(token("pbui-paper"), token("pbui-ink"))).toBeGreaterThanOrEqual(4.5);
   });
 
+  test("secondary text on an inverted surface clears 4.5:1", () => {
+    // --pbui-faint is tuned for pale surfaces and measures 2.95:1 on the ink
+    // bars. Surface's .inverted re-points --pbui-faint to this token for its
+    // descendants; without a distinct value the bars carry unreadable text.
+    expect(contrast(token("pbui-faint-inverted"), token("pbui-ink"))).toBeGreaterThanOrEqual(
+      4.5,
+    );
+  });
+
+  test("the pale-surface faint would NOT have worked on the bars", () => {
+    // Pins the reason the extra token exists. If someone later "simplifies" by
+    // pointing --pbui-faint-inverted at --pbui-faint, the test above catches it;
+    // this one explains why in the failure output.
+    expect(contrast(token("pbui-faint"), token("pbui-ink"))).toBeLessThan(4.5);
+  });
+
+  test("semantic text colours clear 4.5:1 on both surfaces", () => {
+    // Both failed as the prototype had them. #c2503a passed on the white pane
+    // (4.66:1) and failed on the alt surface (4.12:1) — which is the reason
+    // this test checks both, and the reason a single-surface check is a trap.
+    for (const name of ["pbui-danger", "pbui-ok"]) {
+      expect(contrast(token(name), token("pbui-pane"))).toBeGreaterThanOrEqual(4.5);
+      expect(contrast(token(name), token("pbui-pane-alt"))).toBeGreaterThanOrEqual(4.5);
+    }
+  });
+
+  test("tone edges are BELOW 3:1, and that is a constraint on the chips", () => {
+    // The presentation-type tones are the prototype's exact hues and most of
+    // them measure 1.9-2.6:1 against the pane. They are kept, because darkening
+    // them to clear WCAG 1.4.11's 3:1 would destroy the palette the whole design
+    // is built on.
+    //
+    // That is only defensible because a tone is never the SOLE carrier of its
+    // information. A field chip states its type as a letter as well as a hue; a
+    // legend swatch sits beside its label; an acceptable presentation gains a
+    // solid outline as well as a pulse. This test does not check a threshold —
+    // it pins the premise, so that anyone who later removes a type badge or a
+    // legend label to "clean up" has to come here and read why they cannot.
+    const tones = ["pbui-tone-field", "pbui-tone-chart", "pbui-type-q", "pbui-type-n"];
+    for (const name of tones) {
+      expect(contrast(token(name), token("pbui-pane"))).toBeLessThan(3);
+    }
+    // The corollary, enforced where it can be: the outline colour that marks an
+    // acceptable presentation is a real UI-state indicator with no textual
+    // twin, so it does clear 3:1.
+    expect(contrast(token("pbui-danger"), token("pbui-pane"))).toBeGreaterThanOrEqual(3);
+  });
+
   test("secondary text is still visibly secondary", () => {
     // Fixing contrast by setting --pbui-faint to the ink colour would pass the
     // test above and destroy the visual hierarchy the whole design rests on.

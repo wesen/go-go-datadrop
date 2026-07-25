@@ -208,3 +208,236 @@ $ wc -l ui/src/App.tsx ui/src/components/*.tsx | tail -1
 $ wc -l ui/src/model/*.ts ui/src/api/*.ts ui/src/export/*.ts ui/src/main.tsx ui/test/*.ts | tail -1
  2569 total
 ```
+
+---
+
+## Step 2: Phase 0 — demolition, the token layer, and four defects it exposed
+
+Deleted the shell and built the foundation under it: tokens, a reset, the
+scrollbars, the `foundation/` and `layout/` primitives, Storybook with its
+decorators, committed fixtures, and the layer-boundary rule. The phase was
+supposed to be mechanical. It was not: extracting ~600 inline style objects into
+a token layer, and then *looking at the result in a browser*, found four defects
+— one in my own plan, one in the CSS, and two in shipped code that has been
+green in CI since DATADROP-3.
+
+The pattern across all four is worth naming up front. Each was invisible to the
+thing that should have caught it: the plan was wrong about a command nobody had
+run, the CSS bug produced a well-formed element with no visible content, and the
+`defaultChart` defect produced a chart that drew correctly and answered the wrong
+question. None raised an error anywhere.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Execute phase 0 of the guide end to end.
+
+**Inferred user intent:** A foundation the later phases can be built on without
+revisiting.
+
+**Commits (code):** `f06dec4` — "phase 0 — demolish the shell, build the visual
+foundation", plus this step's follow-up.
+
+### What I did
+
+- `git rm` on `App.tsx` and all eight components; `bun remove bootstrap`.
+- Wrote `styles/{tokens,reset,scrollbars}.css`, `components/foundation/`
+  (Text, SectionLabel, Divider, VisuallyHidden, Kbd) and `components/layout/`
+  (Stack, Surface, Toolbar, AppBody).
+- `scripts/make-tokens.ts` + `test/tokens.test.ts` for the duplicated palette.
+- Storybook 10.5.4 with `withStore` and `withTile`, a11y at `test: "error"`, and
+  the token sheet story.
+- `scripts/make-fixtures.ts` + three committed fixtures, and
+  `test/fixtures.test.ts` driving each through the real engine.
+- `test/layers.test.ts` enforcing the §10.2 dependency graph.
+- Drove the token sheet in a real browser and ran axe against it.
+
+### Why
+
+The token sheet is the deliverable that makes "stay close to pbui-gog" a
+reviewable claim rather than a matter of taste, so it was worth building first
+and looking at properly.
+
+### What worked
+
+- The aesthetic ports cleanly. The rendered sheet is recognisably the prototype:
+  monospace, hairline hard borders, no radius, offset shadows, uppercase
+  letterspaced section labels.
+- Two invariants are now enforced rather than documented. `bun test` went from
+  58 to 91 assertions covering: the CSS palette equals `model/plot.ts`, contrast
+  thresholds for every text token, the layer graph, and every fixture charting
+  through `defaultChart` → `evaluate` → `buildPlot`.
+- The layer test was checked against a deliberate violation before being
+  believed — a foundation file importing from layout, which it caught with a
+  useful message.
+
+### What didn't work
+
+**1. `bun run build` clobbers the interface the binary serves.** The guide told
+the implementer not to run `make ui` during the phase 0-3 interval. That is not
+the dangerous command. `vite.config.ts` sets `outDir: "../pkg/webui/dist"` with
+`emptyOutDir: true`, so *any* production build writes into the Go tree — which
+is deliberate, and which means a routine "does it still compile?" replaced the
+DATADROP-3 bundle with a placeholder.
+
+Found by running it. Recovered with `git checkout -- pkg/webui/dist`, plus
+`rm` on two newly-hashed assets that were untracked and therefore not restored
+— `go:embed` would have shipped those orphans. Added `bun run build:check`,
+which builds to a gitignored `dist-check`, and verified the served bundle is
+still `index-B_spFeBu.js` by starting the binary and curling `/ui/`.
+
+**2. The inverted surface rendered invisible text.** `Surface` set
+`color: var(--pbui-paper)` for the shell bars, and `Text` set
+`color: var(--pbui-ink)` for its default tone — the more specific rule won, so
+every label on a dark bar was ink on ink. Measured: **1.00:1**.
+
+The first instinct was to patch `Text`. The right fix is a layer down: on an
+inverted surface, *re-point the tokens* for its descendants, so borders, faint
+text and any future token consumer adapt without knowing what they sit on.
+
+```css
+.inverted { background: var(--pbui-ink); color: var(--pbui-paper); }
+.inverted :where(*) {
+  --pbui-ink: var(--pbui-paper);
+  --pbui-faint: var(--pbui-faint-inverted);
+  --pbui-line: var(--pbui-faint-inverted);
+}
+```
+
+The override is on `:where(*)`, not on `.inverted` itself. A custom property
+declared on an element applies to that element's own declarations, so
+re-pointing `--pbui-ink` on the surface would make `background: var(--pbui-ink)`
+resolve to paper and the bar would come out white. That cost a few minutes and
+is exactly the kind of thing that reads as obvious afterwards.
+
+It also needed a genuinely new token. `--pbui-faint` is tuned for pale surfaces
+and measures 2.95:1 against the ink bars, so `--pbui-faint-inverted` (#918c85,
+4.55:1) exists for descendants of an inverted surface.
+
+**3. Two more contrast failures, one of which only shows on the alt surface.**
+axe found `--pbui-ok` at 3.36:1. Auditing the rest properly rather than fixing
+the reported one:
+
+| token | was | pane | alt | now |
+|---|---|---|---|---|
+| `--pbui-faint` | #7b8087 | 3.98 | 3.51 | #696e75 (5.14 / 4.54) |
+| `--pbui-danger` | #c2503a | **4.66** | 4.12 | #b64b37 (5.18 / 4.58) |
+| `--pbui-ok` | #3f9d6b | 3.36 | 2.97 | #317a53 (5.20 / 4.59) |
+
+`--pbui-danger` **passes on white and fails on the alt surface**. A check
+against one background would have declared it fine, and it is used for problem
+messages inside zebra-striped tables. Both surfaces, always.
+
+The tone edges are a separate case and are deliberately *not* fixed. Most
+measure 1.9-2.6:1, and darkening them to clear WCAG 1.4.11's 3:1 would destroy
+the palette the design rests on. That is defensible only because a tone is never
+the sole carrier of its information — a field chip states its type as a letter
+as well as a hue. `test/tokens.test.ts` pins that premise with a test that
+asserts the tones are *below* 3:1 and explains why, so anyone who later removes
+a type badge to "clean up" has to come and read the reason they cannot.
+
+**4. `defaultChart` colours by a boolean flag.** The fixture test failed:
+
+```
+Expected: "data.station"
+Received: "data.ok"
+```
+
+`model/chart.ts` preferred the *fewest* distinct values. That reads as "keep the
+legend short" and means "chart the flag": `data.ok` has 2 levels and
+`data.station` has 4, so `lab/temps` opened as a chart about a boolean rather
+than about its four sensors.
+
+Reading further found a worse latent bug beneath it. `payloadFirst` establishes
+an ordering and then `.sort()` by distinct count **reorders across that
+boundary**, so ranking envelope columns lower does not survive. A stream whose
+`stream` or `id` column happened to have fewer levels than its payload column
+would be coloured by delivery metadata. The existing test passed only because
+its numbers happened to fall the right way.
+
+Both fixed together: envelope columns are now *excluded* rather than ranked
+lower, and the survivors sort descending, since the ≤8 cap already handles
+legibility and more levels carry more information. Two regression tests added,
+one per rule, each stating the case the old code got wrong.
+
+### What I learned
+
+- **A test that reads a real fixture is worth more than one that builds a
+  minimal table.** The `defaultChart` defect needed a table with both a boolean
+  payload column and a multi-level one — a shape nobody constructs by hand for a
+  unit test, and the shape every real sensor stream has.
+- **Check contrast against every surface a colour appears on.** One of three
+  failures was invisible from the white background.
+- **A duplicated constant needs a test, not a comment.** The palette, the ink
+  value and the faint value all exist in two places for good reasons; each pair
+  now has an assertion.
+- Storybook resolved to **10.5.4**, not the 9 the guide names. The configuration
+  needed no changes beyond `viteFinal`.
+
+### What was tricky to build
+
+The `:where(*)` scoping on the inverted surface, described above: the underlying
+cause is that custom properties declared on an element are visible to that
+element's own declarations, so the naive version silently inverted the surface's
+own background instead of its children's text.
+
+The other sharp edge was Storybook inheriting `vite.config.ts`. Its `outDir`
+points into the Go tree, so `build-storybook` would have written there too;
+`main.ts` overrides `base`, `outDir` and `emptyOutDir` back to defaults, and the
+build was checked with `git status pkg/webui/` afterwards to prove it.
+
+### What warrants a second pair of eyes
+
+- **The `defaultChart` change alters shipped behaviour.** A chart that previously
+  opened coloured by a two-level field now opens coloured by a richer one. I
+  believe this is right in every case I can construct, but it is a default that
+  users may have formed habits around.
+- The tone-edge exemption from WCAG 1.4.11 is a judgement call. It rests on
+  every chip carrying a redundant textual cue — an obligation now on components
+  that do not exist yet (phase 1).
+- `--pbui-danger` is used both as text and as the accept outline. The darkened
+  value clears 4.5:1 as text and 3:1 as a UI indicator, but it should be looked
+  at once against a real pulsing chip.
+
+### What should be done in the future
+
+- Phase 1 `FieldChip` **must** render the type letter, not only the tone edge.
+  The contrast exemption depends on it.
+- `withPbui` joins the decorators in phase 1.
+- Re-check the token sheet's axe report after atoms land, since the chips will
+  introduce the first real colour-on-colour combinations.
+
+### Code review instructions
+
+- Start at `ui/src/styles/tokens.css` — it is the whole visual language, and the
+  comments carry the reasoning for every value that deviates from the prototype.
+- `ui/src/components/layout/Surface/Surface.module.css` for the `:where(*)`
+  trick and why it is not on the element itself.
+- `ui/src/model/chart.ts:82-105` for the `defaultChart` change; the two new
+  tests in `ui/test/plot.test.ts` state the cases.
+- Validate: `cd ui && bun test` (91), `bun run typecheck`, `bun run
+  build-storybook`, then `git status pkg/webui/` to confirm the embedded bundle
+  was not touched.
+- Look at the token sheet: `bun run storybook`, then
+  Design System / Foundation / Tokens. The Accessibility panel should report
+  zero violations.
+
+### Technical details
+
+```
+$ cd ui && bun test
+ 91 pass  0 fail  7022 expect() calls  across 8 files
+
+$ bun run fixtures
+readings.json — 360 rows × 13 fields
+census.json — 24 rows × 4 fields
+batches.json — 500 rows × 4 fields (truncated)
+```
+
+Contrast helper used throughout (WCAG 2.x relative luminance):
+
+```
+L = 0.2126 R + 0.7152 G + 0.0722 B,  channel c: c/12.92 if c<=0.04045 else ((c+0.055)/1.055)^2.4
+ratio = (Lhi + 0.05) / (Llo + 0.05)
+```

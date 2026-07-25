@@ -80,10 +80,30 @@ export function defaultChart(table: Table): ChartSpec {
   const temporal = ranked.find((f) => f.type === "t");
 
   // A colour channel with more categories than the palette holds is a legend,
-  // not an encoding. Prefer the field with the fewest distinct values.
+  // not an encoding — so candidates are capped at 8. Two further rules, both
+  // learned from a fixture that this got wrong:
+  //
+  //  - Envelope columns are EXCLUDED outright, not merely ranked lower. Ranking
+  //    them lower does not survive the sort below: `ranked` puts payload first,
+  //    and then sorting by distinct count reorders across that boundary. A
+  //    stream whose `id` happened to have fewer levels than its payload column
+  //    would be coloured by the delivery identifier.
+  //
+  //  - Among the survivors, prefer MORE levels, not fewer. The cap already
+  //    handles legibility, and a field with more levels carries more
+  //    information: colouring `lab/temps` by a two-valued `data.ok` flag rather
+  //    than by its four stations produces a chart about a boolean instead of a
+  //    chart about the sensors. The sort is stable, so payload order still
+  //    breaks ties.
   const colorCandidates = ranked
-    .filter((f) => f.type === "n" && (f.distinct ?? 0) >= 2 && (f.distinct ?? 0) <= 8)
-    .sort((a, b) => (a.distinct ?? 0) - (b.distinct ?? 0));
+    .filter(
+      (f) =>
+        f.type === "n" &&
+        !ENVELOPE_COLUMNS.has(f.name) &&
+        (f.distinct ?? 0) >= 2 &&
+        (f.distinct ?? 0) <= 8,
+    )
+    .sort((a, b) => (b.distinct ?? 0) - (a.distinct ?? 0));
 
   const x = temporal ? temporal.name : (quantitative[0]?.name ?? null);
   const y = temporal

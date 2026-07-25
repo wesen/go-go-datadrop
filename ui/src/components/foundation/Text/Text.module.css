@@ -28,9 +28,12 @@
   font-size: var(--pbui-fs-title);
 }
 
-/* ---- tones ---- */
+/* ---- tones ---- *
+ * `inherit`, not `var(--pbui-ink)`. Body text takes its colour from the surface
+ * it is on, so an inverted surface does not need every descendant to be told.
+ * Hard-coding ink here is what made the shell bars render invisible text. */
 .default {
-  color: var(--pbui-ink);
+  color: inherit;
 }
 .faint {
   color: var(--pbui-faint);

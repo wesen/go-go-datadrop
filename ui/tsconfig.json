@@ -16,5 +16,5 @@
     "noEmit": true,
     "types": ["bun", "vite/client"]
   },
-  "include": ["src", "test", "vite.config.ts"]
+  "include": ["src", "test", ".storybook", "scripts", "vite.config.ts"]
 }

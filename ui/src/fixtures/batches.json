@@ -1,0 +1,3048 @@
+{
+  "source": {
+    "kind": "dataset",
+    "drop": "factory",
+    "dataset": "batches",
+    "version": 1,
+    "path": "rows.ndjson"
+  },
+  "fields": [
+    {
+      "name": "batch",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 20,
+      "distinct_capped": false,
+      "null_count": 0
+    },
+    {
+      "name": "line",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 4,
+      "distinct_capped": false,
+      "null_count": 0
+    },
+    {
+      "name": "yield_pct",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 436,
+      "distinct_capped": false,
+      "null_count": 0
+    },
+    {
+      "name": "mass_kg",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 336,
+      "distinct_capped": false,
+      "null_count": 0
+    }
+  ],
+  "rows": [
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 85.72,
+      "mass_kg": 163.4
+    },
+    {
+      "batch": "B-001",
+      "line": "line-2",
+      "yield_pct": 76.74,
+      "mass_kg": 153.3
+    },
+    {
+      "batch": "B-001",
+      "line": "line-3",
+      "yield_pct": 78.33,
+      "mass_kg": 185.1
+    },
+    {
+      "batch": "B-001",
+      "line": "line-4",
+      "yield_pct": 81.49,
+      "mass_kg": 188.3
+    },
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 85.1,
+      "mass_kg": 150.6
+    },
+    {
+      "batch": "B-001",
+      "line": "line-2",
+      "yield_pct": 89.75,
+      "mass_kg": 149.4
+    },
+    {
+      "batch": "B-001",
+      "line": "line-3",
+      "yield_pct": 80.31,
+      "mass_kg": 170.1
+    },
+    {
+      "batch": "B-001",
+      "line": "line-4",
+      "yield_pct": 81.67,
+      "mass_kg": 167.4
+    },
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 73.29,
+      "mass_kg": 147.7
+    },
+    {
+      "batch": "B-001",
+      "line": "line-2",
+      "yield_pct": 77.12,
+      "mass_kg": 125.3
+    },
+    {
+      "batch": "B-001",
+      "line": "line-3",
+      "yield_pct": 80.63,
+      "mass_kg": 166.7
+    },
+    {
+      "batch": "B-001",
+      "line": "line-4",
+      "yield_pct": 78.26,
+      "mass_kg": 169.5
+    },
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 76.58,
+      "mass_kg": 135
+    },
+    {
+      "batch": "B-001",
+      "line": "line-2",
+      "yield_pct": 68.36,
+      "mass_kg": 155.8
+    },
+    {
+      "batch": "B-001",
+      "line": "line-3",
+      "yield_pct": 81.01,
+      "mass_kg": 172
+    },
+    {
+      "batch": "B-001",
+      "line": "line-4",
+      "yield_pct": 85.48,
+      "mass_kg": 162
+    },
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 86.24,
+      "mass_kg": 152.7
+    },
+    {
+      "batch": "B-001",
+      "line": "line-2",
+      "yield_pct": 80.07,
+      "mass_kg": 150.3
+    },
+    {
+      "batch": "B-001",
+      "line": "line-3",
+      "yield_pct": 83.87,
+      "mass_kg": 153.5
+    },
+    {
+      "batch": "B-001",
+      "line": "line-4",
+      "yield_pct": 82.75,
+      "mass_kg": 176.3
+    },
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 87.36,
+      "mass_kg": 151.2
+    },
+    {
+      "batch": "B-001",
+      "line": "line-2",
+      "yield_pct": 85.1,
+      "mass_kg": 131.7
+    },
+    {
+      "batch": "B-001",
+      "line": "line-3",
+      "yield_pct": 72.99,
+      "mass_kg": 185.5
+    },
+    {
+      "batch": "B-001",
+      "line": "line-4",
+      "yield_pct": 94.17,
+      "mass_kg": 142.3
+    },
+    {
+      "batch": "B-001",
+      "line": "line-1",
+      "yield_pct": 80.42,
+      "mass_kg": 149.2
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 82.48,
+      "mass_kg": 152.9
+    },
+    {
+      "batch": "B-002",
+      "line": "line-3",
+      "yield_pct": 81.29,
+      "mass_kg": 149.6
+    },
+    {
+      "batch": "B-002",
+      "line": "line-4",
+      "yield_pct": 72.11,
+      "mass_kg": 173.6
+    },
+    {
+      "batch": "B-002",
+      "line": "line-1",
+      "yield_pct": 84.32,
+      "mass_kg": 157.8
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 80.79,
+      "mass_kg": 138
+    },
+    {
+      "batch": "B-002",
+      "line": "line-3",
+      "yield_pct": 83.38,
+      "mass_kg": 152.4
+    },
+    {
+      "batch": "B-002",
+      "line": "line-4",
+      "yield_pct": 78.92,
+      "mass_kg": 178.2
+    },
+    {
+      "batch": "B-002",
+      "line": "line-1",
+      "yield_pct": 81.55,
+      "mass_kg": 178.7
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 75.46,
+      "mass_kg": 177.3
+    },
+    {
+      "batch": "B-002",
+      "line": "line-3",
+      "yield_pct": 87.3,
+      "mass_kg": 165
+    },
+    {
+      "batch": "B-002",
+      "line": "line-4",
+      "yield_pct": 79.47,
+      "mass_kg": 157.1
+    },
+    {
+      "batch": "B-002",
+      "line": "line-1",
+      "yield_pct": 78.48,
+      "mass_kg": 167.8
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 78.75,
+      "mass_kg": 142.4
+    },
+    {
+      "batch": "B-002",
+      "line": "line-3",
+      "yield_pct": 80.64,
+      "mass_kg": 151.1
+    },
+    {
+      "batch": "B-002",
+      "line": "line-4",
+      "yield_pct": 76.21,
+      "mass_kg": 146.6
+    },
+    {
+      "batch": "B-002",
+      "line": "line-1",
+      "yield_pct": 83.93,
+      "mass_kg": 148.4
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 82.23,
+      "mass_kg": 139.5
+    },
+    {
+      "batch": "B-002",
+      "line": "line-3",
+      "yield_pct": 89.77,
+      "mass_kg": 153.1
+    },
+    {
+      "batch": "B-002",
+      "line": "line-4",
+      "yield_pct": 84.91,
+      "mass_kg": 180.7
+    },
+    {
+      "batch": "B-002",
+      "line": "line-1",
+      "yield_pct": 83.09,
+      "mass_kg": 148.2
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 77.5,
+      "mass_kg": 183.1
+    },
+    {
+      "batch": "B-002",
+      "line": "line-3",
+      "yield_pct": 82.17,
+      "mass_kg": 152.3
+    },
+    {
+      "batch": "B-002",
+      "line": "line-4",
+      "yield_pct": 86.23,
+      "mass_kg": 153.5
+    },
+    {
+      "batch": "B-002",
+      "line": "line-1",
+      "yield_pct": 78.74,
+      "mass_kg": 168.3
+    },
+    {
+      "batch": "B-002",
+      "line": "line-2",
+      "yield_pct": 75.68,
+      "mass_kg": 155.5
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 81.25,
+      "mass_kg": 142.5
+    },
+    {
+      "batch": "B-003",
+      "line": "line-4",
+      "yield_pct": 82.85,
+      "mass_kg": 174.7
+    },
+    {
+      "batch": "B-003",
+      "line": "line-1",
+      "yield_pct": 85.31,
+      "mass_kg": 148.6
+    },
+    {
+      "batch": "B-003",
+      "line": "line-2",
+      "yield_pct": 87.41,
+      "mass_kg": 139
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 80.61,
+      "mass_kg": 176.3
+    },
+    {
+      "batch": "B-003",
+      "line": "line-4",
+      "yield_pct": 75.92,
+      "mass_kg": 139.6
+    },
+    {
+      "batch": "B-003",
+      "line": "line-1",
+      "yield_pct": 88.24,
+      "mass_kg": 156.3
+    },
+    {
+      "batch": "B-003",
+      "line": "line-2",
+      "yield_pct": 77.43,
+      "mass_kg": 137.9
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 80.67,
+      "mass_kg": 165.9
+    },
+    {
+      "batch": "B-003",
+      "line": "line-4",
+      "yield_pct": 77.34,
+      "mass_kg": 176.1
+    },
+    {
+      "batch": "B-003",
+      "line": "line-1",
+      "yield_pct": 77.6,
+      "mass_kg": 162.7
+    },
+    {
+      "batch": "B-003",
+      "line": "line-2",
+      "yield_pct": 77.17,
+      "mass_kg": 160.8
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 80.97,
+      "mass_kg": 182.1
+    },
+    {
+      "batch": "B-003",
+      "line": "line-4",
+      "yield_pct": 73.25,
+      "mass_kg": 163.6
+    },
+    {
+      "batch": "B-003",
+      "line": "line-1",
+      "yield_pct": 84.87,
+      "mass_kg": 157.6
+    },
+    {
+      "batch": "B-003",
+      "line": "line-2",
+      "yield_pct": 77.04,
+      "mass_kg": 136.1
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 78.9,
+      "mass_kg": 207.8
+    },
+    {
+      "batch": "B-003",
+      "line": "line-4",
+      "yield_pct": 79.2,
+      "mass_kg": 171
+    },
+    {
+      "batch": "B-003",
+      "line": "line-1",
+      "yield_pct": 75.69,
+      "mass_kg": 163
+    },
+    {
+      "batch": "B-003",
+      "line": "line-2",
+      "yield_pct": 68.02,
+      "mass_kg": 163.9
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 82.39,
+      "mass_kg": 165.1
+    },
+    {
+      "batch": "B-003",
+      "line": "line-4",
+      "yield_pct": 74.17,
+      "mass_kg": 177.1
+    },
+    {
+      "batch": "B-003",
+      "line": "line-1",
+      "yield_pct": 90.29,
+      "mass_kg": 138.8
+    },
+    {
+      "batch": "B-003",
+      "line": "line-2",
+      "yield_pct": 79.5,
+      "mass_kg": 154.4
+    },
+    {
+      "batch": "B-003",
+      "line": "line-3",
+      "yield_pct": 74.64,
+      "mass_kg": 183.4
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 72.81,
+      "mass_kg": 148.2
+    },
+    {
+      "batch": "B-004",
+      "line": "line-1",
+      "yield_pct": 83.73,
+      "mass_kg": 163.1
+    },
+    {
+      "batch": "B-004",
+      "line": "line-2",
+      "yield_pct": 85.47,
+      "mass_kg": 150.4
+    },
+    {
+      "batch": "B-004",
+      "line": "line-3",
+      "yield_pct": 73.45,
+      "mass_kg": 154.7
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 89.03,
+      "mass_kg": 167
+    },
+    {
+      "batch": "B-004",
+      "line": "line-1",
+      "yield_pct": 74.33,
+      "mass_kg": 191.4
+    },
+    {
+      "batch": "B-004",
+      "line": "line-2",
+      "yield_pct": 81.38,
+      "mass_kg": 165
+    },
+    {
+      "batch": "B-004",
+      "line": "line-3",
+      "yield_pct": 75.62,
+      "mass_kg": 151.2
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 80.97,
+      "mass_kg": 168.6
+    },
+    {
+      "batch": "B-004",
+      "line": "line-1",
+      "yield_pct": 79.89,
+      "mass_kg": 153.1
+    },
+    {
+      "batch": "B-004",
+      "line": "line-2",
+      "yield_pct": 80.59,
+      "mass_kg": 163.5
+    },
+    {
+      "batch": "B-004",
+      "line": "line-3",
+      "yield_pct": 79.44,
+      "mass_kg": 130.6
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 74.19,
+      "mass_kg": 184.4
+    },
+    {
+      "batch": "B-004",
+      "line": "line-1",
+      "yield_pct": 87.42,
+      "mass_kg": 174.6
+    },
+    {
+      "batch": "B-004",
+      "line": "line-2",
+      "yield_pct": 75.81,
+      "mass_kg": 161.9
+    },
+    {
+      "batch": "B-004",
+      "line": "line-3",
+      "yield_pct": 77.22,
+      "mass_kg": 134.4
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 85.85,
+      "mass_kg": 154.6
+    },
+    {
+      "batch": "B-004",
+      "line": "line-1",
+      "yield_pct": 75.62,
+      "mass_kg": 163.6
+    },
+    {
+      "batch": "B-004",
+      "line": "line-2",
+      "yield_pct": 73.28,
+      "mass_kg": 131.9
+    },
+    {
+      "batch": "B-004",
+      "line": "line-3",
+      "yield_pct": 80.87,
+      "mass_kg": 173.9
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 74.33,
+      "mass_kg": 151
+    },
+    {
+      "batch": "B-004",
+      "line": "line-1",
+      "yield_pct": 81.26,
+      "mass_kg": 155.1
+    },
+    {
+      "batch": "B-004",
+      "line": "line-2",
+      "yield_pct": 74.14,
+      "mass_kg": 150
+    },
+    {
+      "batch": "B-004",
+      "line": "line-3",
+      "yield_pct": 80.16,
+      "mass_kg": 178
+    },
+    {
+      "batch": "B-004",
+      "line": "line-4",
+      "yield_pct": 81.51,
+      "mass_kg": 153.3
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 86.43,
+      "mass_kg": 117.1
+    },
+    {
+      "batch": "B-005",
+      "line": "line-2",
+      "yield_pct": 76.2,
+      "mass_kg": 162.2
+    },
+    {
+      "batch": "B-005",
+      "line": "line-3",
+      "yield_pct": 74.92,
+      "mass_kg": 172
+    },
+    {
+      "batch": "B-005",
+      "line": "line-4",
+      "yield_pct": 77.07,
+      "mass_kg": 172.1
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 77.83,
+      "mass_kg": 163.8
+    },
+    {
+      "batch": "B-005",
+      "line": "line-2",
+      "yield_pct": 81.41,
+      "mass_kg": 136.8
+    },
+    {
+      "batch": "B-005",
+      "line": "line-3",
+      "yield_pct": 80.45,
+      "mass_kg": 167.8
+    },
+    {
+      "batch": "B-005",
+      "line": "line-4",
+      "yield_pct": 81.23,
+      "mass_kg": 154.1
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 87.03,
+      "mass_kg": 162.6
+    },
+    {
+      "batch": "B-005",
+      "line": "line-2",
+      "yield_pct": 84.22,
+      "mass_kg": 153.4
+    },
+    {
+      "batch": "B-005",
+      "line": "line-3",
+      "yield_pct": 85.51,
+      "mass_kg": 177.5
+    },
+    {
+      "batch": "B-005",
+      "line": "line-4",
+      "yield_pct": 83.25,
+      "mass_kg": 154.7
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 75.75,
+      "mass_kg": 159.4
+    },
+    {
+      "batch": "B-005",
+      "line": "line-2",
+      "yield_pct": 79.39,
+      "mass_kg": 180
+    },
+    {
+      "batch": "B-005",
+      "line": "line-3",
+      "yield_pct": 78.77,
+      "mass_kg": 158.4
+    },
+    {
+      "batch": "B-005",
+      "line": "line-4",
+      "yield_pct": 76.39,
+      "mass_kg": 157.2
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 72.4,
+      "mass_kg": 162.1
+    },
+    {
+      "batch": "B-005",
+      "line": "line-2",
+      "yield_pct": 78.44,
+      "mass_kg": 153.4
+    },
+    {
+      "batch": "B-005",
+      "line": "line-3",
+      "yield_pct": 83.71,
+      "mass_kg": 167.7
+    },
+    {
+      "batch": "B-005",
+      "line": "line-4",
+      "yield_pct": 92.34,
+      "mass_kg": 158.5
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 81.6,
+      "mass_kg": 165.6
+    },
+    {
+      "batch": "B-005",
+      "line": "line-2",
+      "yield_pct": 73.12,
+      "mass_kg": 166.7
+    },
+    {
+      "batch": "B-005",
+      "line": "line-3",
+      "yield_pct": 84.48,
+      "mass_kg": 179.3
+    },
+    {
+      "batch": "B-005",
+      "line": "line-4",
+      "yield_pct": 79.06,
+      "mass_kg": 155.7
+    },
+    {
+      "batch": "B-005",
+      "line": "line-1",
+      "yield_pct": 84.59,
+      "mass_kg": 161.2
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 78.97,
+      "mass_kg": 161.7
+    },
+    {
+      "batch": "B-006",
+      "line": "line-3",
+      "yield_pct": 71.65,
+      "mass_kg": 172.5
+    },
+    {
+      "batch": "B-006",
+      "line": "line-4",
+      "yield_pct": 74.71,
+      "mass_kg": 142.1
+    },
+    {
+      "batch": "B-006",
+      "line": "line-1",
+      "yield_pct": 83.66,
+      "mass_kg": 183.4
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 78.99,
+      "mass_kg": 145.6
+    },
+    {
+      "batch": "B-006",
+      "line": "line-3",
+      "yield_pct": 83.01,
+      "mass_kg": 175.5
+    },
+    {
+      "batch": "B-006",
+      "line": "line-4",
+      "yield_pct": 76.87,
+      "mass_kg": 164.6
+    },
+    {
+      "batch": "B-006",
+      "line": "line-1",
+      "yield_pct": 73.62,
+      "mass_kg": 150.3
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 81.05,
+      "mass_kg": 157.2
+    },
+    {
+      "batch": "B-006",
+      "line": "line-3",
+      "yield_pct": 83.39,
+      "mass_kg": 155.3
+    },
+    {
+      "batch": "B-006",
+      "line": "line-4",
+      "yield_pct": 73.96,
+      "mass_kg": 137.2
+    },
+    {
+      "batch": "B-006",
+      "line": "line-1",
+      "yield_pct": 80.45,
+      "mass_kg": 147.6
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 74.35,
+      "mass_kg": 167.7
+    },
+    {
+      "batch": "B-006",
+      "line": "line-3",
+      "yield_pct": 81.09,
+      "mass_kg": 159.3
+    },
+    {
+      "batch": "B-006",
+      "line": "line-4",
+      "yield_pct": 77.04,
+      "mass_kg": 137
+    },
+    {
+      "batch": "B-006",
+      "line": "line-1",
+      "yield_pct": 79.07,
+      "mass_kg": 164.8
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 83.03,
+      "mass_kg": 189.1
+    },
+    {
+      "batch": "B-006",
+      "line": "line-3",
+      "yield_pct": 83.12,
+      "mass_kg": 154.8
+    },
+    {
+      "batch": "B-006",
+      "line": "line-4",
+      "yield_pct": 86.72,
+      "mass_kg": 135.7
+    },
+    {
+      "batch": "B-006",
+      "line": "line-1",
+      "yield_pct": 82.87,
+      "mass_kg": 126.9
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 82.3,
+      "mass_kg": 158.6
+    },
+    {
+      "batch": "B-006",
+      "line": "line-3",
+      "yield_pct": 84.96,
+      "mass_kg": 162.2
+    },
+    {
+      "batch": "B-006",
+      "line": "line-4",
+      "yield_pct": 75.6,
+      "mass_kg": 132.4
+    },
+    {
+      "batch": "B-006",
+      "line": "line-1",
+      "yield_pct": 87.71,
+      "mass_kg": 175
+    },
+    {
+      "batch": "B-006",
+      "line": "line-2",
+      "yield_pct": 71.73,
+      "mass_kg": 191
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 82.17,
+      "mass_kg": 143
+    },
+    {
+      "batch": "B-007",
+      "line": "line-4",
+      "yield_pct": 85.08,
+      "mass_kg": 167.5
+    },
+    {
+      "batch": "B-007",
+      "line": "line-1",
+      "yield_pct": 82.87,
+      "mass_kg": 162.3
+    },
+    {
+      "batch": "B-007",
+      "line": "line-2",
+      "yield_pct": 71.84,
+      "mass_kg": 126
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 87.7,
+      "mass_kg": 139.4
+    },
+    {
+      "batch": "B-007",
+      "line": "line-4",
+      "yield_pct": 89.59,
+      "mass_kg": 149.2
+    },
+    {
+      "batch": "B-007",
+      "line": "line-1",
+      "yield_pct": 87.93,
+      "mass_kg": 142.9
+    },
+    {
+      "batch": "B-007",
+      "line": "line-2",
+      "yield_pct": 82.41,
+      "mass_kg": 155.8
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 82.49,
+      "mass_kg": 185.3
+    },
+    {
+      "batch": "B-007",
+      "line": "line-4",
+      "yield_pct": 85.35,
+      "mass_kg": 162.5
+    },
+    {
+      "batch": "B-007",
+      "line": "line-1",
+      "yield_pct": 86.55,
+      "mass_kg": 161
+    },
+    {
+      "batch": "B-007",
+      "line": "line-2",
+      "yield_pct": 75.44,
+      "mass_kg": 161.4
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 83.29,
+      "mass_kg": 160.4
+    },
+    {
+      "batch": "B-007",
+      "line": "line-4",
+      "yield_pct": 78.39,
+      "mass_kg": 155.2
+    },
+    {
+      "batch": "B-007",
+      "line": "line-1",
+      "yield_pct": 83.14,
+      "mass_kg": 143
+    },
+    {
+      "batch": "B-007",
+      "line": "line-2",
+      "yield_pct": 77.97,
+      "mass_kg": 144.4
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 76.85,
+      "mass_kg": 171.6
+    },
+    {
+      "batch": "B-007",
+      "line": "line-4",
+      "yield_pct": 80.98,
+      "mass_kg": 199.3
+    },
+    {
+      "batch": "B-007",
+      "line": "line-1",
+      "yield_pct": 79.81,
+      "mass_kg": 159.2
+    },
+    {
+      "batch": "B-007",
+      "line": "line-2",
+      "yield_pct": 74.34,
+      "mass_kg": 138.1
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 82.02,
+      "mass_kg": 188.5
+    },
+    {
+      "batch": "B-007",
+      "line": "line-4",
+      "yield_pct": 77.49,
+      "mass_kg": 175.9
+    },
+    {
+      "batch": "B-007",
+      "line": "line-1",
+      "yield_pct": 86.6,
+      "mass_kg": 167.8
+    },
+    {
+      "batch": "B-007",
+      "line": "line-2",
+      "yield_pct": 75.07,
+      "mass_kg": 151
+    },
+    {
+      "batch": "B-007",
+      "line": "line-3",
+      "yield_pct": 82.88,
+      "mass_kg": 177.1
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 78.09,
+      "mass_kg": 160.5
+    },
+    {
+      "batch": "B-008",
+      "line": "line-1",
+      "yield_pct": 78.58,
+      "mass_kg": 154.9
+    },
+    {
+      "batch": "B-008",
+      "line": "line-2",
+      "yield_pct": 77.4,
+      "mass_kg": 156.7
+    },
+    {
+      "batch": "B-008",
+      "line": "line-3",
+      "yield_pct": 78.9,
+      "mass_kg": 144.1
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 83.3,
+      "mass_kg": 183.1
+    },
+    {
+      "batch": "B-008",
+      "line": "line-1",
+      "yield_pct": 73.62,
+      "mass_kg": 178.1
+    },
+    {
+      "batch": "B-008",
+      "line": "line-2",
+      "yield_pct": 78.19,
+      "mass_kg": 171.4
+    },
+    {
+      "batch": "B-008",
+      "line": "line-3",
+      "yield_pct": 76.18,
+      "mass_kg": 177.4
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 74.85,
+      "mass_kg": 172.8
+    },
+    {
+      "batch": "B-008",
+      "line": "line-1",
+      "yield_pct": 76.04,
+      "mass_kg": 156.7
+    },
+    {
+      "batch": "B-008",
+      "line": "line-2",
+      "yield_pct": 80.97,
+      "mass_kg": 186.6
+    },
+    {
+      "batch": "B-008",
+      "line": "line-3",
+      "yield_pct": 75.97,
+      "mass_kg": 148.3
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 89.45,
+      "mass_kg": 148.7
+    },
+    {
+      "batch": "B-008",
+      "line": "line-1",
+      "yield_pct": 75.79,
+      "mass_kg": 158.6
+    },
+    {
+      "batch": "B-008",
+      "line": "line-2",
+      "yield_pct": 84.88,
+      "mass_kg": 185.5
+    },
+    {
+      "batch": "B-008",
+      "line": "line-3",
+      "yield_pct": 85.37,
+      "mass_kg": 176.3
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 75.24,
+      "mass_kg": 167.4
+    },
+    {
+      "batch": "B-008",
+      "line": "line-1",
+      "yield_pct": 82.12,
+      "mass_kg": 132.8
+    },
+    {
+      "batch": "B-008",
+      "line": "line-2",
+      "yield_pct": 87.88,
+      "mass_kg": 164.5
+    },
+    {
+      "batch": "B-008",
+      "line": "line-3",
+      "yield_pct": 85.92,
+      "mass_kg": 135.9
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 82.94,
+      "mass_kg": 155.5
+    },
+    {
+      "batch": "B-008",
+      "line": "line-1",
+      "yield_pct": 75.27,
+      "mass_kg": 126.9
+    },
+    {
+      "batch": "B-008",
+      "line": "line-2",
+      "yield_pct": 85.84,
+      "mass_kg": 158.3
+    },
+    {
+      "batch": "B-008",
+      "line": "line-3",
+      "yield_pct": 79.54,
+      "mass_kg": 132
+    },
+    {
+      "batch": "B-008",
+      "line": "line-4",
+      "yield_pct": 70.91,
+      "mass_kg": 162.9
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 75.89,
+      "mass_kg": 145.5
+    },
+    {
+      "batch": "B-009",
+      "line": "line-2",
+      "yield_pct": 79.89,
+      "mass_kg": 158.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-3",
+      "yield_pct": 71.86,
+      "mass_kg": 142.6
+    },
+    {
+      "batch": "B-009",
+      "line": "line-4",
+      "yield_pct": 76.34,
+      "mass_kg": 156.7
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 75.34,
+      "mass_kg": 174.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-2",
+      "yield_pct": 83.22,
+      "mass_kg": 149.5
+    },
+    {
+      "batch": "B-009",
+      "line": "line-3",
+      "yield_pct": 85.05,
+      "mass_kg": 181.2
+    },
+    {
+      "batch": "B-009",
+      "line": "line-4",
+      "yield_pct": 75.88,
+      "mass_kg": 158.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 77.77,
+      "mass_kg": 149.2
+    },
+    {
+      "batch": "B-009",
+      "line": "line-2",
+      "yield_pct": 72.27,
+      "mass_kg": 178
+    },
+    {
+      "batch": "B-009",
+      "line": "line-3",
+      "yield_pct": 89.93,
+      "mass_kg": 156.8
+    },
+    {
+      "batch": "B-009",
+      "line": "line-4",
+      "yield_pct": 73.19,
+      "mass_kg": 162.2
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 91.78,
+      "mass_kg": 158.5
+    },
+    {
+      "batch": "B-009",
+      "line": "line-2",
+      "yield_pct": 74.02,
+      "mass_kg": 158.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-3",
+      "yield_pct": 77.38,
+      "mass_kg": 133.7
+    },
+    {
+      "batch": "B-009",
+      "line": "line-4",
+      "yield_pct": 73.96,
+      "mass_kg": 149.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 85.18,
+      "mass_kg": 140.9
+    },
+    {
+      "batch": "B-009",
+      "line": "line-2",
+      "yield_pct": 82.55,
+      "mass_kg": 179.5
+    },
+    {
+      "batch": "B-009",
+      "line": "line-3",
+      "yield_pct": 85.19,
+      "mass_kg": 169.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-4",
+      "yield_pct": 75.28,
+      "mass_kg": 152.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 83.27,
+      "mass_kg": 157.4
+    },
+    {
+      "batch": "B-009",
+      "line": "line-2",
+      "yield_pct": 77.45,
+      "mass_kg": 153.8
+    },
+    {
+      "batch": "B-009",
+      "line": "line-3",
+      "yield_pct": 78.2,
+      "mass_kg": 145.8
+    },
+    {
+      "batch": "B-009",
+      "line": "line-4",
+      "yield_pct": 74.91,
+      "mass_kg": 180.6
+    },
+    {
+      "batch": "B-009",
+      "line": "line-1",
+      "yield_pct": 77.38,
+      "mass_kg": 154.6
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 87.69,
+      "mass_kg": 149.5
+    },
+    {
+      "batch": "B-010",
+      "line": "line-3",
+      "yield_pct": 82.12,
+      "mass_kg": 190.7
+    },
+    {
+      "batch": "B-010",
+      "line": "line-4",
+      "yield_pct": 81.67,
+      "mass_kg": 184.9
+    },
+    {
+      "batch": "B-010",
+      "line": "line-1",
+      "yield_pct": 78.63,
+      "mass_kg": 142.5
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 79.94,
+      "mass_kg": 166.5
+    },
+    {
+      "batch": "B-010",
+      "line": "line-3",
+      "yield_pct": 80.15,
+      "mass_kg": 151.9
+    },
+    {
+      "batch": "B-010",
+      "line": "line-4",
+      "yield_pct": 79.08,
+      "mass_kg": 141.9
+    },
+    {
+      "batch": "B-010",
+      "line": "line-1",
+      "yield_pct": 81.7,
+      "mass_kg": 168.4
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 85.1,
+      "mass_kg": 152.1
+    },
+    {
+      "batch": "B-010",
+      "line": "line-3",
+      "yield_pct": 80.31,
+      "mass_kg": 174.6
+    },
+    {
+      "batch": "B-010",
+      "line": "line-4",
+      "yield_pct": 87.38,
+      "mass_kg": 146.6
+    },
+    {
+      "batch": "B-010",
+      "line": "line-1",
+      "yield_pct": 80.16,
+      "mass_kg": 154.2
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 78.75,
+      "mass_kg": 159.9
+    },
+    {
+      "batch": "B-010",
+      "line": "line-3",
+      "yield_pct": 79.09,
+      "mass_kg": 139
+    },
+    {
+      "batch": "B-010",
+      "line": "line-4",
+      "yield_pct": 80.45,
+      "mass_kg": 139.4
+    },
+    {
+      "batch": "B-010",
+      "line": "line-1",
+      "yield_pct": 82.55,
+      "mass_kg": 126.3
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 84.84,
+      "mass_kg": 166.7
+    },
+    {
+      "batch": "B-010",
+      "line": "line-3",
+      "yield_pct": 72.13,
+      "mass_kg": 154.1
+    },
+    {
+      "batch": "B-010",
+      "line": "line-4",
+      "yield_pct": 77.08,
+      "mass_kg": 173.4
+    },
+    {
+      "batch": "B-010",
+      "line": "line-1",
+      "yield_pct": 73.29,
+      "mass_kg": 175.5
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 73.9,
+      "mass_kg": 175.6
+    },
+    {
+      "batch": "B-010",
+      "line": "line-3",
+      "yield_pct": 74.62,
+      "mass_kg": 182.7
+    },
+    {
+      "batch": "B-010",
+      "line": "line-4",
+      "yield_pct": 80.74,
+      "mass_kg": 160
+    },
+    {
+      "batch": "B-010",
+      "line": "line-1",
+      "yield_pct": 80.91,
+      "mass_kg": 172.6
+    },
+    {
+      "batch": "B-010",
+      "line": "line-2",
+      "yield_pct": 88.58,
+      "mass_kg": 154.7
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 77.74,
+      "mass_kg": 161.1
+    },
+    {
+      "batch": "B-011",
+      "line": "line-4",
+      "yield_pct": 81,
+      "mass_kg": 136
+    },
+    {
+      "batch": "B-011",
+      "line": "line-1",
+      "yield_pct": 84.66,
+      "mass_kg": 145.3
+    },
+    {
+      "batch": "B-011",
+      "line": "line-2",
+      "yield_pct": 80.59,
+      "mass_kg": 162.4
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 71.84,
+      "mass_kg": 154.8
+    },
+    {
+      "batch": "B-011",
+      "line": "line-4",
+      "yield_pct": 80.18,
+      "mass_kg": 122.4
+    },
+    {
+      "batch": "B-011",
+      "line": "line-1",
+      "yield_pct": 71.46,
+      "mass_kg": 128.2
+    },
+    {
+      "batch": "B-011",
+      "line": "line-2",
+      "yield_pct": 78.44,
+      "mass_kg": 146.6
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 85.94,
+      "mass_kg": 167.3
+    },
+    {
+      "batch": "B-011",
+      "line": "line-4",
+      "yield_pct": 77.86,
+      "mass_kg": 153.7
+    },
+    {
+      "batch": "B-011",
+      "line": "line-1",
+      "yield_pct": 79.61,
+      "mass_kg": 157.5
+    },
+    {
+      "batch": "B-011",
+      "line": "line-2",
+      "yield_pct": 76.5,
+      "mass_kg": 168
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 85.89,
+      "mass_kg": 164.4
+    },
+    {
+      "batch": "B-011",
+      "line": "line-4",
+      "yield_pct": 74.65,
+      "mass_kg": 155.5
+    },
+    {
+      "batch": "B-011",
+      "line": "line-1",
+      "yield_pct": 74.88,
+      "mass_kg": 160.6
+    },
+    {
+      "batch": "B-011",
+      "line": "line-2",
+      "yield_pct": 84.05,
+      "mass_kg": 115.6
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 83.78,
+      "mass_kg": 159.6
+    },
+    {
+      "batch": "B-011",
+      "line": "line-4",
+      "yield_pct": 84.57,
+      "mass_kg": 152
+    },
+    {
+      "batch": "B-011",
+      "line": "line-1",
+      "yield_pct": 77.09,
+      "mass_kg": 172.3
+    },
+    {
+      "batch": "B-011",
+      "line": "line-2",
+      "yield_pct": 78.35,
+      "mass_kg": 184
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 83.67,
+      "mass_kg": 176
+    },
+    {
+      "batch": "B-011",
+      "line": "line-4",
+      "yield_pct": 80.82,
+      "mass_kg": 153.4
+    },
+    {
+      "batch": "B-011",
+      "line": "line-1",
+      "yield_pct": 77.94,
+      "mass_kg": 153.9
+    },
+    {
+      "batch": "B-011",
+      "line": "line-2",
+      "yield_pct": 90.08,
+      "mass_kg": 184.6
+    },
+    {
+      "batch": "B-011",
+      "line": "line-3",
+      "yield_pct": 78.82,
+      "mass_kg": 143.1
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 75.81,
+      "mass_kg": 117.9
+    },
+    {
+      "batch": "B-012",
+      "line": "line-1",
+      "yield_pct": 88.65,
+      "mass_kg": 153
+    },
+    {
+      "batch": "B-012",
+      "line": "line-2",
+      "yield_pct": 81.33,
+      "mass_kg": 132.4
+    },
+    {
+      "batch": "B-012",
+      "line": "line-3",
+      "yield_pct": 82.82,
+      "mass_kg": 151
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 76.38,
+      "mass_kg": 177.8
+    },
+    {
+      "batch": "B-012",
+      "line": "line-1",
+      "yield_pct": 85,
+      "mass_kg": 187.7
+    },
+    {
+      "batch": "B-012",
+      "line": "line-2",
+      "yield_pct": 80.51,
+      "mass_kg": 142.6
+    },
+    {
+      "batch": "B-012",
+      "line": "line-3",
+      "yield_pct": 78.58,
+      "mass_kg": 162.9
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 84.16,
+      "mass_kg": 155.6
+    },
+    {
+      "batch": "B-012",
+      "line": "line-1",
+      "yield_pct": 76.67,
+      "mass_kg": 163.4
+    },
+    {
+      "batch": "B-012",
+      "line": "line-2",
+      "yield_pct": 76.77,
+      "mass_kg": 177.6
+    },
+    {
+      "batch": "B-012",
+      "line": "line-3",
+      "yield_pct": 73.09,
+      "mass_kg": 158.1
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 81.03,
+      "mass_kg": 175.5
+    },
+    {
+      "batch": "B-012",
+      "line": "line-1",
+      "yield_pct": 84.85,
+      "mass_kg": 186.4
+    },
+    {
+      "batch": "B-012",
+      "line": "line-2",
+      "yield_pct": 81.43,
+      "mass_kg": 176.1
+    },
+    {
+      "batch": "B-012",
+      "line": "line-3",
+      "yield_pct": 90.86,
+      "mass_kg": 166.2
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 82.91,
+      "mass_kg": 157.2
+    },
+    {
+      "batch": "B-012",
+      "line": "line-1",
+      "yield_pct": 78.71,
+      "mass_kg": 169
+    },
+    {
+      "batch": "B-012",
+      "line": "line-2",
+      "yield_pct": 78.22,
+      "mass_kg": 163.7
+    },
+    {
+      "batch": "B-012",
+      "line": "line-3",
+      "yield_pct": 91.45,
+      "mass_kg": 173.5
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 78.39,
+      "mass_kg": 164.1
+    },
+    {
+      "batch": "B-012",
+      "line": "line-1",
+      "yield_pct": 78.55,
+      "mass_kg": 158.9
+    },
+    {
+      "batch": "B-012",
+      "line": "line-2",
+      "yield_pct": 85.32,
+      "mass_kg": 157.5
+    },
+    {
+      "batch": "B-012",
+      "line": "line-3",
+      "yield_pct": 88.18,
+      "mass_kg": 150.1
+    },
+    {
+      "batch": "B-012",
+      "line": "line-4",
+      "yield_pct": 72.35,
+      "mass_kg": 146.5
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 78.41,
+      "mass_kg": 167.9
+    },
+    {
+      "batch": "B-013",
+      "line": "line-2",
+      "yield_pct": 74.95,
+      "mass_kg": 148.3
+    },
+    {
+      "batch": "B-013",
+      "line": "line-3",
+      "yield_pct": 81,
+      "mass_kg": 164.4
+    },
+    {
+      "batch": "B-013",
+      "line": "line-4",
+      "yield_pct": 83.87,
+      "mass_kg": 142
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 77.81,
+      "mass_kg": 188.4
+    },
+    {
+      "batch": "B-013",
+      "line": "line-2",
+      "yield_pct": 82.93,
+      "mass_kg": 128.3
+    },
+    {
+      "batch": "B-013",
+      "line": "line-3",
+      "yield_pct": 84.76,
+      "mass_kg": 165.2
+    },
+    {
+      "batch": "B-013",
+      "line": "line-4",
+      "yield_pct": 91.15,
+      "mass_kg": 186.8
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 76.45,
+      "mass_kg": 184.8
+    },
+    {
+      "batch": "B-013",
+      "line": "line-2",
+      "yield_pct": 85.01,
+      "mass_kg": 149.8
+    },
+    {
+      "batch": "B-013",
+      "line": "line-3",
+      "yield_pct": 78.54,
+      "mass_kg": 156.6
+    },
+    {
+      "batch": "B-013",
+      "line": "line-4",
+      "yield_pct": 83.1,
+      "mass_kg": 158.4
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 75.25,
+      "mass_kg": 176.5
+    },
+    {
+      "batch": "B-013",
+      "line": "line-2",
+      "yield_pct": 87.45,
+      "mass_kg": 171.4
+    },
+    {
+      "batch": "B-013",
+      "line": "line-3",
+      "yield_pct": 91.65,
+      "mass_kg": 178.5
+    },
+    {
+      "batch": "B-013",
+      "line": "line-4",
+      "yield_pct": 86.93,
+      "mass_kg": 152.7
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 83.83,
+      "mass_kg": 140.7
+    },
+    {
+      "batch": "B-013",
+      "line": "line-2",
+      "yield_pct": 74.39,
+      "mass_kg": 169.1
+    },
+    {
+      "batch": "B-013",
+      "line": "line-3",
+      "yield_pct": 82.15,
+      "mass_kg": 174.1
+    },
+    {
+      "batch": "B-013",
+      "line": "line-4",
+      "yield_pct": 79.74,
+      "mass_kg": 161.7
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 69.18,
+      "mass_kg": 144.7
+    },
+    {
+      "batch": "B-013",
+      "line": "line-2",
+      "yield_pct": 80.7,
+      "mass_kg": 157.8
+    },
+    {
+      "batch": "B-013",
+      "line": "line-3",
+      "yield_pct": 77.34,
+      "mass_kg": 167.6
+    },
+    {
+      "batch": "B-013",
+      "line": "line-4",
+      "yield_pct": 81.92,
+      "mass_kg": 171.2
+    },
+    {
+      "batch": "B-013",
+      "line": "line-1",
+      "yield_pct": 73.54,
+      "mass_kg": 129
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 75.8,
+      "mass_kg": 159.5
+    },
+    {
+      "batch": "B-014",
+      "line": "line-3",
+      "yield_pct": 75.73,
+      "mass_kg": 169.8
+    },
+    {
+      "batch": "B-014",
+      "line": "line-4",
+      "yield_pct": 73.97,
+      "mass_kg": 160.2
+    },
+    {
+      "batch": "B-014",
+      "line": "line-1",
+      "yield_pct": 80.2,
+      "mass_kg": 170.2
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 80.96,
+      "mass_kg": 160.1
+    },
+    {
+      "batch": "B-014",
+      "line": "line-3",
+      "yield_pct": 85.14,
+      "mass_kg": 148.4
+    },
+    {
+      "batch": "B-014",
+      "line": "line-4",
+      "yield_pct": 90.93,
+      "mass_kg": 181.6
+    },
+    {
+      "batch": "B-014",
+      "line": "line-1",
+      "yield_pct": 79.83,
+      "mass_kg": 137.3
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 86.52,
+      "mass_kg": 138.7
+    },
+    {
+      "batch": "B-014",
+      "line": "line-3",
+      "yield_pct": 78.51,
+      "mass_kg": 155.4
+    },
+    {
+      "batch": "B-014",
+      "line": "line-4",
+      "yield_pct": 79.63,
+      "mass_kg": 116.8
+    },
+    {
+      "batch": "B-014",
+      "line": "line-1",
+      "yield_pct": 89.99,
+      "mass_kg": 169.6
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 69.81,
+      "mass_kg": 165.9
+    },
+    {
+      "batch": "B-014",
+      "line": "line-3",
+      "yield_pct": 77.8,
+      "mass_kg": 180.1
+    },
+    {
+      "batch": "B-014",
+      "line": "line-4",
+      "yield_pct": 82.63,
+      "mass_kg": 149.1
+    },
+    {
+      "batch": "B-014",
+      "line": "line-1",
+      "yield_pct": 75.26,
+      "mass_kg": 148.8
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 87.86,
+      "mass_kg": 155.9
+    },
+    {
+      "batch": "B-014",
+      "line": "line-3",
+      "yield_pct": 93.41,
+      "mass_kg": 167.7
+    },
+    {
+      "batch": "B-014",
+      "line": "line-4",
+      "yield_pct": 82.42,
+      "mass_kg": 160.6
+    },
+    {
+      "batch": "B-014",
+      "line": "line-1",
+      "yield_pct": 72.13,
+      "mass_kg": 177.7
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 75.22,
+      "mass_kg": 131.7
+    },
+    {
+      "batch": "B-014",
+      "line": "line-3",
+      "yield_pct": 84.72,
+      "mass_kg": 179.8
+    },
+    {
+      "batch": "B-014",
+      "line": "line-4",
+      "yield_pct": 82.77,
+      "mass_kg": 169.3
+    },
+    {
+      "batch": "B-014",
+      "line": "line-1",
+      "yield_pct": 82.39,
+      "mass_kg": 156.7
+    },
+    {
+      "batch": "B-014",
+      "line": "line-2",
+      "yield_pct": 80.01,
+      "mass_kg": 136.3
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 80.53,
+      "mass_kg": 169.2
+    },
+    {
+      "batch": "B-015",
+      "line": "line-4",
+      "yield_pct": 82.08,
+      "mass_kg": 163.5
+    },
+    {
+      "batch": "B-015",
+      "line": "line-1",
+      "yield_pct": 87.39,
+      "mass_kg": 159.7
+    },
+    {
+      "batch": "B-015",
+      "line": "line-2",
+      "yield_pct": 78.31,
+      "mass_kg": 135.7
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 76.53,
+      "mass_kg": 162.6
+    },
+    {
+      "batch": "B-015",
+      "line": "line-4",
+      "yield_pct": 82.62,
+      "mass_kg": 175.3
+    },
+    {
+      "batch": "B-015",
+      "line": "line-1",
+      "yield_pct": 79.9,
+      "mass_kg": 165.1
+    },
+    {
+      "batch": "B-015",
+      "line": "line-2",
+      "yield_pct": 72.48,
+      "mass_kg": 156.8
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 80.09,
+      "mass_kg": 204.3
+    },
+    {
+      "batch": "B-015",
+      "line": "line-4",
+      "yield_pct": 87.69,
+      "mass_kg": 149.6
+    },
+    {
+      "batch": "B-015",
+      "line": "line-1",
+      "yield_pct": 82.41,
+      "mass_kg": 154.6
+    },
+    {
+      "batch": "B-015",
+      "line": "line-2",
+      "yield_pct": 79.5,
+      "mass_kg": 141.7
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 88.75,
+      "mass_kg": 157.9
+    },
+    {
+      "batch": "B-015",
+      "line": "line-4",
+      "yield_pct": 78.46,
+      "mass_kg": 141.6
+    },
+    {
+      "batch": "B-015",
+      "line": "line-1",
+      "yield_pct": 79.84,
+      "mass_kg": 135.4
+    },
+    {
+      "batch": "B-015",
+      "line": "line-2",
+      "yield_pct": 79.33,
+      "mass_kg": 173.4
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 84.62,
+      "mass_kg": 165.9
+    },
+    {
+      "batch": "B-015",
+      "line": "line-4",
+      "yield_pct": 75.28,
+      "mass_kg": 160.9
+    },
+    {
+      "batch": "B-015",
+      "line": "line-1",
+      "yield_pct": 76.7,
+      "mass_kg": 165.1
+    },
+    {
+      "batch": "B-015",
+      "line": "line-2",
+      "yield_pct": 79.59,
+      "mass_kg": 151.7
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 83.7,
+      "mass_kg": 163.6
+    },
+    {
+      "batch": "B-015",
+      "line": "line-4",
+      "yield_pct": 81.01,
+      "mass_kg": 155.3
+    },
+    {
+      "batch": "B-015",
+      "line": "line-1",
+      "yield_pct": 77.62,
+      "mass_kg": 206.1
+    },
+    {
+      "batch": "B-015",
+      "line": "line-2",
+      "yield_pct": 81.9,
+      "mass_kg": 171.5
+    },
+    {
+      "batch": "B-015",
+      "line": "line-3",
+      "yield_pct": 82.31,
+      "mass_kg": 212.7
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 88.61,
+      "mass_kg": 145.3
+    },
+    {
+      "batch": "B-016",
+      "line": "line-1",
+      "yield_pct": 72.23,
+      "mass_kg": 142.7
+    },
+    {
+      "batch": "B-016",
+      "line": "line-2",
+      "yield_pct": 79.98,
+      "mass_kg": 154.6
+    },
+    {
+      "batch": "B-016",
+      "line": "line-3",
+      "yield_pct": 82.55,
+      "mass_kg": 169.5
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 81.09,
+      "mass_kg": 165.1
+    },
+    {
+      "batch": "B-016",
+      "line": "line-1",
+      "yield_pct": 81.36,
+      "mass_kg": 128.5
+    },
+    {
+      "batch": "B-016",
+      "line": "line-2",
+      "yield_pct": 86.59,
+      "mass_kg": 157.9
+    },
+    {
+      "batch": "B-016",
+      "line": "line-3",
+      "yield_pct": 77.99,
+      "mass_kg": 170.8
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 76.44,
+      "mass_kg": 166.7
+    },
+    {
+      "batch": "B-016",
+      "line": "line-1",
+      "yield_pct": 86.48,
+      "mass_kg": 142.3
+    },
+    {
+      "batch": "B-016",
+      "line": "line-2",
+      "yield_pct": 76.27,
+      "mass_kg": 161.4
+    },
+    {
+      "batch": "B-016",
+      "line": "line-3",
+      "yield_pct": 78.69,
+      "mass_kg": 145.1
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 86.67,
+      "mass_kg": 166.7
+    },
+    {
+      "batch": "B-016",
+      "line": "line-1",
+      "yield_pct": 68.72,
+      "mass_kg": 162.9
+    },
+    {
+      "batch": "B-016",
+      "line": "line-2",
+      "yield_pct": 76.84,
+      "mass_kg": 168.1
+    },
+    {
+      "batch": "B-016",
+      "line": "line-3",
+      "yield_pct": 75.37,
+      "mass_kg": 172.7
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 71.82,
+      "mass_kg": 133
+    },
+    {
+      "batch": "B-016",
+      "line": "line-1",
+      "yield_pct": 79.8,
+      "mass_kg": 172
+    },
+    {
+      "batch": "B-016",
+      "line": "line-2",
+      "yield_pct": 81.37,
+      "mass_kg": 151.2
+    },
+    {
+      "batch": "B-016",
+      "line": "line-3",
+      "yield_pct": 71.53,
+      "mass_kg": 166.4
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 71.82,
+      "mass_kg": 135.4
+    },
+    {
+      "batch": "B-016",
+      "line": "line-1",
+      "yield_pct": 74.61,
+      "mass_kg": 178.2
+    },
+    {
+      "batch": "B-016",
+      "line": "line-2",
+      "yield_pct": 83.4,
+      "mass_kg": 165.2
+    },
+    {
+      "batch": "B-016",
+      "line": "line-3",
+      "yield_pct": 86.75,
+      "mass_kg": 148.6
+    },
+    {
+      "batch": "B-016",
+      "line": "line-4",
+      "yield_pct": 83.96,
+      "mass_kg": 150.2
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 75.66,
+      "mass_kg": 152.7
+    },
+    {
+      "batch": "B-017",
+      "line": "line-2",
+      "yield_pct": 73.77,
+      "mass_kg": 127.8
+    },
+    {
+      "batch": "B-017",
+      "line": "line-3",
+      "yield_pct": 80.24,
+      "mass_kg": 146
+    },
+    {
+      "batch": "B-017",
+      "line": "line-4",
+      "yield_pct": 73.94,
+      "mass_kg": 163.8
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 81.68,
+      "mass_kg": 153.1
+    },
+    {
+      "batch": "B-017",
+      "line": "line-2",
+      "yield_pct": 78.6,
+      "mass_kg": 167.5
+    },
+    {
+      "batch": "B-017",
+      "line": "line-3",
+      "yield_pct": 83.85,
+      "mass_kg": 164.3
+    },
+    {
+      "batch": "B-017",
+      "line": "line-4",
+      "yield_pct": 74.51,
+      "mass_kg": 161.6
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 78.91,
+      "mass_kg": 171.4
+    },
+    {
+      "batch": "B-017",
+      "line": "line-2",
+      "yield_pct": 68.74,
+      "mass_kg": 141.8
+    },
+    {
+      "batch": "B-017",
+      "line": "line-3",
+      "yield_pct": 84.15,
+      "mass_kg": 165.8
+    },
+    {
+      "batch": "B-017",
+      "line": "line-4",
+      "yield_pct": 79.99,
+      "mass_kg": 166
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 89.19,
+      "mass_kg": 166.3
+    },
+    {
+      "batch": "B-017",
+      "line": "line-2",
+      "yield_pct": 81.18,
+      "mass_kg": 159.3
+    },
+    {
+      "batch": "B-017",
+      "line": "line-3",
+      "yield_pct": 68.6,
+      "mass_kg": 156.3
+    },
+    {
+      "batch": "B-017",
+      "line": "line-4",
+      "yield_pct": 78.74,
+      "mass_kg": 169.1
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 76.3,
+      "mass_kg": 167.5
+    },
+    {
+      "batch": "B-017",
+      "line": "line-2",
+      "yield_pct": 79.99,
+      "mass_kg": 179.5
+    },
+    {
+      "batch": "B-017",
+      "line": "line-3",
+      "yield_pct": 80.76,
+      "mass_kg": 162.3
+    },
+    {
+      "batch": "B-017",
+      "line": "line-4",
+      "yield_pct": 81.99,
+      "mass_kg": 135.5
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 77.5,
+      "mass_kg": 167.7
+    },
+    {
+      "batch": "B-017",
+      "line": "line-2",
+      "yield_pct": 79.33,
+      "mass_kg": 152.8
+    },
+    {
+      "batch": "B-017",
+      "line": "line-3",
+      "yield_pct": 83.67,
+      "mass_kg": 149.9
+    },
+    {
+      "batch": "B-017",
+      "line": "line-4",
+      "yield_pct": 78.62,
+      "mass_kg": 146.2
+    },
+    {
+      "batch": "B-017",
+      "line": "line-1",
+      "yield_pct": 77.28,
+      "mass_kg": 175.7
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 78.88,
+      "mass_kg": 160.5
+    },
+    {
+      "batch": "B-018",
+      "line": "line-3",
+      "yield_pct": 74,
+      "mass_kg": 164.8
+    },
+    {
+      "batch": "B-018",
+      "line": "line-4",
+      "yield_pct": 76.67,
+      "mass_kg": 168
+    },
+    {
+      "batch": "B-018",
+      "line": "line-1",
+      "yield_pct": 81.77,
+      "mass_kg": 152.2
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 85.36,
+      "mass_kg": 126.1
+    },
+    {
+      "batch": "B-018",
+      "line": "line-3",
+      "yield_pct": 77.78,
+      "mass_kg": 136.8
+    },
+    {
+      "batch": "B-018",
+      "line": "line-4",
+      "yield_pct": 70.94,
+      "mass_kg": 153.9
+    },
+    {
+      "batch": "B-018",
+      "line": "line-1",
+      "yield_pct": 76.01,
+      "mass_kg": 178
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 85.24,
+      "mass_kg": 161.3
+    },
+    {
+      "batch": "B-018",
+      "line": "line-3",
+      "yield_pct": 83.87,
+      "mass_kg": 166.5
+    },
+    {
+      "batch": "B-018",
+      "line": "line-4",
+      "yield_pct": 80.83,
+      "mass_kg": 160
+    },
+    {
+      "batch": "B-018",
+      "line": "line-1",
+      "yield_pct": 79.86,
+      "mass_kg": 166.6
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 91.07,
+      "mass_kg": 155.9
+    },
+    {
+      "batch": "B-018",
+      "line": "line-3",
+      "yield_pct": 86.35,
+      "mass_kg": 172.7
+    },
+    {
+      "batch": "B-018",
+      "line": "line-4",
+      "yield_pct": 75.23,
+      "mass_kg": 181.3
+    },
+    {
+      "batch": "B-018",
+      "line": "line-1",
+      "yield_pct": 86.75,
+      "mass_kg": 161
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 80.36,
+      "mass_kg": 156
+    },
+    {
+      "batch": "B-018",
+      "line": "line-3",
+      "yield_pct": 84.21,
+      "mass_kg": 154.4
+    },
+    {
+      "batch": "B-018",
+      "line": "line-4",
+      "yield_pct": 70.9,
+      "mass_kg": 149.1
+    },
+    {
+      "batch": "B-018",
+      "line": "line-1",
+      "yield_pct": 84.93,
+      "mass_kg": 179.7
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 82.09,
+      "mass_kg": 159.7
+    },
+    {
+      "batch": "B-018",
+      "line": "line-3",
+      "yield_pct": 84.73,
+      "mass_kg": 160.2
+    },
+    {
+      "batch": "B-018",
+      "line": "line-4",
+      "yield_pct": 83.07,
+      "mass_kg": 162.5
+    },
+    {
+      "batch": "B-018",
+      "line": "line-1",
+      "yield_pct": 80.34,
+      "mass_kg": 166.8
+    },
+    {
+      "batch": "B-018",
+      "line": "line-2",
+      "yield_pct": 82.78,
+      "mass_kg": 156.2
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 85.5,
+      "mass_kg": 158.9
+    },
+    {
+      "batch": "B-019",
+      "line": "line-4",
+      "yield_pct": 83.03,
+      "mass_kg": 155.5
+    },
+    {
+      "batch": "B-019",
+      "line": "line-1",
+      "yield_pct": 79.21,
+      "mass_kg": 164.8
+    },
+    {
+      "batch": "B-019",
+      "line": "line-2",
+      "yield_pct": 76.22,
+      "mass_kg": 173.5
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 72.81,
+      "mass_kg": 137.4
+    },
+    {
+      "batch": "B-019",
+      "line": "line-4",
+      "yield_pct": 81.22,
+      "mass_kg": 164
+    },
+    {
+      "batch": "B-019",
+      "line": "line-1",
+      "yield_pct": 82.01,
+      "mass_kg": 169.4
+    },
+    {
+      "batch": "B-019",
+      "line": "line-2",
+      "yield_pct": 81.05,
+      "mass_kg": 161.4
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 73.54,
+      "mass_kg": 182.7
+    },
+    {
+      "batch": "B-019",
+      "line": "line-4",
+      "yield_pct": 86.29,
+      "mass_kg": 162.6
+    },
+    {
+      "batch": "B-019",
+      "line": "line-1",
+      "yield_pct": 76.48,
+      "mass_kg": 160.6
+    },
+    {
+      "batch": "B-019",
+      "line": "line-2",
+      "yield_pct": 86.99,
+      "mass_kg": 137.2
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 87.97,
+      "mass_kg": 141.4
+    },
+    {
+      "batch": "B-019",
+      "line": "line-4",
+      "yield_pct": 81.28,
+      "mass_kg": 170.6
+    },
+    {
+      "batch": "B-019",
+      "line": "line-1",
+      "yield_pct": 93.67,
+      "mass_kg": 140.7
+    },
+    {
+      "batch": "B-019",
+      "line": "line-2",
+      "yield_pct": 82.1,
+      "mass_kg": 158.9
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 76.53,
+      "mass_kg": 143.3
+    },
+    {
+      "batch": "B-019",
+      "line": "line-4",
+      "yield_pct": 80.4,
+      "mass_kg": 123.6
+    },
+    {
+      "batch": "B-019",
+      "line": "line-1",
+      "yield_pct": 84.59,
+      "mass_kg": 180.8
+    },
+    {
+      "batch": "B-019",
+      "line": "line-2",
+      "yield_pct": 82.55,
+      "mass_kg": 156.4
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 80.84,
+      "mass_kg": 138.6
+    },
+    {
+      "batch": "B-019",
+      "line": "line-4",
+      "yield_pct": 76.02,
+      "mass_kg": 156.7
+    },
+    {
+      "batch": "B-019",
+      "line": "line-1",
+      "yield_pct": 79.3,
+      "mass_kg": 167.4
+    },
+    {
+      "batch": "B-019",
+      "line": "line-2",
+      "yield_pct": 84.24,
+      "mass_kg": 143.2
+    },
+    {
+      "batch": "B-019",
+      "line": "line-3",
+      "yield_pct": 95.13,
+      "mass_kg": 181.1
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 83.85,
+      "mass_kg": 155.3
+    },
+    {
+      "batch": "B-020",
+      "line": "line-1",
+      "yield_pct": 84.36,
+      "mass_kg": 167.9
+    },
+    {
+      "batch": "B-020",
+      "line": "line-2",
+      "yield_pct": 71.55,
+      "mass_kg": 197.6
+    },
+    {
+      "batch": "B-020",
+      "line": "line-3",
+      "yield_pct": 82.56,
+      "mass_kg": 177.1
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 83.08,
+      "mass_kg": 149.2
+    },
+    {
+      "batch": "B-020",
+      "line": "line-1",
+      "yield_pct": 71.53,
+      "mass_kg": 168.4
+    },
+    {
+      "batch": "B-020",
+      "line": "line-2",
+      "yield_pct": 83.23,
+      "mass_kg": 189.4
+    },
+    {
+      "batch": "B-020",
+      "line": "line-3",
+      "yield_pct": 77.86,
+      "mass_kg": 158.5
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 78.56,
+      "mass_kg": 183.1
+    },
+    {
+      "batch": "B-020",
+      "line": "line-1",
+      "yield_pct": 88.92,
+      "mass_kg": 168.4
+    },
+    {
+      "batch": "B-020",
+      "line": "line-2",
+      "yield_pct": 83.68,
+      "mass_kg": 131.2
+    },
+    {
+      "batch": "B-020",
+      "line": "line-3",
+      "yield_pct": 87.28,
+      "mass_kg": 164.3
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 85.9,
+      "mass_kg": 173
+    },
+    {
+      "batch": "B-020",
+      "line": "line-1",
+      "yield_pct": 84.42,
+      "mass_kg": 167.3
+    },
+    {
+      "batch": "B-020",
+      "line": "line-2",
+      "yield_pct": 79.17,
+      "mass_kg": 144.2
+    },
+    {
+      "batch": "B-020",
+      "line": "line-3",
+      "yield_pct": 79.6,
+      "mass_kg": 176.6
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 86.3,
+      "mass_kg": 148.1
+    },
+    {
+      "batch": "B-020",
+      "line": "line-1",
+      "yield_pct": 77.57,
+      "mass_kg": 167.3
+    },
+    {
+      "batch": "B-020",
+      "line": "line-2",
+      "yield_pct": 79.25,
+      "mass_kg": 165.1
+    },
+    {
+      "batch": "B-020",
+      "line": "line-3",
+      "yield_pct": 73.97,
+      "mass_kg": 134.2
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 68.79,
+      "mass_kg": 184
+    },
+    {
+      "batch": "B-020",
+      "line": "line-1",
+      "yield_pct": 78.58,
+      "mass_kg": 179.2
+    },
+    {
+      "batch": "B-020",
+      "line": "line-2",
+      "yield_pct": 82.89,
+      "mass_kg": 132.5
+    },
+    {
+      "batch": "B-020",
+      "line": "line-3",
+      "yield_pct": 75.92,
+      "mass_kg": 169.2
+    },
+    {
+      "batch": "B-020",
+      "line": "line-4",
+      "yield_pct": 79.54,
+      "mass_kg": 156
+    }
+  ],
+  "row_count": 500,
+  "truncated": true,
+  "strategy": "head"
+}
