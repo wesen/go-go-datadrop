@@ -59,3 +59,12 @@ Phase 4: 19 new components with 59 stories, Storybook now 142 (commit fa934fc). 
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/molecules/ChannelRow/ChannelRow.tsx — the component that existed twice
 
+
+## 2026-07-25
+
+Phase 5: DR-33 appkit move and five presentational organisms (commit c3c3788). The five account apps drop from 1262 to 658 lines; Storybook at 180. Found and fixed a hole in layers.test.ts: an unknown layer was silently unconstrained
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/layers.test.ts — the graph after DR-33, plus the new every-source-directory guard
+

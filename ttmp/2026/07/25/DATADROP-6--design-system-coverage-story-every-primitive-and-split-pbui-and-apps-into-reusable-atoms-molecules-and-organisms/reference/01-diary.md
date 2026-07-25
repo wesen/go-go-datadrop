@@ -1443,3 +1443,217 @@ Built: 1 foundation, 3 atoms, 15 molecules.
 Dropped, for want of a call site: `Inline`, `ScrollRegion`, `CountBadge`,
 `FormRow`.
 Moved: `formatBytes`, `apps/UploadApp/upload.ts` → `model/format.ts`.
+
+## Step 9: Phase 5 — the graph change, and five presentational organisms
+
+`apps/registry.ts` moved to `src/appkit/`, the `organisms -> apps` edge is gone,
+and `apps -> organisms` is now permitted. On the far side of that 49-line move,
+the five account applications became containers over presentational panels:
+**SignInApp 146 → 57 lines, ProfileApp 186 → 91, MemberList 177 → 88, TokensApp
+262 → 106, UploadApp 491 → 316.** Storybook is at 180 stories.
+
+The phase found a hole in the layer test that had been there since DATADROP-4,
+and it found it the worst possible way: by falling into it.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Do DR-33, then extract the five organisms and make
+the applications thin.
+
+**Inferred user intent:** The structural change that makes the reference
+package's pattern legal here, done after the cheap value was already banked.
+
+**Commit (code):** `c3c3788` — "DATADROP-6 phase 5: appkit, and five presentational organisms"
+
+### What I did
+
+- `git mv src/apps/registry.ts src/appkit/registry.ts`, rewrote 22 import paths.
+- Rewrote the `ALLOWED` table: added `appkit`, deleted `organisms -> apps`,
+  added `apps -> organisms`.
+- Replaced the "organisms/apps pair stays acyclic" test with one that guards the
+  deleted edge by name, and **added a new test** — see below.
+- Built `SignInPanel`, `ProfilePanel`, `MemberPanel`, `TokensPanel`,
+  `UploadPanel`, each with the awkward-mode stories §18.2 names. 38 new stories.
+- Rewrote the five applications as containers.
+- Verified in a browser against a real server: the account workspace renders all
+  three tiles through the new organisms, including the root-principal state.
+
+### Why
+
+**The move is 49 lines and it unblocks the whole phase.** `apps/registry.ts` is
+an `AppDescriptor` interface, a `Map` and three functions over it. It is not an
+application — it is the contract applications register against — and it sat
+under `apps/` for historical reasons only. `organisms/Tile` importing `appFor`
+from it was the *single* reason the graph carried `organisms -> apps`, and that
+edge is why `apps -> organisms` had to be forbidden to keep the pair acyclic.
+With the file moved, `organisms` no longer names `apps` at all, so no cycle can
+form and the presentational-panel pattern becomes available.
+
+**`TokenSummary` now takes the wire shape, optional fields and all.** The
+container's `ApiToken` has `last_used_at?: string`, the molecule wanted
+`string | null`, and the honest fix is the molecule matching the server rather
+than four hand-written literals whose only job is turning `undefined` into
+`null`.
+
+### What worked
+
+**Rewriting the applications as containers made three of them readable in one
+screen.** `SignInApp` is now 57 lines and every one of them is either a hook, the
+callback-error plumbing, or a prop. What it *stopped* containing is the six
+error-code strings and both mode branches, which are now story-covered.
+
+**The browser sweep confirmed the root-principal path.** The profile tile renders
+"signed in as the root principal — there is no user record for it" with no
+session block at all — which is defect 2's territory, now with three stories
+pinning it (`RootPrincipal`, `SessionsStillLoading`, `NoOtherSessions`).
+
+### What didn't work
+
+**I created `src/appkit/` and the layer test went green while the new layer was
+entirely unconstrained.** This is the most useful failure of the phase.
+
+`layers.test.ts` skips what it does not recognise, twice:
+
+```ts
+if (!from || !(from in ALLOWED)) continue;   // the file's own layer
+if (!(to in ALLOWED)) continue;              // the layer it imports
+```
+
+So a directory absent from the table has *no* rules applied to it and *no* rules
+applied to edges into it. I had moved the registry, not yet edited the table,
+run the suite, and seen six passes. The equivalent guard existed for
+`components/` — "every component directory sits in a known layer" — and had
+never been generalised one level up.
+
+Added `every source directory sits in the graph`, and verified it bites:
+
+```text
+$ mkdir src/widgets && echo 'export const x = 1' > src/widgets/x.ts
+$ bun test test/layers.test.ts
++   "widgets"
+(fail) the layer graph is one-way > every source directory sits in the graph
+```
+
+Deleting a directory correctly does *not* fail it — the check is that everything
+present is known, not that everything known is present.
+
+**A Python heredoc died on its last line and I nearly believed the result.**
+
+```text
+File "<stdin>", line 111
+    print("appkit" in s, "apps\"," in s)
+                                  ^
+SyntaxError: unterminated string literal
+```
+
+The syntax error was in the `print`, so `p.write_text(s)` never ran — the edit
+was silently discarded. The test I ran immediately afterwards passed, for the
+unrelated reason above, so for about a minute I had "the graph change is
+applied and green" when neither half was true. Two lessons: put the write before
+the diagnostics, and be suspicious of a test that passes on the first attempt at
+a structural change.
+
+**Three unused declarations survived into `UploadApp`** and `tsc` caught all
+three: `formatBytes`, the `dragging` state and the `fileInput` ref. All three
+had moved into `FileDropZone`, which owns the drop surface and the hidden input
+now — but the container kept its copies, because deleting the JSX does not
+delete what fed it.
+
+### What I learned
+
+**A test that skips what it does not recognise needs a companion test that
+enumerates.** `layers.test.ts` had exactly this pair for `components/` and
+exactly one half of it for `src/`. The general shape: any check of the form
+"for each known X, verify Y" wants a sibling "the set of known X is the set of
+actual X", or the first one silently shrinks.
+
+**Three states, not two, for anything loaded.** `ProfilePanel` distinguishes
+`sessions === undefined` (loading) from `sessions.length === 0` (there are
+none). Collapsing them is precisely how a heading comes to render above
+nothing — which is the shape defect 2 had — so both are props states and both
+are stories.
+
+### What was tricky to build
+
+**Deciding how much of `UploadApp` to move.** It is 491 lines, of which roughly
+130 are the protocol driver: open a draft, hash, HEAD the blob, mount or send,
+commit. That is genuinely application logic and it stays. What moved is the
+~250 lines of JSX around it.
+
+The judgement call was `renderItem`. The uploader wraps each row in a
+`Presentation` so an upload is right-clickable, and the obvious thing is for
+`UploadQueueList` to do that. But then every story of the queue needs a
+`PbuiProvider`, and the panel could not be rendered against literal data — which
+is the entire property being bought. So the seam stays, and the container passes
+the wrapper. It is the fourth use of that pattern and the one where I most
+wanted to take the shortcut.
+
+**`ProfilePanel` needed a `renderDropAccess` prop for the same reason, one level
+up.** The member list *fetches*, so it cannot be a molecule; the panel takes a
+function and the container supplies `<MemberList>`. Without it, `ProfilePanel`
+would import `MemberList` from `apps/`, which is the edge DR-33 just deleted.
+
+### What warrants a second pair of eyes
+
+- **The `appkit` name.** It holds one file. `contract/`, `registry/` or
+  `platform/` would all do; I picked the one that reads as "the kit an app is
+  built against" and it should be argued with now rather than after it has ten
+  files in it.
+- **`UploadApp` is still 316 lines.** That is the protocol driver plus the
+  props. A reviewer should check that nothing *presentational* is left in it.
+- **`TokenSummary` taking the wire shape.** It couples a molecule to
+  `api/client`'s optionality without importing it. I think that is right; it is
+  arguable.
+- **Five organisms now import from `molecules`, which imports `store`.** No
+  cycle, but the panels are further from "pure props in, callbacks out" than the
+  reference package's are.
+
+### What should be done in the future
+
+- Phase 6: `GUIDELINES.md`, the anti-regression test, and the `Button` disabled
+  contrast fix deferred from phase 1.
+- The anti-regression test's allowlist must cover `pbui/` (which may not import
+  `atoms` at all) and elements carrying a non-default ARIA role — recorded in
+  step 6 and still true.
+
+### Code review instructions
+
+- Start with `test/layers.test.ts`: the `appkit` entry, the deleted edge, and
+  the new `every source directory sits in the graph` test. Break that last one
+  with `mkdir src/anything` before trusting it.
+- Then `apps/SignInApp/SignInApp.tsx` — 57 lines, and the clearest example of
+  what a container looks like here.
+- Then the four `render*` props against DR-38, one of which
+  (`renderDropAccess`) exists specifically because the alternative is the edge
+  DR-33 deleted.
+- Validate:
+  ```bash
+  bun run --cwd=ui typecheck && bun test --cwd ui
+  bun run --cwd=ui build-storybook
+  make ui && ./datadrop serve --auth none    # then open the account workspace
+  ```
+
+### Technical details
+
+```text
+                         before   after
+apps/*.tsx total          3 093    2 867
+  SignInApp                 146       57
+  ProfileApp                186       91
+  MemberList                177       88
+  TokensApp                 262      106
+  UploadApp                 491      316
+component directories        42       47
+stories                     142      180
+bun tests                   172      173
+```
+
+The graph, after DR-33:
+
+```text
+appkit    -> model, pbui, store
+organisms -> …, api, appkit          (was: …, api, apps)
+apps      -> …, organisms, appkit    (organisms was forbidden)
+```
