@@ -33,8 +33,30 @@ export const FILTER_OPS: FilterOp[] = ["=", "!=", ">", "<"];
 
 let stepCounter = 0;
 
-/** Mint a step of the given kind with sensible defaults for the field list. */
-export function newStep(kind: Step["kind"], fields: Field[]): Step {
+/**
+ * The step variant for a given kind.
+ *
+ * `Omit<Step, "id" | "on">` over a discriminated union collapses to the keys
+ * the members share, which is almost none of them. `Extract` keeps the variant
+ * whole, so `newStep("filter", …)` is known to have `field`, `op` and `value`
+ * and a caller can spread it without a cast.
+ */
+export type StepOf<K extends Step["kind"]> = Extract<Step, { kind: K }>;
+
+/**
+ * Mint a step of the given kind with sensible defaults for the field list.
+ *
+ * The body builds a `Step` and the signature narrows it. TypeScript cannot
+ * verify that a switch on a *generic* discriminant narrows the return type — it
+ * checks each branch against the whole of `StepOf<K>` rather than against the
+ * branch's own variant — so the cast is at the boundary, once, rather than at
+ * every call site.
+ */
+export function newStep<K extends Step["kind"]>(kind: K, fields: Field[]): StepOf<K> {
+  return buildStep(kind, fields) as StepOf<K>;
+}
+
+function buildStep(kind: Step["kind"], fields: Field[]): Step {
   const id = `s${++stepCounter}`;
   const quantitative = fields.filter((f) => f.type === "q").map((f) => f.name);
   const categorical = fields.filter((f) => f.type !== "q").map((f) => f.name);

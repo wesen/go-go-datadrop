@@ -1051,3 +1051,106 @@ help      about/help · watchlist · trace
 $ bun test               141 pass  0 fail
 $ go test ./... -count=1 all ok, smoke test included
 ```
+
+---
+
+## Step 7: Phase 6 — tutorials, and the caps that were still missing
+
+Four tutorial workspaces with working ▶ buttons, the mark cap from §14.3, and a
+type fix in `newStep` that the tutorials forced.
+
+Verified against the served binary: opening **2·pipeline**, pressing
+*▶ filter station ≠ roof*, and watching the pipeline tile gain a real `FILTER`
+step while `OUT` went from 120 rows to 90 — the roof station's thirty readings.
+The step is editable and toggleable, because it is the same step the menu
+creates.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish the ticket.
+
+### What I did
+
+- `apps/tutorials/` — `Tutorial.tsx` (the machinery) and four lessons.
+- Four workspace presets: `1·objects`, `2·pipeline`, `3·encode`, `4·docs`.
+- `MAX_MARKS` in `model/plot.ts`, with `markOverflow` reported and surfaced.
+- `newStep` made generic in its kind.
+
+### What worked
+
+**The tutorials are executable documentation and therefore cannot rot.** Every
+▶ dispatches exactly the action the interface dispatches — not a simulation of
+it — so renaming an action creator makes the tutorial fail to compile. That is a
+property a screenshot walkthrough can never have, and it is the reason to port
+them early rather than last: they are the cheapest regression test in the
+project for "do the verbs still do what the prose says".
+
+The mark cap now reports rather than truncating silently, which is the same
+principle as the truncation notice one level down.
+
+### What didn't work
+
+**`newStep` returned the un-narrowed union**, so the tutorials could not spread
+its result:
+
+```
+Object literal may only specify known properties, and 'field' does not exist in
+type '{ id: string; kind: "derive"; ... }'
+```
+
+This is the trap DATADROP-3's diary already recorded once — `Omit<Step, …>` over
+a discriminated union collapses to the shared keys — reappearing in a different
+disguise. Fixed with `StepOf<K> = Extract<Step, {kind: K}>` and a generic
+signature.
+
+TypeScript then refused the implementation, because it cannot verify that a
+switch on a *generic* discriminant narrows the return: it checks every branch
+against the whole of `StepOf<K>`. The resolution is an inner function returning
+`Step` and one documented cast at the boundary — one cast in the library rather
+than one at every call site.
+
+### What I learned
+
+- A known trap recurs in a new form. Recording it once was not enough; the
+  generic signature is what actually prevents it.
+- **"Executable documentation" and "the ▶ button" are the same trick as
+  rendering the glossary from live components.** Both make the docs
+  compile-checked. It is worth reaching for a third time.
+
+### What warrants a second pair of eyes
+
+- The tutorials hard-code column names from `lab / temps` (`data.station`,
+  `data.temp_c`). Against a different source the ▶ buttons add steps naming
+  columns that do not exist — which the pipeline reports honestly ("filter
+  refers to X, which the pipeline no longer produces") but is not a good first
+  experience. Seeding a dedicated `tutorial` drop is the recorded fix and is not
+  done.
+
+### What should be done in the future
+
+- Seed a `tutorial` drop so the lessons always have the data their prose
+  assumes.
+- Wire the live tail into `ChartApp`, with DR-15's pause during accept.
+- `useTableFor` should key on `(source, limit)` — carried from step 5.
+
+### Code review instructions
+
+- `apps/tutorials/Tutorial.tsx` — the ▶ machinery and why it dispatches real
+  actions.
+- `model/pipeline.ts:newStep` — the generic signature and the single cast.
+- `model/plot.ts` — `MAX_MARKS` and `markOverflow`.
+- Tour: `/ui/` → the four numbered workspaces.
+
+### Technical details
+
+```
+▶ filter station ≠ roof
+  pipeline   filter data.station != roof
+  OUT        120 → 90 rows
+
+$ bun test                143 pass  0 fail
+$ go test ./... -count=1  all ok
+$ bun run build-storybook completed
+```

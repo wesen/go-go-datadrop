@@ -1,7 +1,7 @@
 import { describe, expect, test } from "bun:test";
 import { defaultChart } from "../src/model/chart";
 import type { ChartSpec } from "../src/model/chart";
-import { buildPlot, lerpHex, niceTicks } from "../src/model/plot";
+import { MAX_MARKS, buildPlot, lerpHex, niceTicks } from "../src/model/plot";
 import type { Field, Table } from "../src/model/table";
 
 function field(name: string, type: Field["type"]): Field {
@@ -369,5 +369,36 @@ describe("defaultChart", () => {
     expect(chart.mapping.x).toBe("a");
     expect(chart.mapping.y).toBe("b");
     expect(chart.geom).toBe("point");
+  });
+});
+
+describe("the mark cap", () => {
+  // 50 000 points is 50 000 SVG nodes each wrapped in a presentation with event
+  // handlers — a browser that stops responding. The cap has to be reported,
+  // because a silent cap is the same defect as a silent truncation.
+  test("caps marks per panel and reports the overflow", () => {
+    const rows = Array.from({ length: MAX_MARKS + 250 }, (_, i) => ({ x: i, y: i % 97 }));
+    const t = tableOf(
+      [
+        { name: "x", type: "q", inferred_from: "values" },
+        { name: "y", type: "q", inferred_from: "values" },
+      ],
+      rows,
+    );
+    const plot = buildPlot(t, { ...defaultChart(t), geom: "point" }, 640, 360);
+    expect(plot.panels[0]!.marks.length).toBe(MAX_MARKS);
+    expect(plot.markOverflow).toBe(250);
+  });
+
+  test("reports no overflow when everything fits", () => {
+    const rows = Array.from({ length: 40 }, (_, i) => ({ x: i, y: i }));
+    const t = tableOf(
+      [
+        { name: "x", type: "q", inferred_from: "values" },
+        { name: "y", type: "q", inferred_from: "values" },
+      ],
+      rows,
+    );
+    expect(buildPlot(t, defaultChart(t), 640, 360).markOverflow).toBe(0);
   });
 });

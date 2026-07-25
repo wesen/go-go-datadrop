@@ -18,3 +18,7 @@ import "./InspectorApp/InspectorApp";
 import "./WatchlistApp/WatchlistApp";
 import "./TraceApp/TraceApp";
 import "./AboutApp/AboutApp";
+import "./tutorials/Tut1";
+import "./tutorials/Tut2";
+import "./tutorials/Tut3";
+import "./tutorials/Tut4";

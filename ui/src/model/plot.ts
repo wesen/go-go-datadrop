@@ -25,6 +25,16 @@ export const MAX_CATEGORIES = 8;
 /** How many facet panels are drawn before the rest are dropped. */
 export const MAX_FACETS = 6;
 
+/**
+ * How many marks are drawn per panel before the rest are dropped.
+ *
+ * 50 000 points is 50 000 SVG nodes, each wrapped in a presentation with event
+ * handlers — a browser that stops responding. The cap is reported through
+ * `markOverflow` rather than applied silently: a silent cap is the same defect
+ * as a silent truncation, and deserves the same treatment.
+ */
+export const MAX_MARKS = 5_000;
+
 export type Mark =
   | { kind: "circle"; x: number; y: number; r: number; fill: string; row: Row }
   | { kind: "rect"; x: number; y: number; w: number; h: number; fill: string; row: Row }
@@ -66,6 +76,8 @@ export interface Plot {
   legendOverflow: number;
   /** Facet values beyond MAX_FACETS, which are not drawn at all. */
   facetOverflow: number;
+  /** Rows beyond MAX_MARKS in the busiest panel, which are not drawn. */
+  markOverflow: number;
   xTicks: Tick[];
   yTicks: Tick[];
   padL: number;
@@ -125,6 +137,7 @@ function emptyPlot(problems: string[], width: number, height: number, rowsOut: n
     legendTitle: null,
     legendOverflow: 0,
     facetOverflow: 0,
+    markOverflow: 0,
     xTicks: [],
     yTicks: [],
     padL: 0,
@@ -368,16 +381,23 @@ export function buildPlot(
           .map(({ pos, label }) => ({ pos, label }));
 
   // ---- marks ------------------------------------------------------------
+  let markOverflow = 0;
   const panels: Panel[] = facetValues.map((facetValue, index) => {
     const column = index % columns;
     const row = Math.floor(index / columns);
     const x0 = padL + column * (panelW + gapX);
     const y0 = padT + row * (panelH + gapY + (facetCount > 1 ? padT : 0));
 
-    const panelRowsData =
+    const allPanelRows =
       facetValue === null || !facetName
         ? rows
         : rows.filter((r) => asText(r[facetName]) === facetValue);
+
+    // Cap the marks, and remember how many were dropped. Reported, never silent.
+    const panelRowsData = allPanelRows.slice(0, MAX_MARKS);
+    if (allPanelRows.length > panelRowsData.length) {
+      markOverflow = Math.max(markOverflow, allPanelRows.length - panelRowsData.length);
+    }
 
     const marks: Mark[] = [];
     const baseline = log ? panelH : scaleY(clamp(0, yLo, yHi));
@@ -521,6 +541,7 @@ export function buildPlot(
     legendTitle: colorName ?? null,
     legendOverflow: categoryOverflow,
     facetOverflow,
+    markOverflow,
     xTicks,
     yTicks,
     padL,

@@ -34,6 +34,26 @@ export function defaultSpaces(): LayoutState {
     },
     {
       id: newId(),
+      name: "1·objects",
+      tree: split("row", leaf("tut1"), split("col", leaf("sources"), leaf("inspector"), 0.55), 0.44),
+    },
+    {
+      id: newId(),
+      name: "2·pipeline",
+      tree: split("row", leaf("tut2"), split("col", leaf("pipeline"), leaf("table"), 0.5), 0.42),
+    },
+    {
+      id: newId(),
+      name: "3·encode",
+      tree: split("row", leaf("tut3"), split("col", leaf("encode"), leaf("chart"), 0.45), 0.42),
+    },
+    {
+      id: newId(),
+      name: "4·docs",
+      tree: split("row", leaf("tut4"), split("col", leaf("charts"), leaf("gallery"), 0.55), 0.42),
+    },
+    {
+      id: newId(),
       name: "help",
       tree: split("row", leaf("about"), split("col", leaf("watch"), leaf("trace"), 0.45), 0.55),
     },

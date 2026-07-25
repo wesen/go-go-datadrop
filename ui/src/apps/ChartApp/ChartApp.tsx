@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { Presentation } from "../../pbui";
+import { MAX_MARKS } from "../../model/plot";
 import type { Mark, Plot } from "../../model/plot";
 import { registerApp, type AppProps } from "../registry";
 import { useDocPlot } from "../useTable";
@@ -77,7 +78,26 @@ function ChartApp({ leafId, docId }: AppProps) {
               ))}
             </div>
           ) : (
-            <PlotSvg plot={plot} docId={doc?.id ?? null} colorField={doc?.spec.mapping.color ?? null} />
+            <>
+              <PlotSvg plot={plot} docId={doc?.id ?? null} colorField={doc?.spec.mapping.color ?? null} />
+              {/* Every place the view is not the whole truth says so. */}
+              {(plot.markOverflow > 0 || plot.facetOverflow > 0) && (
+                <div role="status" style={{ marginTop: "var(--pbui-space-2)" }}>
+                  {plot.markOverflow > 0 && (
+                    <Text size="tiny" tone="danger">
+                      {plot.markOverflow.toLocaleString()} rows are not drawn — a panel is capped at{" "}
+                      {MAX_MARKS.toLocaleString()} marks. Add a limit or a summarize step, or
+                      narrow the source.
+                    </Text>
+                  )}
+                  {plot.facetOverflow > 0 && (
+                    <Text size="tiny" tone="danger">
+                      {plot.facetOverflow} facet panels are not drawn.
+                    </Text>
+                  )}
+                </div>
+              )}
+            </>
           )}
         </div>
       </AppBody>
