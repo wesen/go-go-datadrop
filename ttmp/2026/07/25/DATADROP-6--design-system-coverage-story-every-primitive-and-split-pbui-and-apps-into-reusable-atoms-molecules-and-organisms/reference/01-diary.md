@@ -495,3 +495,141 @@ entry, written as the work is done rather than after.
 ```text
 AGENT.md   +21 lines, <diaryGuidelines> between <libraryGuidelines> and <debuggingGuidelines>
 ```
+
+## Step 4: Ticket bookkeeping, commit, and the reMarkable upload
+
+Filled in the ticket index with the overview, the eight decision records and the
+evidence summary; added the seven phases to `tasks.md`; updated the changelog;
+committed everything as `945027b`; converted the guide to a 30-page PDF and
+uploaded it to the device.
+
+Written before doing the work rather than after, which is the point of step 3.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1 — "Store in the ticket and the nupload to remarkable.")
+
+**Assistant interpretation:** Complete the ticket's own documents, commit, and
+put the guide on the reMarkable.
+
+**Inferred user intent:** They read long documents on the device rather than on
+screen. A guide that only exists in `ttmp/` will not actually be read.
+
+**Commit (docs):** `945027b` — "DATADROP-6: analysis and design for design-system coverage and decomposition"
+
+### What I did
+
+- Wrote the ticket `index.md` overview: the measurements, what the ticket is and
+  is not, the structure reference, the AGENT.md override note, and the DR table.
+- `docmgr task add` × 7 for the phases; `docmgr changelog update`.
+- Committed `945027b` (7 files: AGENT.md plus the whole ticket).
+- `pandoc → xelatex → PDF`, then `rmapi mkdir Projects/2026/07` and
+  `rmapi put`. Verified with `rmapi ls Projects/2026/07`.
+
+### Why
+
+`Projects/2026/07` is a new folder. I searched the device for the DATADROP-5
+guide first — root, `Design`, `ai`, `Notes`, `Projects` — and did not find it,
+so there was no existing convention to follow. `Projects/YYYY/MM` matches the
+Obsidian vault's layout, which is the closest thing to a convention this
+material has.
+
+### What worked
+
+`docmgr ticket list | grep -c DATADROP-6` returned 2 before committing. That
+check exists because DATADROP-5 was silently dropped from the listing by
+invalid YAML in a `RelatedFiles` note — a note beginning with a `"` character.
+Running it *before* the commit rather than after is the cheap version of that
+lesson.
+
+### What didn't work
+
+**The first PDF was missing five glyphs.** With pandoc's default Latin Modern
+fonts:
+
+```text
+[WARNING] Missing character: There is no ✕ (U+2715) in font [lmmono10-regular]
+[WARNING] Missing character: There is no ⌖ (U+2316) in font [lmmono10-regular]
+[WARNING] Missing character: There is no ↕ (U+2195) in font [lmmono10-regular]
+[WARNING] Missing character: There is no ✓ (U+2713) in font [lmmono10-regular]
+[WARNING] Missing character: There is no ≤ (U+2264) in font [lmroman10-regular]
+```
+
+Missing characters render as *nothing* — not as a box — so the failure is
+silent on the page. That matters here specifically because the glyphs are the
+subject of §15.3 (`StateGlyph`, `IconButton`): a guide arguing that `✓` and `✕`
+carry meaning without colour, printed with the glyphs invisible, would be
+absurd.
+
+Switching to DejaVu (`-V mainfont="DejaVu Serif" -V monofont="DejaVu Sans Mono"`)
+fixed four of the five. `⌖` U+2316 POSITION INDICATOR — the accept-protocol
+glyph — survived, because DejaVu does not have it either. `fc-list
+':charset=2316' family` found which fonts do:
+
+```text
+FreeSerif, Noto Sans Symbols2, PragmataPro Liga
+```
+
+so a three-line header file maps that one codepoint to a fallback family:
+
+```tex
+\usepackage{newunicodechar}
+\newfontfamily\symbolfont{Noto Sans Symbols2}
+\newunicodechar{⌖}{{\symbolfont ⌖}}
+```
+
+passed with `-H fallback.tex`. Second build: no warnings at all.
+
+### What I learned
+
+**`fc-list ':charset=XXXX' family` answers "which installed font has this
+codepoint"** in one command. That is the tool for this class of problem, and I
+did not know it before today; the alternative is guessing at font names.
+
+**Missing glyphs in xelatex are silent in the output and loud in the log.** The
+practical rule for any future pandoc-to-PDF step: grep the pandoc output for
+`Missing character` and treat a hit as a build failure, not a warning. A visual
+check of a rendered page would not have caught this — I checked pages 6 to 8,
+and none of the five glyphs appears on them.
+
+### What was tricky to build
+
+Only the font fallback, described above. Worth noting the shape of the mistake
+that nearly happened: I first considered removing the glyphs from the guide.
+That would have "fixed" the build by damaging the document — the glyphs are the
+literal subject matter of two sections. Fixing the renderer rather than the
+content is almost always the right direction when the content is the point.
+
+### What warrants a second pair of eyes
+
+- The device location. If the DATADROP-5 guide is in fact somewhere I did not
+  search, this one should move to sit beside it.
+
+### What should be done in the future
+
+- Phase 0. Nothing in this step blocks it.
+- If more guides are going to the device, put the pandoc invocation with its
+  font flags and the `fallback.tex` into a ticket playbook so the glyph problem
+  is solved once.
+
+### Code review instructions
+
+- `index.md` — check the DR table against guide §22; a table that disagrees
+  with the guide is worse than no table.
+- Re-run `docmgr ticket list | grep -c DATADROP-6` after any frontmatter edit.
+
+### Technical details
+
+```bash
+pandoc GUIDE.md -o DATADROP-6-design-system-coverage-and-decomposition.pdf \
+  --pdf-engine=xelatex -V geometry:margin=2cm -V fontsize=9pt \
+  -V mainfont="DejaVu Serif" -V monofont="DejaVu Sans Mono" \
+  -V sansfont="DejaVu Sans" -H fallback.tex --toc --toc-depth=2
+
+rmapi mkdir Projects/2026/07
+rmapi put DATADROP-6-design-system-coverage-and-decomposition.pdf Projects/2026/07
+```
+
+Result: 30 pages, 206 KB, no missing characters, at
+`Projects/2026/07/DATADROP-6-design-system-coverage-and-decomposition` on the
+device.

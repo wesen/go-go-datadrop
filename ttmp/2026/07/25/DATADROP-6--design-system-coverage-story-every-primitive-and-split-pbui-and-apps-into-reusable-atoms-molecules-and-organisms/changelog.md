@@ -14,3 +14,12 @@ Analysis and design: read the datadrop UI and the rag-evaluation-site reference,
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/AGENT.md — gained the standing diary-and-commit rule
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/layers.test.ts — the graph whose one incidental organisms-to-apps edge shaped DR-33
 
+
+## 2026-07-25
+
+Guide converted to a 30-page PDF and uploaded to reMarkable at Projects/2026/07; needed a DejaVu font switch plus a Noto Sans Symbols2 fallback for U+2316, because xelatex drops missing glyphs silently
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ttmp/2026/07/25/DATADROP-6--design-system-coverage-story-every-primitive-and-split-pbui-and-apps-into-reusable-atoms-molecules-and-organisms/reference/01-diary.md — step 4 records the pandoc invocation and the glyph fix
+
