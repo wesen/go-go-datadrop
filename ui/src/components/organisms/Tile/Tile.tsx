@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { appFor, allApps } from "../../../apps/registry";
+import { appFor, allApps } from "../../../appkit/registry";
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { layoutActions, type Node } from "../../../store/layout";

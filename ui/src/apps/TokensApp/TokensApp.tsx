@@ -6,33 +6,21 @@ import {
   useRevokeTokenMutation,
   type CreatedToken,
 } from "../../api/client";
-import { registerApp, type AppProps } from "../registry";
-import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
-import { Divider, SectionLabel, Text } from "../../components/foundation";
-import {
-  Button,
-  CheckboxRow,
-  SelectInput,
-  TextInput,
-  TokenChip,
-} from "../../components/atoms";
+import { registerApp, type AppProps } from "../../appkit/registry";
+import { AppBody } from "../../components/layout";
+import { Text } from "../../components/foundation";
+import { TokensPanel } from "../../components/organisms";
 import { usePbui } from "../../pbui";
 
 const SCOPES = ["drops:read", "drops:write", "datasets:write", "admin"] as const;
 
-const EXPIRIES: Array<{ label: string; value: string }> = [
-  { label: "90 days", value: "90d" },
-  { label: "1 year", value: "1y" },
-  { label: "never", value: "" },
-];
-
 /**
- * The way in for machines.
+ * The way in for machines — the container.
  *
- * The secret exists in component state and in one HTTP response. It is never
- * put in Redux, never in a presentation value, and never in a verb — so it
- * cannot reach the inspector, the watchlist, the trace, or localStorage
- * (DR-28).
+ * The secret lives in this component's state and in one HTTP response, and
+ * nowhere else: never in Redux, never in a presentation value, never in a verb
+ * (DR-28). The verb fired below carries the name and the scopes precisely so
+ * that the trace records the mint without recording the credential.
  */
 function TokensApp(_props: AppProps) {
   const { data: me } = useMeQuery();
@@ -47,19 +35,10 @@ function TokensApp(_props: AppProps) {
   const [revokeToken] = useRevokeTokenMutation();
   const pbui = usePbui();
 
-  const [name, setName] = useState("");
-  const [scopes, setScopes] = useState<string[]>(["drops:read"]);
-  const [expiresIn, setExpiresIn] = useState("90d");
   const [minted, setMinted] = useState<CreatedToken | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Minting requires a browser session: a token must not be able to mint
-  // another token, or revoking a leaked one leaves its offspring alive with no
-  // way to enumerate them. Shown as a disabled form with the reason, rather
-  // than a hidden one.
-  const mintable = me?.kind === "session";
-
-  async function mint() {
+  async function mint(name: string, scopes: string[], expiresIn: string) {
     setError(null);
     try {
       const created = await createToken({
@@ -68,10 +47,14 @@ function TokensApp(_props: AppProps) {
         ...(expiresIn ? { expires_in: expiresIn } : {}),
       }).unwrap();
       setMinted(created);
-      setName("");
       // The verb, for the trace. It carries the name and the scopes; the secret
       // stays in `minted` and goes nowhere else.
-      pbui.perform({ kind: "createToken", name: created.name, scopes: created.scopes, expiresIn: expiresIn || null });
+      pbui.perform({
+        kind: "createToken",
+        name: created.name,
+        scopes: created.scopes,
+        expiresIn: expiresIn || null,
+      });
     } catch (caught) {
       setError(detailOf(caught));
     }
@@ -88,153 +71,23 @@ function TokensApp(_props: AppProps) {
   }
 
   return (
-    <AppBody>
-      <Stack gap={4}>
-        {minted && (
-          <Surface tone="alt" role="status">
-            <Stack gap={2}>
-              <Text size="small" strong>
-                Copy this now — it will not be shown again
-              </Text>
-              <code
-                data-testid="minted-token"
-                style={{
-                  display: "block",
-                  wordBreak: "break-all",
-                  padding: "var(--pbui-space-2)",
-                  border: "var(--pbui-border-hair)",
-                  background: "var(--pbui-pane)",
-                  fontSize: "var(--pbui-fs-small)",
-                }}
-              >
-                {minted.token}
-              </code>
-              <Toolbar tight>
-                <Button onClick={() => void navigator.clipboard?.writeText(minted.token)}>
-                  Copy
-                </Button>
-                <Button onClick={() => setMinted(null)}>Done</Button>
-              </Toolbar>
-              <Text size="tiny" tone="faint" prose>
-                datadrop stores only a hash of this. Dismissing this panel is
-                irreversible; if you lose it, revoke the token and mint another.
-              </Text>
-            </Stack>
-          </Surface>
-        )}
-
-        <Stack gap={2}>
-          <SectionLabel>New token</SectionLabel>
-          {!mintable && (
-            <Text size="small" tone="faint" prose>
-              Minting requires a signed-in browser session. A token may not mint
-              another token — otherwise revoking a leaked credential would leave
-              whatever it created still working.
-            </Text>
-          )}
-          <Toolbar tight>
-            <TextInput
-              label="token name"
-              placeholder="ci ingest"
-              value={name}
-              disabled={!mintable}
-              onValueChange={setName}
-            />
-            <SelectInput
-              label="expires in"
-              value={expiresIn}
-              disabled={!mintable}
-              onValueChange={setExpiresIn}
-              options={EXPIRIES.map((option) => ({
-                value: option.value,
-                label: option.label,
-              }))}
-            />
-          </Toolbar>
-          <Toolbar tight>
-            {SCOPES.map((scope) => (
-              <CheckboxRow
-                key={scope}
-                label={scope}
-                disabled={!mintable}
-                checked={scopes.includes(scope)}
-                onCheckedChange={(next) =>
-                  setScopes((current) =>
-                    next ? [...current, scope] : current.filter((s) => s !== scope),
-                  )
-                }
-              />
-            ))}
-          </Toolbar>
-          <Toolbar tight>
-            <Button
-              disabled={!mintable || !name.trim() || scopes.length === 0}
-              busy={minting ? "minting…" : undefined}
-              onClick={() => void mint()}
-              data-testid="mint-token"
-            >
-              Mint token
-            </Button>
-          </Toolbar>
-          {error && (
-            <Text size="small" tone="danger">
-              {error}
-            </Text>
-          )}
-          <Text size="tiny" tone="faint" prose>
-            Scopes narrow what a token may do. They never grant more than you
-            have: remove yourself from a drop and every token you hold loses it
-            immediately.
-          </Text>
-        </Stack>
-
-        <Divider />
-
-        <Stack gap={2}>
-          <Toolbar tight>
-            <SectionLabel>Your tokens</SectionLabel>
-            <CheckboxRow
-              size="tiny"
-              label="show revoked"
-              checked={showRevoked}
-              onCheckedChange={setShowRevoked}
-            />
-          </Toolbar>
-
-          {data?.tokens.length ? (
-            data.tokens.map((token) => (
-              <Toolbar key={token.id} tight>
-                <TokenChip
-                  token={{
-                    id: token.id,
-                    name: token.name,
-                    scopes: token.scopes,
-                    expiresAt: token.expires_at ?? null,
-                    revokedAt: token.revoked_at ?? null,
-                  }}
-                />
-                <Text size="tiny" tone="faint">
-                  {token.scopes.join(" ")} ·{" "}
-                  {token.last_used_at
-                    ? `used ${token.last_used_at.slice(0, 10)}`
-                    : "never used"}
-                  {token.expires_at ? ` · expires ${token.expires_at.slice(0, 10)}` : ""}
-                </Text>
-                {!token.revoked_at && (
-                  <Button size="tiny" onClick={() => void revokeToken(token.id)}>
-                    revoke
-                  </Button>
-                )}
-              </Toolbar>
-            ))
-          ) : (
-            <Text size="small" tone="faint">
-              none yet
-            </Text>
-          )}
-        </Stack>
-      </Stack>
-    </AppBody>
+    <TokensPanel
+      tokens={data?.tokens ?? []}
+      scopes={SCOPES}
+      // A token must not be able to mint another token, or revoking a leaked
+      // one leaves its offspring alive with no way to enumerate them.
+      mintable={me.kind === "session"}
+      mintableReason="Minting requires a signed-in browser session. A token may not mint another token — otherwise revoking a leaked credential would leave whatever it created still working."
+      minting={minting}
+      minted={minted}
+      error={error}
+      showRevoked={showRevoked}
+      onShowRevokedChange={setShowRevoked}
+      onMint={({ name, scopes, expiresIn }) => void mint(name, scopes, expiresIn)}
+      onDismissMinted={() => setMinted(null)}
+      onRevoke={(id) => void revokeToken(id)}
+      onCopy={(secret) => void navigator.clipboard?.writeText(secret)}
+    />
   );
 }
 

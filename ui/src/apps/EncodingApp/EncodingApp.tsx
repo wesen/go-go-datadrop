@@ -3,7 +3,7 @@ import { CHANNELS, CHANNEL_ACCEPTS, GEOMS } from "../../model/chart";
 import type { Channel } from "../../model/chart";
 import { TYPE_LABEL, effectiveType } from "../../model/table";
 import { Presentation, usePbui, type FieldRef } from "../../pbui";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPipeline } from "../useTable";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";

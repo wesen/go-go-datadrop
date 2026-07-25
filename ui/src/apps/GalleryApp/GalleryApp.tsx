@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { describeSource } from "../../model/chart";
 import { Presentation } from "../../pbui";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Surface } from "../../components/layout";

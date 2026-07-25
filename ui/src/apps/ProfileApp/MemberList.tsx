@@ -8,25 +8,17 @@ import {
 } from "../../api/client";
 import { Presentation } from "../../pbui";
 import type { MemberRef } from "../../pbui";
-import { Text } from "../../components/foundation";
-import { Stack, Toolbar } from "../../components/layout";
-import { Button, Chip, SelectInput, TextInput } from "../../components/atoms";
-
-const ROLES = ["reader", "writer", "admin"] as const;
+import { MemberPanel } from "../../components/organisms";
+import type { Role } from "../../components/molecules";
 
 /**
- * Who else can see a drop, and — for an admin — who else may.
+ * The container half of one drop's access list.
  *
- * Lives beside the application that uses it rather than in components/, and
- * that placement was decided by the layer test rather than by taste: this
- * fetches and mutates, and `molecules` may not import `api`. `organisms` may —
- * but `apps` may not import `organisms`, because that edge is what keeps the
- * organisms/apps pair acyclic. Co-locating is the honest answer for a component
- * one application uses.
- *
- * Reading the list needs only `reader`: knowing who else can see something you
- * can see is not a privilege, and hiding it makes "why can they read this"
- * unanswerable without finding an administrator.
+ * Five hooks and five callbacks; every pixel is `MemberPanel`. Before phase 5
+ * this file was 177 lines and could not live in `components/` at all — it
+ * fetches, `molecules` may not import `api`, and `apps` could not import
+ * `organisms`. DR-33 removed the last of those constraints, so the split is now
+ * the ordinary one: container here, presentation there.
  */
 export function MemberList({
   drop,
@@ -42,14 +34,20 @@ export function MemberList({
   const [removeMember] = useRemoveMemberMutation();
   const [claimDrop] = useClaimDropMutation();
   const [lookupUser] = useLazyLookupUserQuery();
-
-  const [email, setEmail] = useState("");
-  const [role, setRole] = useState<(typeof ROLES)[number]>("reader");
   const [error, setError] = useState<string | null>(null);
 
-  const admin = yourRole === "admin";
+  const members: MemberRef[] = (data?.members ?? []).map((member) => ({
+    drop,
+    user: {
+      id: member.user_id,
+      name: member.user?.name || member.user?.email || member.user_id,
+      email: member.user?.email ?? null,
+    },
+    role: member.role,
+    isOwner: member.user_id === data?.owner,
+  }));
 
-  async function add() {
+  async function add(email: string, role: Role) {
     setError(null);
     try {
       // Two steps, because a human knows an address and the API needs an id.
@@ -57,111 +55,34 @@ export function MemberList({
       // the server restricts it to people who already administer something.
       const user = await lookupUser(email).unwrap();
       await setMember({ drop, userId: user.id, role }).unwrap();
-      setEmail("");
     } catch (caught) {
-      const detail = (caught as { data?: { detail?: string }; status?: number })?.data?.detail;
+      const detail = (caught as { data?: { detail?: string } })?.data?.detail;
       setError(detail ?? "no datadrop account has that address yet");
     }
   }
 
   return (
-    <Stack gap={2}>
-      {unowned && (
-        <Toolbar tight>
-          <Text size="tiny" tone="faint">
-            this drop has no owner
-          </Text>
-          <Button size="tiny" onClick={() => void claimDrop(drop)}>
-            claim it
-          </Button>
-        </Toolbar>
+    <MemberPanel
+      drop={drop}
+      members={members}
+      yourRole={yourRole}
+      unowned={unowned}
+      error={error}
+      onClaim={() => void claimDrop(drop)}
+      onAdd={(email, role) => void add(email, role)}
+      onRoleChange={(userId, role) => void setMember({ drop, userId, role })}
+      onRemove={(userId) => void removeMember({ drop, userId })}
+      // The DR-38 seam: the panel draws a plain chip, and the application makes
+      // it a live presentation so a member can be right-clicked.
+      renderChip={(member, body) => (
+        <Presentation
+          ptype="member"
+          value={member}
+          doc={`<member> ${member.user.name} — ${member.role}`}
+        >
+          {body}
+        </Presentation>
       )}
-
-      {data?.members.map((member) => {
-        const value: MemberRef = {
-          drop,
-          user: {
-            id: member.user_id,
-            name: member.user?.name || member.user?.email || member.user_id,
-            email: member.user?.email ?? null,
-          },
-          role: member.role,
-          isOwner: member.user_id === data.owner,
-        };
-        return (
-          <Toolbar key={member.user_id} tight>
-            <Presentation ptype="member" value={value} doc={`<member> ${value.user.name} — ${member.role}`}>
-              <Chip label={value.user.name} tone="var(--pbui-tone-source)" badge={
-                <span style={{ fontSize: "var(--pbui-fs-tiny)", opacity: 0.7 }}>{member.role}</span>
-              } />
-            </Presentation>
-            {admin && (
-              <>
-                <SelectInput
-                  label={`role of ${value.user.name}`}
-                  size="tiny"
-                  value={member.role}
-                  options={ROLES.map((r) => ({ value: r, label: r }))}
-                  onValueChange={(role) =>
-                    void setMember({
-                      drop,
-                      userId: member.user_id,
-                      role: role as (typeof ROLES)[number],
-                    })
-                  }
-                />
-                <Button
-                  size="tiny"
-                  onClick={() => void removeMember({ drop, userId: member.user_id })}
-                >
-                  remove
-                </Button>
-              </>
-            )}
-          </Toolbar>
-        );
-      })}
-
-      {admin ? (
-        <Stack gap={1}>
-          <Toolbar tight>
-            <TextInput
-              type="email"
-              label={`add a member to ${drop}`}
-              placeholder="colleague@example.org"
-              value={email}
-              onValueChange={setEmail}
-            />
-            <SelectInput
-              label="role for the new member"
-              size="tiny"
-              value={role}
-              options={ROLES.map((r) => ({ value: r, label: r }))}
-              onValueChange={(next) => setRole(next as (typeof ROLES)[number])}
-            />
-            <Button size="tiny" disabled={!email.trim()} onClick={() => void add()}>
-              add
-            </Button>
-          </Toolbar>
-          {error && (
-            <Text size="tiny" tone="danger">
-              {error}
-            </Text>
-          )}
-          <Text size="tiny" tone="faint" prose>
-            They must have signed in here at least once. Removing someone takes
-            effect immediately, including for every API token they hold.
-          </Text>
-        </Stack>
-      ) : (
-        // Shown rather than hidden, so the rule is visible: a writer who cannot
-        // find the member editor should learn why, not conclude it is missing.
-        data?.members.length !== undefined && (
-          <Text size="tiny" tone="faint">
-            only an admin of this drop can change who has access
-          </Text>
-        )
-      )}
-    </Stack>
+    />
   );
 }

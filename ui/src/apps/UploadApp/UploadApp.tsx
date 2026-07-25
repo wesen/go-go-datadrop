@@ -1,14 +1,14 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { readToken, useListDropsQuery, useMeQuery } from "../../api/client";
-import { registerApp, type AppProps } from "../registry";
-import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
-import { SectionLabel, Text } from "../../components/foundation";
-import { Button, SelectInput, TextInput } from "../../components/atoms";
+import { registerApp, type AppProps } from "../../appkit/registry";
+import { AppBody } from "../../components/layout";
+import { Text } from "../../components/foundation";
+import { UploadPanel } from "../../components/organisms";
+import type { UploadBatchView } from "../../components/organisms";
 import { Presentation, usePbui } from "../../pbui";
 import {
   canHash,
   digestOf,
-  formatBytes,
   HASH_LIMIT,
   newBatch,
   pendingAfterResume,
@@ -37,9 +37,7 @@ function UploadApp(_props: AppProps) {
   const [drop, setDrop] = useState("");
   const [dataset, setDataset] = useState("");
   const [batch, setBatch] = useState<Batch | null>(null);
-  const [dragging, setDragging] = useState(false);
   const [drafts, setDrafts] = useState<DraftVersion[] | null>(null);
-  const fileInput = useRef<HTMLInputElement>(null);
 
   // Only drops the caller may write to. Offering the rest would be offering a
   // guaranteed 403 — the same reason `your_role` is on the wire at all.
@@ -236,234 +234,69 @@ function UploadApp(_props: AppProps) {
   }
 
   return (
-    <AppBody>
-      <Stack gap={3}>
-        <Stack gap={2}>
-          <SectionLabel>Publish a dataset</SectionLabel>
-          <Toolbar tight>
-            <SelectInput
-              label="drop"
-              value={drop}
-              placeholder="choose a drop…"
-              onValueChange={(next) => {
-                setDrop(next);
-                void checkDrafts(next, dataset);
-              }}
-              options={writable.map((d) => ({ value: d.name, label: d.name }))}
-            />
-            <TextInput
-              label="dataset name"
-              placeholder="readings"
-              value={dataset}
-              onValueChange={setDataset}
-              onBlur={() => void checkDrafts(drop, dataset)}
-            />
-          </Toolbar>
-          {writable.length === 0 && (
-            <Text size="tiny" tone="faint">
-              you are not a writer on any drop yet
-            </Text>
-          )}
-        </Stack>
-
-        {drafts && (
-          <Surface tone="alt" role="status">
-            <Stack gap={2}>
-              <Text size="small" strong>
-                An unfinished upload is waiting
-              </Text>
-              {drafts.map((draft) => (
-                <Toolbar key={draft.version} tight>
-                  <Text size="small">
-                    version {draft.version} · {draft.file_count} files ·{" "}
-                    {formatBytes(draft.total_bytes)}
-                  </Text>
-                  <Button
-                    size="tiny"
-                    disabled={!batch}
-                    title={batch ? undefined : "choose the files again first"}
-                    onClick={() =>
-                      void run(
-                        draft.version,
-                        (draft.files ?? []).map((file) => file.path),
-                      )
-                    }
-                  >
-                    resume
-                  </Button>
-                  <Button size="tiny" onClick={() => void discard(draft.version)}>
-                    discard
-                  </Button>
-                </Toolbar>
-              ))}
-              <Text size="tiny" tone="faint" prose>
-                A draft holds its bytes but is invisible to readers. Discarding
-                it releases them for the next garbage-collection sweep.
-              </Text>
-            </Stack>
-          </Surface>
-        )}
-
-        {/* An explicit button as well as the drop surface.
-            A drop target alone assumes a mouse, a window arrangement that lets
-            you see both the file manager and the browser, and the knowledge
-            that the surface is droppable at all. The button assumes none of
-            those, and it is what a keyboard reaches. */}
-        <Toolbar tight>
-          <Button
-            disabled={!drop || !dataset}
-            onClick={() => fileInput.current?.click()}
-            data-testid="choose-files"
-          >
-            Choose CSV files…
-          </Button>
-          <Text size="tiny" tone="faint">
-            or drop them below
-          </Text>
-        </Toolbar>
-
-        <div
-          onDragOver={(event) => {
-            event.preventDefault();
-            setDragging(true);
+    <UploadPanel
+      target={{ drop, dataset }}
+      writableDrops={writable.map((d) => d.name)}
+      batch={
+        batch && {
+          drop: batch.drop,
+          dataset: batch.dataset,
+          version: batch.version,
+          phase: batch.phase as UploadBatchView["phase"],
+          items: batch.items,
+          error: batch.error,
+        }
+      }
+      drafts={drafts}
+      canHash={canHash()}
+      hashLimit={HASH_LIMIT}
+      onTargetChange={(next) => {
+        setDrop(next.drop);
+        setDataset(next.dataset);
+        if (next.drop !== drop) setDrafts(null);
+        if (next.dataset !== dataset) void checkDrafts(next.drop, next.dataset);
+      }}
+      onFiles={pick}
+      onRun={() => void run()}
+      onCommit={() => void commit()}
+      onRetry={() => void run(batch?.version ?? undefined)}
+      onResumeDraft={(version) => {
+        const draft = drafts?.find((d) => d.version === version);
+        void run(version, (draft?.files ?? []).map((file) => file.path));
+      }}
+      onDiscardDraft={(version) => void discard(version)}
+      onOpenInChart={() =>
+        batch &&
+        pbui.perform({
+          kind: "newDoc",
+          source: {
+            kind: "dataset",
+            drop: batch.drop,
+            dataset: batch.dataset,
+            ...(batch.version !== null ? { version: batch.version } : {}),
+            ...(batch.items[0] ? { path: batch.items[0].path } : {}),
+          },
+        })
+      }
+      // The DR-38 seam: the panel draws a plain row, and the application makes
+      // each one a live presentation so an upload can be right-clicked.
+      renderItem={(item, body) => (
+        <Presentation
+          ptype="upload"
+          value={{
+            batchId: batch?.drop ?? "",
+            path: item.path,
+            size: item.size,
+            digest: item.digest,
+            state: item.state,
+            error: item.error,
           }}
-          onDragLeave={() => setDragging(false)}
-          onDrop={(event) => {
-            event.preventDefault();
-            setDragging(false);
-            pick(event.dataTransfer.files);
-          }}
-          onClick={() => fileInput.current?.click()}
-          style={{
-            border: dragging ? "var(--pbui-border-firm)" : "var(--pbui-border-hair)",
-            background: dragging ? "var(--pbui-selected)" : "var(--pbui-pane-alt)",
-            padding: "var(--pbui-space-4)",
-            textAlign: "center",
-            cursor: drop && dataset ? "pointer" : "not-allowed",
-          }}
-          data-testid="drop-zone"
+          doc={`<upload> ${item.path} · ${item.state}`}
         >
-          <Text size="small" tone={drop && dataset ? undefined : "faint"}>
-            {drop && dataset
-              ? "drop files here, or click to choose"
-              : "choose a drop and name the dataset first"}
-          </Text>
-          <input
-            ref={fileInput}
-            type="file"
-            multiple
-            hidden
-            aria-label="files to upload"
-            // CSV first, because that is what the table projection reads and
-            // what a chart can be made of — but not exclusively: a dataset is
-            // a body of files with a manifest, and a README beside the data is
-            // ordinary rather than exceptional.
-            accept=".csv,text/csv,.tsv,.json,.ndjson,.md,.txt"
-            onChange={(event) => pick(event.target.files)}
-          />
-        </div>
-
-        {!canHash() && (
-          // The secure-context boundary, surfaced where it has a consequence
-          // rather than left to fail as a TypeError deep in the uploader.
-          <Text size="tiny" tone="faint" prose>
-            This page is not a secure context, so the browser cannot compute
-            digests. Files will be uploaded in full and the server will hash them
-            as it writes.
-          </Text>
-        )}
-
-        {batch && (
-          <Stack gap={2}>
-            <Toolbar tight>
-              <SectionLabel>
-                {batch.dataset} · {batch.phase}
-                {batch.version !== null ? ` · version ${batch.version}` : ""}
-              </SectionLabel>
-              {batch.phase === "picked" && (
-                <Button onClick={() => void run()} data-testid="upload">
-                  Upload {batch.items.length} files
-                </Button>
-              )}
-              {batch.phase === "ready" && (
-                <Button onClick={() => void commit()} data-testid="commit">
-                  Commit
-                </Button>
-              )}
-              {batch.phase === "partial" && (
-                <Button onClick={() => void run(batch.version ?? undefined)}>
-                  Retry failed
-                </Button>
-              )}
-            </Toolbar>
-
-            {batch.error && (
-              <Text size="small" tone="danger">
-                {batch.error}
-              </Text>
-            )}
-
-            {batch.items.map((item) => (
-              <Presentation
-                key={item.path}
-                ptype="upload"
-                value={{
-                  batchId: item.batchId,
-                  path: item.path,
-                  size: item.size,
-                  digest: item.digest,
-                  state: item.state,
-                  error: item.error,
-                }}
-                doc={`<upload> ${item.path} · ${item.state}`}
-              >
-                <span style={{ fontSize: "var(--pbui-fs-small)" }}>
-                  {item.state === "done" ? "✓" : item.state === "failed" ? "✕" : "·"} {item.path}{" "}
-                  <span style={{ color: "var(--pbui-faint)" }}>
-                    {formatBytes(item.size)} · {item.state}
-                    {item.error ? ` — ${item.error}` : ""}
-                  </span>
-                </span>
-              </Presentation>
-            ))}
-
-            {batch.phase === "done" && (
-              <Surface tone="alt" role="status">
-                <Stack gap={2}>
-                  <Text size="small" strong>
-                    Published — version {batch.version}
-                  </Text>
-                  <Toolbar tight>
-                    <Button
-                      onClick={() =>
-                        pbui.perform({
-                          kind: "newDoc",
-                          source: {
-                            kind: "dataset",
-                            drop: batch.drop,
-                            dataset: batch.dataset,
-                            ...(batch.version !== null ? { version: batch.version } : {}),
-                            ...(batch.items[0] ? { path: batch.items[0].path } : {}),
-                          },
-                        })
-                      }
-                    >
-                      Open in a chart
-                    </Button>
-                  </Toolbar>
-                </Stack>
-              </Surface>
-            )}
-          </Stack>
-        )}
-
-        <Text size="tiny" tone="faint" prose>
-          Files are hashed here first, up to {formatBytes(HASH_LIMIT)}, so bytes
-          the server already holds are never sent twice. Nothing is visible to a
-          reader until you commit.
-        </Text>
-      </Stack>
-    </AppBody>
+          {body}
+        </Presentation>
+      )}
+    />
   );
 }
 

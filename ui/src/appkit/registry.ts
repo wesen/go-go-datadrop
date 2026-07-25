@@ -8,6 +8,19 @@ import type { NodeId } from "../store/layout";
  * Ported from pbui-gog.jsx:2403-2422. A tile names an application by id and
  * nothing more, which is what makes swapping two tiles a two-field exchange
  * (DR-11) — the applications' state lives in the world, not in the tile.
+ *
+ * **In `appkit/` rather than in `apps/`, and that placement is load-bearing**
+ * (DATADROP-6 DR-33). This file is not an application; it is the contract
+ * applications register against. It lived under `apps/` for historical reasons,
+ * and the single import of it from `organisms/Tile` was the *only* reason the
+ * layer graph carried an `organisms -> apps` edge — which in turn forced
+ * `apps -> organisms` to be forbidden, to keep the pair acyclic.
+ *
+ * That forbidden edge is what made the reference package's pattern illegal
+ * here: presentational panels in `organisms`, with the applications as thin
+ * containers above them. Moving 49 lines removes the edge, the cycle cannot
+ * form because `organisms` no longer names `apps` at all, and the pattern
+ * becomes available.
  */
 
 export interface AppProps {

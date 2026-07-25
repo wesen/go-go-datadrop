@@ -3,14 +3,22 @@ import { Text } from "../../foundation";
 import { Button, ScopeChip, TokenChip } from "../../atoms";
 import type { TokenRef } from "../../../pbui";
 
+/**
+ * Deliberately the wire shape from `api/client`, optional fields and all.
+ *
+ * The alternative is a normalised type here and a mapping in every container,
+ * which is four hand-written object literals whose only job is to turn
+ * `undefined` into `null`. A row that renders the server's own shape is one
+ * less place for those two to disagree.
+ */
 export interface TokenSummary {
   id: string;
   name: string;
   scopes: string[];
   created_at: string;
-  last_used_at: string | null;
-  expires_at: string | null;
-  revoked_at: string | null;
+  last_used_at?: string | null;
+  expires_at?: string | null;
+  revoked_at?: string | null;
 }
 
 /**

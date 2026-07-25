@@ -48,15 +48,40 @@ const ALLOWED: Record<string, string[]> = {
   store: ["model", "api", "pbui"],
   styles: [],
   fixtures: ["model"],
+  /*
+   * The application contract, and nothing else: an AppDescriptor interface, a
+   * Map, and three functions over it. It is NOT an application.
+   *
+   * Its own layer because of what it unblocks (DATADROP-6 DR-33). While it sat
+   * in apps/, `organisms/Tile` importing `appFor` was the one and only reason
+   * this table carried an `organisms -> apps` edge — and that edge is why
+   * `apps -> organisms` had to be forbidden, to keep the pair acyclic.
+   *
+   * The forbidden edge made the presentational-organism pattern illegal:
+   * panels in `organisms` with the applications as thin containers above them.
+   * Moving 49 lines removes the edge, so the pattern becomes available and no
+   * cycle can form — `organisms` no longer names `apps` at all.
+   */
+  appkit: ["model", "pbui", "store"],
   // Components, in dependency order.
   foundation: [],
   layout: ["foundation"],
   atoms: ["foundation", "layout", "pbui", "model"],
   molecules: ["foundation", "layout", "atoms", "pbui", "model", "store"],
-  // `organisms` may reach `apps` for the registry alone: Tile has to resolve an
-  // app id to a component. The reverse is forbidden below, which is what keeps
-  // the pair acyclic — an application importing Tile would close the loop.
-  organisms: ["foundation", "layout", "atoms", "molecules", "pbui", "model", "store", "api", "apps"],
+  // `appkit`, not `apps`: Tile resolves an app id to a component through the
+  // contract, never through the applications themselves (DR-33). With that edge
+  // gone, `apps -> organisms` below is safe.
+  organisms: [
+    "foundation",
+    "layout",
+    "atoms",
+    "molecules",
+    "pbui",
+    "model",
+    "store",
+    "api",
+    "appkit",
+  ],
   pages: [
     "foundation",
     "layout",
@@ -68,11 +93,23 @@ const ALLOWED: Record<string, string[]> = {
     "store",
     "api",
     "apps",
+    "appkit",
   ],
-  // Note the absence of `organisms` and `pages`. Applications are organisms in
-  // everything but directory, and they compose molecules; they must never reach
-  // back up to the shell that hosts them.
-  apps: ["foundation", "layout", "atoms", "molecules", "pbui", "model", "store", "api"],
+  // Applications are containers: they hold the hooks and the fetches and hand
+  // DTOs to presentational organisms. `pages` is still absent — an application
+  // must never reach back up to the shell that hosts it.
+  apps: [
+    "foundation",
+    "layout",
+    "atoms",
+    "molecules",
+    "organisms",
+    "pbui",
+    "model",
+    "store",
+    "api",
+    "appkit",
+  ],
 };
 
 const COMPONENT_LAYERS = new Set([
@@ -166,23 +203,38 @@ describe("the layer graph is one-way", () => {
     expect(strays).toEqual([]);
   });
 
-  test("the organisms/apps pair stays acyclic", () => {
-    // `organisms -> apps` is permitted for the registry, so the guard against a
-    // cycle is that nothing under apps/ reaches back. Stated as its own test
-    // because the graph walk above cannot express "this edge exists only in one
-    // direction", and because a cycle here would be diagnosed as a confusing
-    // module-initialisation error rather than as a layering mistake.
+  test("nothing under organisms reaches into apps", () => {
+    // The edge DR-33 deleted, guarded by name so it cannot come back quietly.
+    //
+    // The graph walk above already forbids it. This states the invariant
+    // separately because `apps -> organisms` is now *permitted*, so a single
+    // re-added import of an application from an organism closes a real cycle —
+    // and a cycle here surfaces as a confusing module-initialisation error
+    // rather than as a layering mistake.
     const strays: string[] = [];
-    for (const file of FILES.filter((f) => layerOf(f) === "apps")) {
+    for (const file of FILES.filter((f) => layerOf(f) === "organisms")) {
       for (const specifier of importsOf(readFileSync(file, "utf8"))) {
         if (!specifier.startsWith(".")) continue;
-        const to = layerOf(resolve(dirname(file), specifier));
-        if (to === "organisms" || to === "pages") {
-          strays.push(`${relative(SRC, file)} -> ${specifier} (${to})`);
+        if (layerOf(resolve(dirname(file), specifier)) === "apps") {
+          strays.push(`${relative(SRC, file)} -> ${specifier} (apps)`);
         }
       }
     }
     expect(strays).toEqual([]);
+  });
+
+  test("every source directory sits in the graph", () => {
+    // The hole DR-33 fell into on its way in: `src/appkit/` was created, the
+    // graph did not mention it, and BOTH the walk above and the edge into it
+    // were silently skipped — `if (!(from in ALLOWED)) continue` and
+    // `if (!(to in ALLOWED)) continue`. The suite went green while the new
+    // layer was entirely unconstrained.
+    //
+    // The equivalent check for components/ existed already. This is the same
+    // check one level up, and it is the one that would have caught it.
+    const known = new Set([...Object.keys(ALLOWED), "components", "main.tsx", "vite-env.d.ts"]);
+    const unknown = readdirSync(SRC).filter((entry) => !known.has(entry));
+    expect(unknown).toEqual([]);
   });
 
   test("every component directory sits in a known layer", () => {

@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { useSelector } from "react-redux";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import { AppBody, Stack } from "../../components/layout";
 import { Text } from "../../components/foundation";

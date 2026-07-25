@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Presentation } from "../../pbui";
 import { MAX_MARKS } from "../../model/plot";
 import type { Mark, Plot } from "../../model/plot";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPlot } from "../useTable";
 import { AppBody } from "../../components/layout";
 import { Text } from "../../components/foundation";

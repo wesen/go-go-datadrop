@@ -3,7 +3,7 @@ import { newStep, schemaAfter, stepLabel } from "../../model/pipeline";
 import type { Step } from "../../model/pipeline";
 import { AGGREGATES, DERIVE_OPS, FILTER_OPS } from "../../model/pipeline";
 import { Presentation, usePbui, type FieldRef } from "../../pbui";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPipeline } from "../useTable";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";

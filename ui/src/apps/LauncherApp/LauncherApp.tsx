@@ -1,5 +1,5 @@
 import { useDispatch } from "react-redux";
-import { allApps, registerApp, type AppProps } from "../registry";
+import { allApps, registerApp, type AppProps } from "../../appkit/registry";
 import { layoutActions } from "../../store/layout";
 import { AppBody, Stack } from "../../components/layout";
 import { Text } from "../../components/foundation";

@@ -2,7 +2,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { describeSource } from "../../model/chart";
 import { stepLabel } from "../../model/pipeline";
 import { usePbui } from "../../pbui";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import type { Snapshot } from "../../store/world";
 import { worldActions } from "../../store/world";

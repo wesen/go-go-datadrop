@@ -1,4 +1,4 @@
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import { AppBody, Stack, Surface } from "../../components/layout";
 import { Kbd, SectionLabel, Text } from "../../components/foundation";
 import { DocChip, FieldChip, SourceChip } from "../../components/atoms";

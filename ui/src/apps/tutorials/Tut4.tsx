@@ -1,4 +1,4 @@
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import { worldActions } from "../../store/world";
 import { Step, TutorialBody, TutorialHead } from "./Tutorial";
 

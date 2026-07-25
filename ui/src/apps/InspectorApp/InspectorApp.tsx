@@ -1,5 +1,5 @@
 import { useSelector } from "react-redux";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import { AppBody } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";

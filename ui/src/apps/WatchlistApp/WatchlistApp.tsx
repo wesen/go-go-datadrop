@@ -1,6 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
 import { Presentation, labelFor, toneFor, usePbui } from "../../pbui";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Toolbar } from "../../components/layout";

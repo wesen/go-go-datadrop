@@ -1,20 +1,18 @@
 import { useEffect, useState } from "react";
 import { readToken, useMeQuery, writeToken } from "../../api/client";
-import { registerApp, type AppProps } from "../registry";
-import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
-import { SectionLabel, Text } from "../../components/foundation";
-import { Button, LinkAction, TextInput } from "../../components/atoms";
+import { registerApp, type AppProps } from "../../appkit/registry";
+import { SignInPanel } from "../../components/organisms";
 
 /**
- * The way in.
+ * The way in — the container half.
  *
- * Serves BOTH deployment modes, so there is exactly one place in the interface
- * that knows about credentials: an OIDC deployment gets sign-in and create-
- * account links, a token deployment gets the token field it has always had.
+ * Everything visible is `SignInPanel`; this holds the query, the callback-error
+ * plumbing and the token write. The split is what lets the two modes and the
+ * six error codes be reviewed as stories rather than as server configurations
+ * (DATADROP-6 phase 5).
  */
 function SignInApp(_props: AppProps) {
   const { data: me } = useMeQuery();
-  const [token, setToken] = useState(() => readToken());
   const [error, setError] = useState<string | null>(null);
 
   // The callback lands at /ui/?auth_error=… . Read it once and strip it, so a
@@ -29,93 +27,19 @@ function SignInApp(_props: AppProps) {
     window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
   }, []);
 
-  const oidc = me?.auth_mode === "oidc";
-
   return (
-    <AppBody>
-      <Stack gap={4}>
-        {error && (
-          <Surface tone="alt" role="alert">
-            <Stack gap={1}>
-              <Text size="small" strong tone="danger">
-                Sign-in did not complete
-              </Text>
-              {/* Our words, not the provider's. The server passes a code
-                  precisely so that provider-supplied text is never rendered. */}
-              <Text size="small" tone="faint">
-                {SIGN_IN_ERRORS[error] ?? "Something went wrong on the way back. Try again."}
-              </Text>
-            </Stack>
-          </Surface>
-        )}
-
-        {oidc ? (
-          <Stack gap={3}>
-            <Stack gap={2}>
-              <SectionLabel>Sign in</SectionLabel>
-              <Text size="small" prose>
-                datadrop does not hold your password. Signing in hands you to the
-                identity provider, which sends you back here once it is
-                satisfied.
-              </Text>
-            </Stack>
-
-            <Toolbar>
-              {/* Plain links, not fetch(). An OIDC redirect cannot be performed
-                  with XHR, and attempting it is a standard afternoon lost to
-                  CORS. */}
-              <LinkAction
-                href={`/v1/auth/login?return=${encodeURIComponent(returnPath())}`}
-                data-testid="sign-in"
-              >
-                Sign in →
-              </LinkAction>
-              {me?.signup_enabled && (
-                <LinkAction
-                  href={`/v1/auth/login?intent=signup&return=${encodeURIComponent(returnPath())}`}
-                  data-testid="sign-up"
-                >
-                  Create an account →
-                </LinkAction>
-              )}
-            </Toolbar>
-
-            {me?.provider && (
-              <Text size="tiny" tone="faint">
-                identity provider: {me.provider.issuer}
-              </Text>
-            )}
-          </Stack>
-        ) : (
-          <Stack gap={3}>
-            <Stack gap={2}>
-              <SectionLabel>Access token</SectionLabel>
-              <Text size="small" prose>
-                This server has no user accounts — it is running with a shared
-                token. Paste it here; it is kept for this tab only and is never
-                written to durable storage.
-              </Text>
-            </Stack>
-            <Toolbar>
-              <TextInput
-                type="password"
-                label="bearer token"
-                value={token}
-                onValueChange={setToken}
-              />
-              <Button
-                onClick={() => {
-                  writeToken(token);
-                  window.location.reload();
-                }}
-              >
-                Use this token
-              </Button>
-            </Toolbar>
-          </Stack>
-        )}
-      </Stack>
-    </AppBody>
+    <SignInPanel
+      mode={me?.auth_mode === "oidc" ? "oidc" : "token"}
+      signupEnabled={me?.signup_enabled ?? false}
+      issuer={me?.provider?.issuer ?? null}
+      errorCode={error}
+      returnPath={returnPath()}
+      initialToken={readToken()}
+      onUseToken={(token) => {
+        writeToken(token);
+        window.location.reload();
+      }}
+    />
   );
 }
 
@@ -123,17 +47,6 @@ function SignInApp(_props: AppProps) {
 function returnPath(): string {
   return window.location.pathname + window.location.search;
 }
-
-const SIGN_IN_ERRORS: Record<string, string> = {
-  provider_refused: "The identity provider refused, or you cancelled.",
-  state_mismatch:
-    "This sign-in did not start in this browser. Start again from this page.",
-  state_expired: "That sign-in took too long, or was already used. Start again.",
-  exchange_failed: "The identity provider's answer could not be verified.",
-  email_unverified:
-    "Your email address is not verified yet. Check your inbox, then sign in again.",
-  account_disabled: "This account is disabled here. Ask an administrator.",
-};
 
 registerApp({
   id: "signin",

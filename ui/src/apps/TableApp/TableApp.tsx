@@ -1,6 +1,6 @@
 import { Presentation } from "../../pbui";
 import { asText } from "../../model/table";
-import { registerApp, type AppProps } from "../registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPipeline } from "../useTable";
 import { AppBody } from "../../components/layout";
 import { Text } from "../../components/foundation";
