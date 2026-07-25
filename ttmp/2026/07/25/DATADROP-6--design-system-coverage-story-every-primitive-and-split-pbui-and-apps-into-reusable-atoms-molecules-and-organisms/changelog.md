@@ -77,3 +77,12 @@ Phase 6: ui/GUIDELINES.md, test/no-raw-controls.test.ts and the deferred disable
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/GUIDELINES.md — the policy in one place, each rule naming its test
 
+
+## 2026-07-25
+
+Follow-ups: v0.5 project report pushed to the go-go-parc vault (72590db), and GUIDELINES.md gained a procedural section 8 on adding a component, an application or a hardwired workspace (453bef6)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/GUIDELINES.md — section 8 is the authoring procedure, built from the ticket's own mistakes
+
