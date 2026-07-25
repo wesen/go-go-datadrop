@@ -5,6 +5,7 @@ import type { RootState } from "../../../store";
 import { layoutActions } from "../../../store/layout";
 import { SectionLabel, Text } from "../../foundation";
 import { Button } from "../../atoms";
+import { InlineRename } from "../../molecules";
 import { Stack, Toolbar } from "../../layout";
 
 /**
@@ -30,30 +31,16 @@ export function WorkspaceStrip() {
           // would be overwritten on the next load, so offering the edit would
           // be a lie (DR-29).
           renaming === space.id && !space.pinned ? (
-            <input
+            <InlineRename
               key={space.id}
-              autoFocus
-              defaultValue={space.name}
-              aria-label="workspace name"
-              onBlur={() => setRenaming(null)}
-              onKeyDown={(event) => {
-                if (event.key === "Enter") {
-                  dispatch(
-                    layoutActions.renameSpace({
-                      spaceId: space.id,
-                      name: (event.target as HTMLInputElement).value.trim() || space.name,
-                    }),
-                  );
-                  setRenaming(null);
-                }
-                if (event.key === "Escape") setRenaming(null);
+              initial={space.name}
+              label="workspace name"
+              fallback={space.name}
+              onCommit={(name) => {
+                dispatch(layoutActions.renameSpace({ spaceId: space.id, name }));
+                setRenaming(null);
               }}
-              style={{
-                border: "var(--pbui-border-firm)",
-                background: "var(--pbui-pane)",
-                fontSize: "var(--pbui-fs-small)",
-                width: 100,
-              }}
+              onCancel={() => setRenaming(null)}
             />
           ) : (
             <Presentation

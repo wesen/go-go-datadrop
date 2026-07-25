@@ -34,10 +34,11 @@
 
 .danger { color: var(--pbui-danger); }
 
-/* See Button.module.css: 0.4 is inherited from the call sites and phase 6
- * owns raising it. */
+/* See Button.module.css: 0.55, not the 0.4 the call sites used, because 0.4
+ * composites to 2.32:1 on --pbui-pane-alt and a disabled control still has to
+ * be readable. */
 .root:disabled {
-  opacity: 0.4;
+  opacity: 0.55;
   cursor: default;
 }
 

@@ -69,13 +69,19 @@
  * means a disabled button cannot look enabled, which is the failure that shape
  * invites.
  *
- * 0.4 is inherited from those call sites and is too low: on --pbui-pane-alt the
- * label lands well under the 3:1 that a disabled control still ought to clear.
- * Raising it is a visual change and therefore not part of the substitution —
- * DATADROP-6 phase 6 owns it, with a story to review it against.
+ * **0.55, not the 0.4 those call sites used.** Composited over --pbui-pane-alt,
+ * --pbui-ink at 0.4 measures 2.32:1 — under the 3:1 a disabled control should
+ * still clear, and a disabled control is not exempt from being *read*. 0.55
+ * gives 3.45:1 on the alt surface and 3.56:1 on the pane, and it is not a new
+ * number: Chip.module.css has used exactly 0.55 for `.disabled` since
+ * DATADROP-4, for the same reason.
+ *
+ * Deferred out of phase 2 deliberately — it is a visual change, and a
+ * substitution commit that also changes appearance is one nobody can verify by
+ * reading (DATADROP-6 phase 6).
  */
 .root:disabled {
-  opacity: 0.4;
+  opacity: 0.55;
   cursor: default;
 }
 

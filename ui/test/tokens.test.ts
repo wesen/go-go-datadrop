@@ -64,8 +64,12 @@ describe("contrast of the text tokens", () => {
     return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
   };
 
+  /** #rrggbb to three channels. Every token in the sheet is in that form. */
+  const rgb = (hex: string): [number, number, number] =>
+    [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)) as [number, number, number];
+
   const luminance = (hex: string) => {
-    const [r, g, b] = [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16));
+    const [r, g, b] = rgb(hex);
     return (
       0.2126 * channel(r as number) +
       0.7152 * channel(g as number) +
@@ -90,6 +94,41 @@ describe("contrast of the text tokens", () => {
   test("secondary text clears 4.5:1 on both surfaces", () => {
     expect(contrast(token("pbui-faint"), token("pbui-pane"))).toBeGreaterThanOrEqual(4.5);
     expect(contrast(token("pbui-faint"), token("pbui-pane-alt"))).toBeGreaterThanOrEqual(4.5);
+  });
+
+  /**
+   * A disabled control is still a control someone has to read.
+   *
+   * WCAG exempts disabled elements from the contrast minimum, and that
+   * exemption is a licence rather than a design goal: "you may not press this"
+   * is information, and it is useless if the label naming the thing you may not
+   * press is unreadable. Held to 3:1 — the non-text threshold — rather than
+   * 4.5:1, because a disabled control genuinely should recede.
+   *
+   * The number this pins matters. The six hand-written call sites used 0.4,
+   * which composites to 2.32:1 on the alt surface; DATADROP-6 phase 6 raised it
+   * to the 0.55 `Chip.module.css` had already been using for `.disabled` since
+   * DATADROP-4. Without this test the next person "tidying" the two back
+   * together would have a 50% chance of picking the wrong one.
+   */
+  test("a disabled control clears 3:1 on both surfaces", () => {
+    // Composite --pbui-ink over the surface at the disabled opacity, which is
+    // what the browser paints — `opacity` is not a colour and cannot be read
+    // out of the token sheet.
+    const over = (fg: string, bg: string, alpha: number) => {
+      const [fr, fg_, fb] = rgb(fg);
+      const [br, bg_, bb] = rgb(bg);
+      const mix = (f: number, b: number) => Math.round(f * alpha + b * (1 - alpha));
+      return `#${[mix(fr, br), mix(fg_, bg_), mix(fb, bb)]
+        .map((c) => c.toString(16).padStart(2, "0"))
+        .join("")}`;
+    };
+
+    const DISABLED_OPACITY = 0.55;
+    for (const surface of ["pbui-pane", "pbui-pane-alt"] as const) {
+      const faded = over(token("pbui-ink"), token(surface), DISABLED_OPACITY);
+      expect(contrast(faded, token(surface))).toBeGreaterThanOrEqual(3);
+    }
   });
 
   test("the inverted shell bars clear 4.5:1", () => {
