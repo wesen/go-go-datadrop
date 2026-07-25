@@ -1,7 +1,7 @@
 ---
 Title: 'Design system coverage: story every primitive, and split pbui and apps into reusable atoms, molecules and organisms'
 Ticket: DATADROP-6
-Status: active
+Status: review
 Topics:
     - design-system
     - storybook
@@ -123,7 +123,7 @@ Full statements with alternatives and costs are in guide §22.
 
 ## Status
 
-Current status: **active**
+Current status: **review**
 
 ## Topics
 

@@ -8,4 +8,4 @@
 - [x] Phase 3 — Stories for the 24 existing components, and turn on ui/test/stories.test.ts so a component directory without a story fails the suite <!-- t:3be2 -->
 - [x] Phase 4 — The remaining 4 atoms, 1 foundation primitive, 3 layout primitives and all 14 molecules, each with the states required by section 18 <!-- t:04b3 -->
 - [x] Phase 5 — DR-33: move apps/registry.ts to src/appkit, delete the organisms to apps edge, and extract the five organisms so the account applications become thin containers <!-- t:g881 -->
-- [ ] Phase 6 — ui/GUIDELINES.md, the no-raw-controls anti-regression test, the Button disabled-contrast fix deferred from phase 1, and the final acceptance numbers <!-- t:j1yn -->
+- [x] Phase 6 — ui/GUIDELINES.md, the no-raw-controls anti-regression test, the Button disabled-contrast fix deferred from phase 1, and the final acceptance numbers <!-- t:j1yn -->

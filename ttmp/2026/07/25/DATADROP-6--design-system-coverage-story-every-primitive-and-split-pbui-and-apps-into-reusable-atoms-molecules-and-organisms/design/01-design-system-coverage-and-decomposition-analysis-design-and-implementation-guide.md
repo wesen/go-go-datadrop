@@ -1,7 +1,7 @@
 ---
 Title: 'Design system coverage and decomposition: analysis, design and implementation guide'
 Ticket: DATADROP-6
-Status: active
+Status: review
 Topics:
     - design-system
     - storybook

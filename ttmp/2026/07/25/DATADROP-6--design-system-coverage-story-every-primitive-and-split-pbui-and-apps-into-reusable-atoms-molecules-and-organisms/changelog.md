@@ -68,3 +68,12 @@ Phase 5: DR-33 appkit move and five presentational organisms (commit c3c3788). T
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/layers.test.ts — the graph after DR-33, plus the new every-source-directory guard
 
+
+## 2026-07-25
+
+Phase 6: ui/GUIDELINES.md, test/no-raw-controls.test.ts and the deferred disabled-contrast fix (commit 2895585). 177 tests, 180 stories, zero hand-written form controls. The new guard found InlineRename had been built in phase 4 and never adopted
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/GUIDELINES.md — the policy in one place, each rule naming its test
+
