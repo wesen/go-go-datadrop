@@ -50,3 +50,12 @@ Phase 3: 24 stories written and ui/test/stories.test.ts turned on (commit 156b21
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/stories.test.ts — six checks, including the title prefix and the empty-directory guard
 
+
+## 2026-07-25
+
+Phase 4: 19 new components with 59 stories, Storybook now 142 (commit fa934fc). ChannelRow exists once instead of twice; formatBytes moved to model/format.ts because molecules may not import apps; four proposed components dropped for want of a call site
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/molecules/ChannelRow/ChannelRow.tsx — the component that existed twice
+

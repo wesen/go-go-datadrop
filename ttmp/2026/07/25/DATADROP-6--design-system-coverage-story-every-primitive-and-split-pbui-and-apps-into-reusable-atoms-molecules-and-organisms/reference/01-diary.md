@@ -1253,3 +1253,193 @@ Stories per group:
    10  Component Library/Organisms
     1  Applications/Workbench
 ```
+
+## Step 8: Phase 4 — the molecules, and four components that were not built
+
+Sixteen molecules, three atoms and one foundation primitive, each with a story.
+Storybook goes from 83 stories to **142**. Four components the guide proposed
+were **not** built, because no call site asks for them, and saying so is the
+point of §21.
+
+The phase also moved a function between layers — the extraction proved it was in
+the wrong one — and produced the ticket's cleanest single result: `ChannelRow`
+now exists once instead of twice.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Build the remaining atoms and all the molecules,
+with the states §18 requires.
+
+**Inferred user intent:** Finish the missing middle of the design system.
+
+**Commit (code):** `fa934fc` — "DATADROP-6 phase 4: the molecules"
+
+### What I did
+
+- foundation: `CodeText`.
+- atoms: `Swatch`, `StateGlyph`, `ScopeChip`.
+- molecules: `EmptyState`, `ErrorNotice`, `Callout`, `KeyValueList`, `Legend`,
+  `ScopeChecklist`, `FileDropZone`, `UploadItemRow`, `UploadQueueList`,
+  `DraftResumeList`, `TokenRow`, `MemberRow`, `MemberInvite`, `InlineRename`,
+  `ChannelRow` — 15, plus the two that already existed.
+- Moved `formatBytes` from `apps/UploadApp/upload.ts` to `model/format.ts`.
+- 59 new stories. 172 tests still pass; `build-storybook` succeeds.
+
+### Why
+
+**Four proposed components were dropped, each for the same reason.** The guide
+listed them; the code does not want them:
+
+| Dropped | Why |
+|---|---|
+| `Inline` | `Stack direction="row"` already is this, with the same gap scale |
+| `ScrollRegion` | zero inline `overflow` sites — `AppBody` already owns scrolling |
+| `CountBadge` | no call site at all; I had invented it from the reference's `Tag` |
+| `FormRow` | no three-site pattern with a distinct shape |
+
+§21 says the 57-component figure is "a consequence of §15, not a quota", and
+this is what honouring that looks like. The final count is 53, and each of the
+four absences is a component that would have had one contrived story and no
+consumer.
+
+**`ScopeChip` is not a `Chip`,** and the distinction is worth stating because it
+will come up again. A `Chip` is the *body of a presentation* — there is a
+descriptor behind it, a menu of verbs, a hover description. A scope has none of
+those and should not acquire them: it is an attribute of a token, not an object
+you can act on. Making it a Chip would have implied a `<scope>` presentation
+type that does not exist.
+
+### What worked
+
+**`ChannelRow` now exists once.** It existed twice — in `EncodingApp` and again
+in `pbui/Pbui.stories.tsx`, which needed a channel row to demonstrate the accept
+protocol, had nothing to import, and wrote its own. They had been drifting
+independently. This is the same failure as the six copies of the button style,
+and it is the tidiest possible demonstration that "a component with no story"
+and "a story with no component" are one problem rather than two.
+
+**The `render*` seam works and is small.** DR-38 forbids a molecule from
+wrapping itself in `Presentation`, but `Legend`, `MemberRow`, `ChannelRow` and
+`UploadQueueList` all have contents that genuinely *are* live presentations in
+the application. Each takes a render prop: the default draws a plain chip, and
+the caller passes a function that wraps it. Four components need it, which is
+few enough to be a pattern rather than an architecture — and every one of their
+stories renders without a provider, which is the property being bought.
+
+### What didn't work
+
+**`molecules` may not import `apps`, and `UploadItemRow` needed `formatBytes`.**
+The typecheck was clean; the *layer test* would have failed. `formatBytes` lived
+in `apps/UploadApp/upload.ts` because the uploader was the first thing to need
+it, which is the ordinary way a shared helper ends up in the wrong place.
+
+It moved to `model/format.ts` — pure, no DOM, no React, which is exactly what
+`model` is for — and `upload.ts` re-exports it so the uploader's own test and
+call sites keep working. The extraction is what proved the misplacement: nothing
+else would have.
+
+**One unused import survived my own review** and `tsc` caught it:
+
+```text
+src/components/molecules/MemberRow/MemberRow.tsx(2,10):
+  error TS6133: 'Stack' is declared but its value is never read.
+```
+
+Trivial, but worth the line: I had written the component with a `Stack`, decided
+`Toolbar` was right, and left the import. That is the failure mode of writing
+sixteen components in a sitting.
+
+### What I learned
+
+**A story for an invisible or structural component must demonstrate the
+*invariant*, not the appearance.** This came up four times in a row and is now a
+rule I would put in `GUIDELINES.md`:
+
+- `VisuallyHidden` → two adjacent lines with a whole announced sentence between
+  them. The point is that they are adjacent.
+- `Toolbar` → a 90px frame with 300px of content. The point is that the toolbar
+  does not shrink.
+- `KeyValueList` → a 220px box with a sha256 digest in it. The point is that the
+  box stays 220px, because the value column is `minmax(0, 1fr)` and not `1fr`.
+- `Legend` → the empty case renders *nothing*, and the story says so in prose,
+  because reserving space for an absent legend would shift every unmapped chart.
+
+**`Callout` has no `danger` variant, and working out why clarified both
+components.** A Callout reports a state worth knowing and announces as
+`status`; an `ErrorNotice` reports a failure and announces as `alert`. Merging
+them would mean either announcing every informational panel as an alert or
+announcing no failure as one. The variant that does not exist is the one that
+made the boundary legible.
+
+### What was tricky to build
+
+**`DraftResumeList` is the component with the most consequence behind the least
+markup, and getting its prose right mattered more than its layout.** The design
+analysis predicted, by reading `pkg/store/datasets.go`, that committed-only
+version listings would make an interrupted upload both unrecoverable *and* a
+disk leak; building the uploader confirmed it exactly. So "discard" here is not
+a tidiness affordance — it is the only way to release the bytes, and a user who
+reads it as "clean up my list" will leave 400 MB allocated forever. The
+component says so, in the component, rather than in a comment.
+
+**`InlineRename` exists to hold a reason, not to hold markup.** It is fourteen
+lines of JSX around an uncontrolled `<input>`. Phase 2 deliberately left that
+element raw, and the risk was that the next person would "fix" the
+inconsistency by converting it to `TextInput` — which would change Escape from
+"there was never an edit" to "put the old value back", and add a `useState` per
+rename that exists only to be discarded. Extracting it gives the reason a
+permanent home next to the code, which a phase-2 diary entry does not.
+
+### What warrants a second pair of eyes
+
+- **The four dropped components.** If a reviewer wants `FormRow`, the argument
+  to make is which three sites it unifies.
+- **`ScopeChip`'s "privileged" styling for `admin`.** Bolder and
+  hairline-bordered rather than coloured, because a red scope chip would read
+  as an error rather than as a privilege. That is a judgement call.
+- **`formatBytes` moving to `model/`.** It is a formatting function and `model`
+  is described as "the engine". I think it belongs — it is pure and it is shared
+  — but "model" may want to stay strictly the grammar of graphics.
+- **`Callout`'s `role="status"` on all three variants.** The warning variant is
+  arguably an alert.
+
+### What should be done in the future
+
+- Phase 5: the `appkit` move and the five organisms; then the applications
+  actually adopt these molecules, which phase 4 has *not* done — the components
+  exist and are storied, but `UploadApp` still contains its own version of the
+  markup.
+- Phase 6: `GUIDELINES.md` should carry the invariant-not-appearance rule above,
+  and the story-title-must-be-a-literal constraint from phase 3.
+
+### Code review instructions
+
+- Start with `molecules/ChannelRow/` and then `grep -n "ChannelRow" -r src/` —
+  the whole argument for the ticket is that this is one component now.
+- Then `molecules/DraftResumeList/DraftResumeList.tsx`, whose comment explains a
+  server-side consequence a reader would otherwise have to discover.
+- Then the four `render*` props (`Legend`, `MemberRow`, `ChannelRow`,
+  `UploadQueueList`) against DR-38.
+- Validate:
+  ```bash
+  bun run --cwd=ui typecheck && bun test --cwd ui
+  bun run --cwd=ui build-storybook
+  make storybook   # Component Library/Molecules/*
+  ```
+
+### Technical details
+
+```text
+                     before   after
+component directories    23      42
+story files              26      42
+stories                  83     142
+bun tests               172     172
+```
+
+Built: 1 foundation, 3 atoms, 15 molecules.
+Dropped, for want of a call site: `Inline`, `ScrollRegion`, `CountBadge`,
+`FormRow`.
+Moved: `formatBytes`, `apps/UploadApp/upload.ts` → `model/format.ts`.
