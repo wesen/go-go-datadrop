@@ -32,3 +32,12 @@ Phase 1: the six control atoms (commit 0ab9e4e). reset.css strips buttons to tex
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/atoms/Button/Button.module.css — the two treatments, and the 0.4 disabled opacity phase 6 owns
 
+
+## 2026-07-25
+
+Phase 2: substitution complete (commit 6e80eda). 42 buttons, 9 selects, 12 inputs and all six btn style objects gone; inline styles 80 to 51. Found a third button treatment (raised) that tokens.css had named and nothing implemented, and four elements that must stay raw
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/apps/SourceApp/SourceApp.tsx — all three interesting substitution cases in one file
+

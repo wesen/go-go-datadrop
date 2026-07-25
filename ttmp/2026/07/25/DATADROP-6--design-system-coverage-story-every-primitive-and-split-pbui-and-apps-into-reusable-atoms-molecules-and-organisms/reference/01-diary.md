@@ -844,3 +844,214 @@ apps/*.tsx total            3 528 lines
 
 Phase 1 result: 30 component directories, 8 story files, 166 tests still
 passing, `build-storybook` succeeds. No application file was touched.
+
+## Step 6: Phase 2 — substitution across the whole tree
+
+Every hand-written control is gone. 42 buttons became `Button` or `IconButton`,
+9 selects became `SelectInput`, 12 of the 14 inputs became `TextInput` or
+`CheckboxRow`, and all six copies of `const btn: React.CSSProperties`
+disappeared. Inline style objects fell from 80 to 51.
+
+The phase found a **third** button treatment that neither the guide nor phase 1
+had seen, and it found two elements that must stay raw for reasons worth
+recording. Both are the kind of thing only substitution surfaces: reading a
+component tells you what one call site does; replacing every call site tells you
+what the set of them does.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Replace every hand-written control with the phase 1
+atoms, changing nothing visible.
+
+**Inferred user intent:** Bank the value of phase 1 before doing anything
+structural, in a diff a reviewer can actually read.
+
+**Commit (code):** `6e80eda` — "DATADROP-6 phase 2: substitute the control atoms across the tree"
+
+### What I did
+
+- Substituted in 14 application files, `DocBar`, `Tile` and `WorkspaceStrip`.
+- Added a **`raised`** variant to `Button` and grounded `TextInput`'s and
+  `SelectInput`'s size and width scales in the call sites that asked for them.
+- Added `hideLabel` to `CheckboxRow`.
+- Verified: typecheck, 166 tests, `build-storybook`, `vite build`, and a browser
+  sweep of the build and explore workspaces against a real server.
+
+### Why
+
+**The `raised` variant.** LauncherApp, WatchlistApp, `WorkspaceStrip` and the
+tutorials all draw a button with `border-firm` + `shadow-hard` + a tone fill.
+`tokens.css` names it:
+
+```css
+--pbui-shadow-hard: 2px 2px 0 var(--pbui-ink); /* buttons */
+```
+
+The token system anticipated a raised button and nothing implemented one, so
+four sites implemented it four times. It takes a `fill` prop — a string, not an
+enum, and the same shape as `Chip`'s `tone` — because LauncherApp fills each
+button with the tone of the application it launches. That is data, not a design
+choice made in the atom.
+
+**The size and width scales were invented in phase 1 and are now grounded.** I
+had written `width: "narrow" | "normal" | "wide"` with max-widths of 90/180/320,
+none of which anything asked for. What the call sites actually want is:
+`auto` (the four DATADROP-5 fields), `narrow` = **64px** exactly (ChartsApp's
+document name), `compact` = 96px (PipelineApp's step editor, which caps at
+60–110px so a step stays on one line), and `fill` (SourceApp's token field).
+Three font sizes, likewise: `base` from `font: inherit`, `small` from ChartsApp,
+`tiny` from SourceApp. Every value now traces to a line of code.
+
+### What worked
+
+**Replacing a hand-rolled selected-state with `selected` deleted a conditional
+at three sites.** SourceApp's row-budget buttons were:
+
+```tsx
+style={{ ...btn, background: limit === option ? "var(--pbui-selected)" : "var(--pbui-pane-alt)" }}
+```
+
+and are now `selected={limit === option}`. The fill is identical, and the button
+now reports `aria-pressed`, which none of the three did. Same for EncodingApp's
+y-scale pair.
+
+**The browser sweep caught nothing, which is the result I wanted.** The build
+workspace renders the framed step buttons, the `⌖`/`×` channel icon buttons, the
+selected `linear` and the disabled `log`; the explore workspace renders the
+filling token field, the framed drop select and the row-budget row with `2,000`
+selected. Both match what was there before.
+
+### What didn't work
+
+**`bun test`'s regex habits cost me a wrong measurement.** I counted remaining
+raw elements with `grep -coE '<button\b'` and then, in a later pass, with a
+Python `re.findall(r'<button.')` — the trailing `.` does not match a newline, so
+`<button\n  type="button"` was invisible and UploadApp reported `i=0` while it
+still held a `<input type="file">`. The same class of mistake as step 1's zsh
+glob. Recounting with `grep -coE '<button'` gave the true numbers.
+
+**Two of my substitutions were wrong and I reverted them before committing:**
+
+- I gave ProfileApp's access toggle `selected={expanded === drop.name}`. It never
+  had a selection fill, and the label already changes between "access" and
+  "hide access", so the state was already carried. Adding a yellow background is
+  a visual change, and phase 2 forbids those.
+- I gave MemberList's email field `invalid={error !== null}`. That would add a
+  dashed border the field never had. The `aria-invalid` association it also
+  brings is a genuine fix — the error text is currently not associated with the
+  field at all — so it moves to phase 4 with `MemberInvite` and a story.
+
+Both were improvements. Both were out of scope, and a substitution commit that
+also contains improvements is a commit nobody can verify by reading.
+
+### What I learned
+
+**Not every `<button>` is a Button, and the exceptions are principled.** Two
+survive:
+
+- `pbui/ObjectMenu.tsx:88` — `role="menuitem"`, `data-part={PARTS.menuItem}`, its
+  own module class. It is also in `pbui/`, which **may not import `atoms`**
+  under the layer graph, so it could not use the atom even if the semantics
+  matched.
+- `organisms/SplitView/SplitView.tsx:88` — `role="separator"` with
+  `aria-orientation` and `aria-valuenow`. It is a resize handle that happens to
+  be a `<button>` for focusability. Giving it Button's appearance would be
+  actively wrong.
+
+And two `<input>` elements survive:
+
+- UploadApp's `<input type="file" hidden>`, which moves into `FileDropZone` in
+  phase 4.
+- `WorkspaceStrip`'s inline rename field, which is **uncontrolled by design**:
+  `defaultValue` plus a read on Enter, with Escape discarding. `TextInput` is
+  controlled, so converting it would change behaviour in a phase that forbids
+  that. It wants an `InlineRename` molecule, which is a phase 4 decision.
+
+This directly changes the anti-regression test planned in guide §19.2. Its
+allowlist cannot just be "components/atoms" — it needs `pbui/` (which cannot
+import atoms at all) and a rule for elements carrying a non-default ARIA role.
+
+**`Tile`'s `TileButton` became a four-line wrapper rather than disappearing.**
+Six title-bar buttons all want framed + tiny + a glyph. Keeping the local
+wrapper for those three defaults is less repetitive than spelling them six
+times, and it is now a wrapper over the atom rather than a second `<button>`.
+
+### What was tricky to build
+
+**Deciding how strict "no visual change" should be, three times.** The two
+reverts above were easy once stated. The third is not, and it shipped:
+
+ChartsApp's document-name field had `border` and `background` but **no
+padding**. `TextInput` has `padding: 2px 4px`, from the four DATADROP-5 fields.
+So that one field gains 2px of vertical padding inside its 64px box. I kept the
+padding — four call sites had it and one did not, and adding a `padding` prop to
+satisfy the outlier is exactly the styling-API leak §20.3 forbids. But it *is* a
+visual change, it is the only one, and it is recorded here rather than
+discovered later.
+
+Similarly EncodingApp's log-scale button dimmed to `0.45` while everything else
+used `0.4`. Both are now `0.4` from `:disabled`. Converging two values that
+differed by accident is the point of the ticket; I mention it because "no visual
+change" and "reconcile accidental divergence" are in tension, and the resolution
+is that the divergence has to be *named* when it is reconciled.
+
+**PipelineApp's step editor had six unlabelled selects.** `SelectInput` requires
+`label`, so I had to invent names: "field to filter on", "comparison", "left
+operand", "aggregate", "direction", "rows to keep". A screen reader previously
+announced all six as "combo box" and nothing else. This is the one behaviour
+change in the substitution and it is a fix — but it is worth noticing *how* it
+happened: a required prop on an atom found six missing accessible names that no
+review had. That is the argument for required props doing work, and it is the
+same mechanism as `IconButton`'s required `label`.
+
+### What warrants a second pair of eyes
+
+- **The ChartsApp padding change**, above. It is the single pixel-level
+  difference in the phase and someone should agree it is the right trade.
+- **The six invented select labels** in PipelineApp. They are my words for
+  someone else's controls; a reviewer who uses the pipeline editor may have
+  better ones.
+- **SourceApp's token field became controlled.** It was
+  `defaultValue={readToken()}` with a write-through `onChange`. It is now
+  `useState` plus the same write-through. Equivalent as far as I can see, but it
+  is the one place where an uncontrolled input became controlled.
+
+### What should be done in the future
+
+- Phase 3: stories for the 24 pre-existing components, and turn on
+  `stories.test.ts`.
+- Carry into phase 6: the anti-regression test's allowlist must cover `pbui/`
+  and non-default ARIA roles, not just `components/atoms`.
+- Carry into phase 4: `InlineRename` for WorkspaceStrip, `FileDropZone` for
+  UploadApp's hidden input, and `MemberInvite`'s `aria-invalid` association.
+
+### Code review instructions
+
+- Read `git show --stat` first: 17 files, and every one should be a
+  like-for-like replacement.
+- Then `ui/src/apps/SourceApp/SourceApp.tsx` — it has all three interesting
+  cases in one file: the controlled-token conversion, the framed select, and the
+  `selected` replacement for a hand-rolled background conditional.
+- Then `Button.module.css` `.raised` against the four sites it replaced.
+- Validate:
+  ```bash
+  bun run --cwd=ui typecheck && bun test --cwd ui
+  bun run --cwd=ui build-storybook
+  make ui && ./datadrop serve --auth none   # then sweep the workspaces
+  ```
+
+### Technical details
+
+```text
+                         before   after   note
+raw <button>                 42       2   ObjectMenu (menuitem), SplitView (separator)
+raw <select>                  9       0
+raw <input>                  14       2   UploadApp file input, WorkspaceStrip rename
+const …: React.CSSProperties  6       0
+inline style={{               80      51
+```
+
+Both surviving buttons carry a non-default ARIA role; one of them is in `pbui/`,
+which the layer graph forbids from importing `atoms` at all.
