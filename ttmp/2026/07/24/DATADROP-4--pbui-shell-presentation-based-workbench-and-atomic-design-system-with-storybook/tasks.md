@@ -2,11 +2,10 @@
 
 ## TODO
 
-- [ ] Phase 0 — Foundations: tokens.css, layer directories, import-boundary lint rule, Storybook 9 + vite builder, the three decorators, committed fixtures, existing eight components re-layered with Default stories (guide §10, §11, §17) <!-- t:je5l -->
-- [ ] Phase 1 — PBUI core: PbuiProvider, Presentation, registry, field/source/doc descriptors, ObjectMenu, AcceptBanner, MouseDocLine; wired into the existing App.tsx (guide §8) <!-- t:08ck -->
-- [ ] Phase 2 — Store: world and layout slices with reducer tests, documents replace App.tsx spec state, defensive localStorage persistence (guide §7, §16.2) <!-- t:av0x -->
-- [ ] Phase 3 — Window manager: split tree, tile chrome, snapping dividers, drag-to-dock, workspaces, launcher, document bars (guide §9) <!-- t:cddq -->
-- [ ] Phase 4 — Applications: sources, charts, pipeline, encoding, chart, table, gallery, compare, inspector, watchlist, trace, about (guide §12) <!-- t:gck1 -->
-- [ ] Phase 5 — Multiple documents and snapshots: charts app, snapshot/restore/fork, compare pins, watchlist, trace (guide §7.3, §12.7, §12.8) <!-- t:w90h -->
-- [ ] Phase 6 — Retire the old shell: App.tsx becomes pages/Workbench, delete the fixed three-column layout, extend the Playwright check (guide §17) <!-- t:ntxa -->
-- [ ] Phase 7 — Tutorials and polish: four tutorial workspaces with working run buttons, seeded tutorial drop, keyboard and a11y work, performance caps (guide §12.12, §14, §15) <!-- t:2h7y -->
+- [ ] Phase 0 — Demolition and foundations: walk the §4.4 salvage list into the diary, delete ui/src/App.tsx and ui/src/components/, keep model+api+export+test, tokens.css generated from model/plot.ts, layer directories, import-boundary lint rule, Storybook 9 with the three decorators, committed fixtures (guide §4.4, §10, §11, DR-17) <!-- t:35uj -->
+- [ ] Phase 1 — PBUI core proven in Storybook: PbuiProvider, Presentation, registry, field/source/doc descriptors, ObjectMenu, AcceptBanner, MouseDocLine, and the chip atoms; the Playground story with a filtered accept is the acceptance test (guide §8, DR-10) <!-- t:syyt -->
+- [ ] Phase 2 — Store: world and layout slices, the §16.2 reducer test list, selector factories, defensive localStorage persistence; still nothing on screen (guide §7, §14.1, §16.2) <!-- t:zmyw -->
+- [ ] Phase 3 — The shell, and the app runs again: split tree, tile chrome, snapping dividers, drag-to-dock, workspace strip, status bar, launcher, app registry, document bars, pages/Workbench, plus source/pipeline/encoding/chart/table apps. Ends the dark period — run make ui, check the binary, extend Playwright. Acceptance: the build workspace does everything the deleted App.tsx did (guide §9, §17) <!-- t:16z9 -->
+- [ ] Phase 4 — Remaining applications: gallery, compare, inspector, watchlist, trace, charts, about, and the eight remaining presentation-type descriptors (guide §12) <!-- t:0hyh -->
+- [ ] Phase 5 — Multiple documents and snapshots: several live documents, snapshot/restore/fork, compare pins, permalink round trip (guide §7.3, §12.7, §12.8) <!-- t:avzo -->
+- [ ] Phase 6 — Tutorials and polish: four tutorial workspaces with working run buttons, live glossary, seeded tutorial drop, keyboard and a11y work, performance caps (guide §12.12, §14, §15) <!-- t:obnd -->

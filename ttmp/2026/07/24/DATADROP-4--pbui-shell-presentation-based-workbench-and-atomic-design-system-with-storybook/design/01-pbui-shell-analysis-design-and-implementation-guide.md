@@ -51,11 +51,26 @@ component system. Sections 12 to 17 are implementation: what to build, in what
 order, and how to know each phase is finished. Sections 18 to 21 are reference
 material you will come back to rather than read once.
 
-One warning up front. Almost every module named in this guide already exists
-and works. The temptation is to start over. Do not: the parts of the prototype
-that are hard to get right — the transformation pipeline, the scales, the tick
-ladder, the facet layout — are already ported, tested, and running. The work
-here is the half the prototype has and we do not: the *interaction* model.
+One thing to be clear about up front, because it is the axis everything else
+turns on. `ui/src/` splits cleanly in two:
+
+- **2 569 lines that stay.** `model/` — the transformation pipeline, the scales,
+  the tick ladder, the facet layout, the temporal axis, the live projection —
+  plus `api/`, `export/` and the 58 tests over them. This is the half of the
+  prototype that is genuinely hard to get right, it is already ported, and it is
+  green. It does not change.
+- **1 341 lines that are deleted.** `components/` and `App.tsx`: eight
+  components written for a fixed three-column layout with props threaded from a
+  single root, and the root that threads them.
+
+The second half is being demolished rather than migrated (§4.4, DR-17). That is
+a deliberate decision and it is cheap, because those files are small and because
+their *value* is not the code — it is a handful of hard-won behaviours encoded
+in them. §4.4 extracts those behaviours before the delete, and it is the section
+to read twice.
+
+The work of this ticket is the half of the prototype we never ported: the
+*interaction* model.
 
 ## Table of contents
 
@@ -422,6 +437,47 @@ You do not need to change the Go side at all. What you need to know about it:
 - **Auth is a static bearer token**, held in `sessionStorage`, sent as an
   `Authorization` header. No cookies are ever set, so no request is ever
   ambiently authenticated. A drop marked `public_read` needs no token at all.
+
+### 4.4 The salvage list
+
+`ui/src/components/` and `ui/src/App.tsx` are deleted in phase 0 (DR-17). They
+are 1 341 lines and rewriting them against the new contract is less work than
+retrofitting presentation-awareness and store selectors onto components built to
+receive threaded props.
+
+**But they are not worthless, and the value is not the code.** Four of those
+files encode defects that were found *only* by driving a browser during
+DATADROP-3 — three of which produced a screen that looked like it was working,
+with no error anywhere. Delete the files without extracting these and you will
+reintroduce them, and you will find them the same expensive way.
+
+Read this table before you run `git rm`. Every row is a behaviour that must
+reappear in the component that replaces it.
+
+| From | The behaviour | Why it exists |
+|---|---|---|
+| `LiveToggle.tsx` | `addEventListener("append", …)`, **never** `EventSource.onmessage` | The server writes *named* SSE frames. `onmessage` fires only for unnamed ones, so the tail connects, reports no error, and delivers nothing. Diagnosed by comparing a console `EventSource` against `curl -N`. |
+| `SourcePicker.tsx` | the file list comes from `useGetDatasetVersionQuery`, not from the dataset detail | The dataset detail response omits per-version files by design. The symptom is an empty file list with no error and nothing in the console. |
+| `TruncationBanner.tsx` | the banner is **not** dismissible | A chart drawn from 2 000 of 40 000 rows that looks complete is worse than no chart. It also names the row budget and tells the user to raise it — which is why "raise the budget" must be reachable from where the advice is read (§13.1). |
+| `PlotSvg.tsx` | **no scale arithmetic in the renderer** — every coordinate comes from `buildPlot` | If a mark is in the wrong place the bug is in `model/plot.ts`, where a unit test can find it without a browser. The moment the renderer computes a position, that stops being true. |
+| `App.tsx:108-114` | `logUnavailable` — the log toggle is *disabled with a reason*, not silently ignored | A log scale needs a strictly positive domain. `plot.ts` falls back silently as a second line of defence; the first line is refusing to offer the option. Becomes a selector (§20.3). |
+| `DataTable.tsx` | render a few hundred rows and count the rest | The cheapest place in the whole application to accidentally mount 50 000 DOM nodes. |
+| `EncodingEditor.tsx` | a mapped field no longer in the pipeline output renders stale, with a warning | Turns "my chart went blank" into "y points at a column your summarize step removed". |
+
+Three more behaviours already live in `model/` and `api/`, which are **not**
+deleted, so they are safe — but know where they are, because a rewrite that
+"simplifies" one of them is a regression:
+
+- `model/chart.ts:defaultChart` — payload columns rank above envelope metadata,
+  and a colour candidate must have 2–8 distinct values. Without the first rule
+  the workbench opens by charting the row number against time; without the
+  second it opens with a legend longer than the chart.
+- `model/plot.ts:244` — `continuousX`, so a temporal x is a continuous scale
+  rather than one band per distinct timestamp. The band version draws uneven
+  intervals evenly and labels the axis with full ISO strings.
+- `api/client.ts` — the token is in `sessionStorage`, there is no `credentials`
+  option, and every endpoint is a `GET`. Three security decisions in twenty
+  lines (§5.6).
 
 ---
 
@@ -1467,11 +1523,20 @@ break.
 
 ### 10.5 The component inventory
 
-`ui/src/components/` today is eight flat files. Here is where each goes, and
-what joins them. **Nothing is deleted** — the existing components are re-layered
-and given presentation awareness.
+`ui/src/components/` today is eight flat files, all deleted in phase 0. This
+table is therefore a **specification for their replacements**, not a refactoring
+plan: the "today" column names the file to read for reference and then remove,
+and the salvage list in §4.4 names the behaviours that must survive the removal.
 
-| Today | Layer | Becomes | Change |
+Rewriting rather than retrofitting is the cheaper path here for a specific
+reason. Every existing component receives its data as threaded props from one
+root — `EncodingEditor` takes `(fields, spec, logUnavailable, onChange)`, and
+`onChange` is `setSpec` from `useState`. The replacements read a document from a
+store selector and emit presentations. That is a different component with the
+same rendered output, and pretending otherwise produces a component with two
+data paths.
+
+| Reference file | Layer | Becomes | What changes |
 |---|---|---|---|
 | `PlotSvg.tsx` | organism `apps/ChartApp` + molecules `PanelFrame`, `AxisX`, `AxisY`, `Legend` + SVG atoms | `ChartCanvas` | marks wrapped in `<Presentation svg ptype="datum">`; legend swatches in `<Presentation ptype="cat">` |
 | `PipelineEditor.tsx` | organism `apps/PipelineApp` + molecules `StepRow`, five `StepEditors` | | step kind chips become `<step>` presentations; `+ filter…` uses `accept("field")` |
@@ -2132,77 +2197,117 @@ of them, and only a browser will find them.
 
 ## 17. Migration plan
 
-Seven phases. Each ends with a working application; none requires a big-bang
-switchover. The current `App.tsx` keeps working until phase 6 retires it.
+Six phases. The React shell is demolished in phase 0 rather than migrated
+(DR-17), which removes the "keep it working at every commit" constraint and with
+it two awkward steps: re-layering eight components that were going to be deleted
+anyway, and proving the accept protocol inside a shell it does not fit.
 
-### Phase 0 — Foundations
+**Storybook is the development surface for phases 0 to 2.** That is not a
+consolation prize for having broken the app — it is what a design system is for,
+and it is a better place to build a `<field>` chip than a running server is.
 
-Tokens, the layer directories, the lint boundary rule, Storybook with the three
-decorators, the fixture generator and its committed output. Move the eight
-existing components into their layers with no behaviour change and give each one
-a `Default` story.
+### The dark period, and why it is safe
 
-*Done when:* `bun run storybook` shows every existing component, `bun test` and
-`make ui` are unchanged, and the a11y addon passes.
+Between deleting `App.tsx` in phase 0 and assembling `pages/Workbench` in phase
+3, `bun run build` has no application to build. Three things make that a
+non-event:
 
-### Phase 1 — The PBUI core
+- **`pkg/webui` embeds a committed `ui/dist`.** The bundle is a snapshot taken
+  at the last `make ui`. Demolishing the *source* does not touch it, so
+  `go build ./...`, `go test ./...` and the running binary keep serving the
+  DATADROP-3 UI throughout. **Do not run `make ui` during the dark period** — it
+  is the one command that would replace a working bundle with a broken one. Add
+  the rule to the diary on day one; it is exactly the kind of thing that gets
+  rediscovered at the wrong moment.
+- **`bun test` stays green the whole way.** The 58 model tests do not depend on
+  a single React component.
+- **`cmd/datadrop/table_smoke_test.go` stays green**, because it asserts against
+  the served bundle and the API, neither of which moves.
+
+Phase 3 ends the dark period, and the first `make ui` after it is the moment to
+check the binary again.
+
+### Phase 0 — Demolition and foundations
+
+`git rm ui/src/App.tsx ui/src/components/*`, having first walked §4.4 and
+recorded every salvaged behaviour in the diary. Then: `tokens.css` generated
+from `model/plot.ts`'s palette, the layer directories, the import-boundary lint
+rule, Storybook with the three decorators, the fixture generator and its
+committed JSON, and a minimal `main.tsx` that mounts a store `Provider` around
+nothing.
+
+*Done when:* `bun run storybook` opens on the token sheet, `bun test` is green,
+`go test ./...` is green, and the a11y addon passes on every story that exists.
+
+### Phase 1 — The PBUI core, proven in Storybook
 
 `ui/src/pbui/` complete: provider, `Presentation`, registry, three type
 descriptors (`field`, `source`, `doc`), object menu, accept, mouse-doc line.
-Wire it into the *existing* `App.tsx`: make table headers `<field>`
-presentations, and give the encoding editor's channel rows an accept-driven `⌖`.
+Plus the atoms that carry them: `Chip`, `FieldChip`, `TypeBadge`,
+`ProvenanceBadge`, `SourceChip`, `DocChip`.
 
-*Done when:* right-clicking a table header offers *Map to y* and it works; the
-accept flow story passes; nothing else about the application has changed.
+The proof is a `Playground` story: a fixture table rendered as a schema strip and
+a data grid, a button that starts an `accept("field")` filtered to quantitative
+fields, and the mouse-doc line underneath. Right-clicking a chip opens a real
+menu. Accepting a chip resolves a real promise.
 
-*This is the phase that proves the design.* If accept feels wrong here, it will
-feel wrong with fifteen tiles. Do not proceed past it on faith.
+*Done when:* the accept-flow play function passes in CI; a nominal chip does not
+light up for a quantitative accept; `Escape` aborts and resolves `null`.
+
+*This is the phase that proves the design.* Building it against fixtures rather
+than a server is the point — if the protocol needs a running backend to feel
+right, the protocol is wrong.
 
 ### Phase 2 — The store
 
-`world` and `layout` slices with reducers and tests. Documents replace `App.tsx`'s
-`spec` state; one document, named α; `localStorage` persistence with defensive
-restoration. Still one fixed layout.
+`world` and `layout` slices with reducers and the §16.2 test list. Documents,
+snapshots, workspaces, `localStorage` persistence with defensive restoration,
+and the selector factories from §14.1.
 
-*Done when:* the reducer suite is green, a reload restores the chart, and a
-corrupted `localStorage` payload yields defaults with a warning.
+Still no application on screen. Stories gain the `withStore` decorator and the
+fixture world, so organisms built in phase 4 have somewhere to read from.
 
-### Phase 3 — The window manager
+*Done when:* the reducer suite is green, `cloneTree` shares no nodes, deleting
+the active document reassigns `activeDocId`, a snapshot survives mutation of its
+source document, and a corrupted persisted payload yields defaults with a
+warning rather than a throw.
 
-Split tree, tile chrome, dividers with snapping, drag-to-dock, workspaces, the
-launcher. The four document-bound applications get their document bars. The
-existing three-column layout becomes the `build` workspace preset.
+### Phase 3 — The shell, and the app runs again
 
-*Done when:* a user can split, close, swap and dock tiles; switching workspaces
-preserves state; two chart tiles on one document move in lockstep.
+Split tree, tile chrome, snapping dividers, drag-to-dock, the workspace strip,
+the status bar, the launcher, the application registry, document bars — and
+`pages/Workbench` assembling them. Enough applications to be usable: source,
+pipeline, encoding, chart, table.
 
-### Phase 4 — The applications
+This is the phase that ends the dark period. Run `make ui`, check the binary,
+extend the Playwright smoke test.
 
-Port the remaining tile applications in the §12 order. Each is one organism with
-stories, landing independently.
+*Done when:* `/ui/` serves the tiled workbench; a user can split, close, swap and
+dock tiles; two chart tiles on one document move in lockstep; the `build`
+workspace does everything the deleted `App.tsx` did.
+
+The last clause is the acceptance test that matters. Keep a screenshot of the
+old UI and walk it: pick a source, set a row budget, edit the pipeline, remap a
+channel, toggle log, see truncation, tail live, export PNG and CSV, copy a
+permalink.
+
+### Phase 4 — The remaining applications
+
+Gallery, compare, inspector, watchlist, trace, charts, about, in §12 order. Each
+is one organism with stories, landing independently.
 
 *Done when:* every application in the registry is reachable from the launcher and
 has `Default`, `Loading`, `Error` and `Empty` stories.
 
 ### Phase 5 — Multiple documents and snapshots
 
-Several live documents, the charts application, snapshots, restore, compare
-pins, the watchlist, the trace.
+Several live documents, snapshots, restore, restore-as-new, compare pins.
 
 *Done when:* two documents on two sources can be edited side by side without
 interference; a snapshot survives later mutation of its document; a permalink
 opens the document it encodes.
 
-### Phase 6 — Retire the old shell
-
-`App.tsx` becomes `pages/Workbench`: workspace strip, split tree, accept banner,
-object menu, mouse-doc line, and nothing else. Delete the old layout. Extend the
-Playwright check.
-
-*Done when:* the shell holds no chart-specific state and `App.tsx` is under 100
-lines.
-
-### Phase 7 — Tutorials and polish
+### Phase 6 — Tutorials and polish
 
 The four tutorial workspaces, the about application's live glossary, the seeded
 tutorial drop, the keyboard and accessibility work from §15, the performance caps
@@ -2302,10 +2407,23 @@ to diagnose.
 presentation vocabulary gets CSS modules over a token layer, with a `data-part`
 contract. Bootstrap's custom properties are aliased onto the tokens.
 
-**Why.** `AGENT.md` mandates Bootstrap and the existing UI is built on it;
-rewriting that buys nothing. But Bootstrap has no vocabulary for a typed,
+**Why.** `AGENT.md` mandates Bootstrap. Bootstrap has no vocabulary for a typed,
 acceptable, hoverable presentation, and expressing one in utility classes would
 scatter it across every call site.
+
+**Revisited under DR-17.** This decision originally had a second leg — *the
+existing UI is built on Bootstrap and rewriting that buys nothing* — and
+demolishing the React shell removes it. So the question is now open on its
+merits, and the honest answer is that this workbench uses very little Bootstrap:
+tiles, split trees, chips, menus and a mouse-doc bar are all bespoke, and the
+prototype uses none at all. What remains is the reset, the form controls, and a
+handful of utilities — perhaps 15 % of what a conventional application uses.
+
+**Decision stands**, on two grounds: `AGENT.md` is explicit, and the reset plus
+form controls are genuinely worth the ~30 kB gzipped rather than hand-rolling
+accessible selects and checkboxes. But this is now a cheap decision to reverse,
+and if the token layer ends up fighting Bootstrap's specificity in phase 1, drop
+it rather than working around it — flag it in the diary and ask.
 
 **Watch item.** The categorical palette exists in both CSS and
 `model/plot.ts:15-18`. Generate the tokens from the module and assert agreement
@@ -2342,6 +2460,44 @@ dependency, and the states that matter most here — accept mode, truncation,
 gaps, overflow, the 401 path — are hard to reach by clicking and trivial to
 reach as a story. Deferring accessibility turns a five-minute token fix into a
 sixty-story repaint.
+
+**Strengthened by DR-17.** With the React shell demolished, Storybook is not a
+supplementary surface — for phases 0 to 2 it is the *only* surface. A component
+without a story is a component nobody has ever seen.
+
+### DR-17 — Demolish the React shell rather than migrating it
+
+**Context.** `ui/src/components/` (8 files, 1 089 lines) and `ui/src/App.tsx`
+(252 lines) were written for a fixed three-column layout, receiving data as props
+threaded from one root. `ui/src/model/`, `ui/src/api/` and `ui/test/` (2 569
+lines, 58 green tests) are independent of all of it.
+
+**Decision.** Delete `components/` and `App.tsx` in phase 0. Keep `model/`,
+`api/`, `export/`, `main.tsx` and `ui/test/` unchanged.
+
+**Why.** Retrofitting is more work than rewriting and produces a worse result.
+Every existing component takes its data as props and reports changes through a
+callback owned by the root; every replacement reads a document from a store
+selector and emits presentations. Supporting both paths during a migration means
+each component carries two data flows and neither is the real one. The files are
+small enough that the rewrite is measured in hours.
+
+The bigger gain is what the constraint was costing. "Keep it working at every
+commit" forced two steps that existed only to satisfy it: re-layering eight
+components scheduled for deletion, and proving the accept protocol inside a shell
+with no tiles, no documents and no second chart — the one context in which it
+cannot be judged.
+
+**Cost, stated plainly.** There is a window — phase 0 to phase 3 — in which
+`bun run build` has no application. That window is bounded by the phase-3
+acceptance test, and the committed `ui/dist` keeps the Go binary serving the
+DATADROP-3 UI throughout (§17). The one rule: **do not run `make ui` during it.**
+
+**What must not be deleted with it.** `model/` is the ported prototype engine and
+the four browser-found fixes from DATADROP-3 live in it. Re-porting `evaluate`
+and `buildPlot` from the JSX would discard 58 tests and reintroduce a temporal
+axis rendered as a band scale. §4.4 lists what to extract from the components
+themselves before they go.
 
 ---
 
@@ -2533,9 +2689,13 @@ Key line ranges are tabulated in §3. The four you will open most often:
 
 ### 21.3 Existing code to read before writing any
 
+Read the two deleted-in-phase-0 groups **first**, while they still exist. §4.4
+is the checklist; this is the reading order.
+
 | File | Why |
 |---|---|
-| `ui/src/App.tsx` | what you are replacing; it is short |
+| `ui/src/App.tsx` | what you are replacing; it is short, and it is deleted in phase 0 |
+| `ui/src/components/*.tsx` | deleted in phase 0 — read for the behaviours in §4.4, then remove |
 | `ui/src/model/pipeline.ts` | the ported pipeline engine and its comments |
 | `ui/src/model/plot.ts` | the ported plot engine; note the band-versus-continuous x decision at `:244` |
 | `ui/src/model/chart.ts` | `ChartSpec`, `CHANNEL_ACCEPTS`, `defaultChart` |
@@ -2548,35 +2708,45 @@ Key line ranges are tabulated in §3. The four you will open most often:
 | `pkg/webui/webui.go` | why the SPA is at `/ui` and not at `/` |
 | `cmd/datadrop/table_smoke_test.go` | what the end-to-end test already guarantees |
 
-### 21.4 New files, by phase
+### 21.4 Files removed, and files added by phase
 
 ```
-Phase 0   ui/src/styles/tokens.css
-          ui/src/components/{foundation,layout,atoms,molecules,organisms,pages}/…
-          ui/.storybook/{main.ts,preview.tsx,decorators.tsx}
-          ui/src/fixtures/*.json  +  ui/scripts/make-fixtures.ts
-          ui/eslint.config.js  (the layer boundary rule)
+Phase 0   DELETE  ui/src/App.tsx
+          DELETE  ui/src/components/{PlotSvg,PipelineEditor,EncodingEditor,
+                                     DataTable,SourcePicker,TokenBar,
+                                     TruncationBanner,LiveToggle}.tsx
+          KEEP    ui/src/model/  ui/src/api/  ui/src/export/  ui/test/
+          EDIT    ui/src/main.tsx   (mount a store Provider)
 
-Phase 1   ui/src/pbui/{PbuiProvider.tsx,Presentation.tsx,usePbui.ts,registry.ts,
-                       parts.ts,pbui.module.css,ObjectMenu.tsx,AcceptBanner.tsx,
-                       MouseDocLine.tsx}
-          ui/src/pbui/types/{field,source,doc}.tsx
+          ADD     ui/src/styles/tokens.css        (generated from model/plot.ts)
+                  ui/src/components/{foundation,layout,atoms,molecules,organisms,pages}/
+                  ui/.storybook/{main.ts,preview.tsx,decorators.tsx}
+                  ui/src/fixtures/*.json  +  ui/scripts/make-fixtures.ts
+                  ui/eslint.config.js             (the layer boundary rule)
 
-Phase 2   ui/src/store/{index.ts,world.ts,layout.ts,selectors.ts,persist.ts}
+Phase 1   ADD     ui/src/pbui/{PbuiProvider.tsx,Presentation.tsx,usePbui.ts,
+                               registry.ts,parts.ts,pbui.module.css,
+                               ObjectMenu.tsx,AcceptBanner.tsx,MouseDocLine.tsx}
+                  ui/src/pbui/types/{field,source,doc}.tsx
+                  ui/src/components/atoms/{Chip,FieldChip,TypeBadge,
+                                           ProvenanceBadge,SourceChip,DocChip}/
 
-Phase 3   ui/src/components/organisms/{Tile,SplitView,WorkspaceStrip,StatusBar}/
-          ui/src/apps/registry.ts
-          ui/src/store/spaces.ts  (the default workspace presets)
+Phase 2   ADD     ui/src/store/{index.ts,world.ts,layout.ts,selectors.ts,persist.ts}
+                  ui/src/store/*.test.ts          (the §16.2 list)
 
-Phase 4   ui/src/apps/{SourceApp,ChartsApp,PipelineApp,EncodingApp,ChartApp,
-                       TableApp,GalleryApp,CompareApp,InspectorApp,
-                       WatchlistApp,TraceApp,AboutApp,LauncherApp}/
-          ui/src/pbui/types/{step,geom,channel,datum,cat,chart,tile,workspace}.tsx
+Phase 3   ADD     ui/src/components/organisms/{Tile,SplitView,WorkspaceStrip,StatusBar}/
+                  ui/src/components/pages/Workbench/Workbench.tsx
+                  ui/src/apps/registry.ts
+                  ui/src/store/spaces.ts          (default workspace presets)
+                  ui/src/apps/{SourceApp,PipelineApp,EncodingApp,ChartApp,TableApp}/
+          ── the dark period ends here: run `make ui`, check the binary ──
 
-Phase 6   ui/src/components/pages/Workbench/Workbench.tsx   (App.tsx becomes this)
+Phase 4   ADD     ui/src/apps/{ChartsApp,GalleryApp,CompareApp,InspectorApp,
+                               WatchlistApp,TraceApp,AboutApp,LauncherApp}/
+                  ui/src/pbui/types/{step,geom,channel,datum,cat,chart,tile,workspace}.tsx
 
-Phase 7   ui/src/apps/tutorials/{Tut1,Tut2,Tut3,Tut4}/
-          ui/scripts/seed-tutorial-drop.ts
+Phase 6   ADD     ui/src/apps/tutorials/{Tut1,Tut2,Tut3,Tut4}/
+                  ui/scripts/seed-tutorial-drop.ts
 ```
 
 ### 21.5 Preceding tickets
@@ -2606,3 +2776,13 @@ line is written the strange way it is.
 
 And keep the engine sacred. `ui/src/model/` is tested, it is correct, and it is
 the only part of this system that a bad afternoon cannot silently break.
+
+The React shell, by contrast, is not sacred and is deleted on day one (DR-17).
+The distinction is worth holding on to, because it is the same distinction twice:
+**the parts of this system that took the longest to get right are the pure ones**
+— the pipeline, the scales, the tick ladder, the projection — and they are pure
+precisely because getting them right required being able to test them without a
+browser. Everything you build in this ticket that turns out to be hard should be
+pushed in the same direction: a reducer, a selector, a registry entry, a pure
+function from a spec to geometry. What is left over is the part that has to be
+looked at, and that is what Storybook is for.
