@@ -1,4 +1,4 @@
-.PHONY: gifs logcopter-generate logcopter-check ui ui-test ui-dev
+.PHONY: gifs logcopter-generate logcopter-check ui ui-test ui-dev compose-up compose-down compose-nuke compose-logs
 
 all: gifs
 
@@ -48,6 +48,33 @@ ui-test:
 # Vite with HMR on :5173, proxying /v1 to a `datadrop serve` on :8080.
 ui-dev:
 	bun --cwd ui run dev
+
+# The local stack: datadrop plus a self-hosted Zitadel (DATADROP-5).
+#
+# See deploy/compose/README.md. First boot takes 30-90s while Zitadel
+# initialises its event store; --wait covers it.
+compose-up:
+	cd deploy/compose && cp -n .env.example .env || true
+	cd deploy/compose && docker compose up -d --build --wait
+	@echo ""
+	@echo "  workbench: http://datadrop.test:7070/ui/"
+	@echo "  zitadel:   http://zitadel.test:17070/   (zitadel-admin@zitadel.zitadel.test / Password1!)"
+	@echo ""
+	@echo "  If those hostnames do not resolve in your shell, add to /etc/hosts:"
+	@echo "    127.0.0.1 zitadel.test datadrop.test"
+
+compose-down:
+	cd deploy/compose && docker compose down
+
+# The one that actually resets ZITADEL_FIRSTINSTANCE_* configuration, and the
+# one to reach for when `provision` reports a rejected machine token. It
+# destroys the database, which is why it has its own target rather than being
+# improvised at 6pm.
+compose-nuke:
+	cd deploy/compose && docker compose down -v
+
+compose-logs:
+	cd deploy/compose && docker compose logs -f --tail=100
 
 logcopter-generate:
 	GOWORK=off go generate ./...

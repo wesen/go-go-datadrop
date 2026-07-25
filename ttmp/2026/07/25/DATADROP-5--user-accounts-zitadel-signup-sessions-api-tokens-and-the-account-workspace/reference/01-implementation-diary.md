@@ -757,3 +757,183 @@ tok, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 Used on a *confidential* client, which is not redundant: RFC 9700 recommends
 PKCE for every client because it binds the code to the party that requested it
 independently of the client secret.
+
+## Step 6: Phase 4 — the compose stack
+
+`deploy/compose/`: PostgreSQL, Zitadel, Zitadel's login UI, Traefik, a one-shot
+provisioning job, and datadrop. `make compose-up` on a clean machine takes about
+80 seconds and ends with a working OIDC relying party.
+
+Five things broke on the way, and four of them were mine. The most interesting
+one falsified a design decision from the guide.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Mid-turn correction (verbatim):** "us 7070 and 17070 r so, *8080 is overloaded"
+
+**Mid-turn question (verbatim):** "why do we still have localhost:8080/ui in those logs?"
+
+**Assistant interpretation:** Build the local stack; use 7070 and 17070 rather than 8080; and fix the startup line that advertises an unreachable URL.
+
+**Inferred user intent:** (see Step 2). The port change was concrete — another Zitadel stack is already running on this machine, which is also why foreign Traefik labels turned up in ours.
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 4`
+
+### What I did
+
+- `deploy/compose/{docker-compose.yml,.env.example,provision.sh,Dockerfile.datadrop,README.md}`
+- `pkg/cli/healthcheck.go` — a probe the distroless image can actually run.
+- `pkg/cli/serve.go` — `uiURL` now prefers the external URL.
+- `Makefile` — `compose-up`, `compose-down`, `compose-nuke`, `compose-logs`.
+
+### What worked
+
+- `depends_on: {provision: {condition: service_completed_successfully}}` makes
+  `up --wait` correct rather than racy: datadrop cannot start before the client
+  credentials exist on the volume.
+- Provisioning by search rather than by a marker file. The second run found the
+  application, regenerated its secret, and carried on.
+- The two startup warnings both fired against the real stack, unprompted:
+  plaintext HTTP, and a root token alongside OIDC.
+
+### What didn't work
+
+**1. `*.localhost` cannot be reached from inside a container — the guide's fix
+was wrong.**
+
+Guide §13.2 says to give the proxy a network alias of `zitadel.localhost` so one
+URL means the same thing to the browser and to the container. It does not work,
+and the failure is instructive:
+
+```
+$ getent hosts zitadel.localhost      # inside the container
+10.77.0.2   zitadel.localhost         # DNS says: the proxy
+
+$ curl -v http://zitadel.localhost:17070/debug/healthz
+* Host zitadel.localhost:17070 was resolved.
+*   Trying [::1]:17070...             # ...but curl goes to loopback
+```
+
+RFC 6761 reserves `localhost` **and every subdomain of it** for loopback, and
+resolvers honour that *before* consulting `/etc/hosts` — so inside a container
+`zitadel.localhost` means that container. Neither the network alias nor an
+`extra_hosts` entry can override it; I tried both, and watched curl ignore an
+`/etc/hosts` line that was demonstrably present. `getent` asks DNS and reports
+the proxy; `curl` does not, and that discrepancy is what made this take three
+attempts.
+
+The fix is `.test`, which RFC 6761 also reserves but gives no resolution rule,
+so it can be pointed at 127.0.0.1 for the browser and at the proxy inside the
+network. Cost: one `/etc/hosts` line, which the README already anticipated as a
+fallback and now states as a requirement. The guide's §13.2 needs correcting.
+
+**2. Traefik picked up another project's labels.** The docker provider reads the
+whole socket, and this machine already runs an unrelated Zitadel stack — which
+is also why 8080 was taken. Symptom: a stream of `EntryPoint doesn't exist`
+errors for routers I never wrote, and foreign routers competing for the same
+hostnames. Fixed with
+`--providers.docker.constraints=Label(`datadrop.stack`,`true`)` and a label on
+each of our three routed services.
+
+**3. `up --wait` reported the stack healthy while datadrop crash-looped.**
+
+```
+datadrop: store: ping SQLite: unable to open database file (14)
+```
+
+Two bugs at once. The volume: Docker initialises a named volume from the image's
+directory including its ownership, and `/data` did not exist in the image, so it
+arrived owned by root and the distroless `nonroot` user could not write. Fixed
+by creating `/data` in the build stage owned by 65532 and copying it with
+`--chown`. And the reason nobody noticed: **there was no healthcheck**, because
+the distroless image has no shell for one to run in. So `datadrop healthcheck`
+now exists — twenty lines, probes `/healthz`, and it earned itself immediately
+by catching the next failure.
+
+**4. My own secret hardening locked out the process that reads the secret.**
+
+```
+datadrop: read /bootstrap/datadrop-client-secret: permission denied
+```
+
+`chmod 600` in a script running as root, read by a container running as 65532.
+The symptom is maddening because it comes from a container that has just
+successfully migrated its database — so storage plainly works. Fixed with a
+`chown 65532` beside the `chmod`.
+
+**5. Zitadel rejects an update that changes nothing.** The second `up` failed
+with a 400 from `UpdateLoginPolicy`. Reasonable for an event-sourced store, and
+it means a blind write is not idempotent. The step now reads the policy and
+skips the write when `allowRegister` is already true — which on Zitadel v4 it
+already is by default, so the step is usually a no-op. It stays because a
+version where it is not would otherwise fail silently at the moment a stranger
+tries to sign up.
+
+### What I learned
+
+- **`getent` and `curl` do not resolve names the same way.** `getent` consults
+  NSS; libc's resolver applies RFC 6761 shortcuts first. A name that `getent`
+  resolves correctly can still be unreachable.
+- Zitadel omits the port from the issuer when the `Host` header omits it. My
+  first check used `-H "Host: zitadel.test"` and got `issuer: http://zitadel.test`,
+  which looked like a misconfiguration and was not — real clients always send
+  the port. Worth knowing before chasing it.
+- `ZITADEL_EXTERNALPORT` and friends really are first-init only, as documented.
+  Every reset in this step was `down -v`.
+
+### What was tricky to build
+
+The layered failures. Each fix revealed the next one — hostname, then labels,
+then volume ownership, then file ownership, then idempotency — and only the
+healthcheck turned that from "the stack seems up but nothing works" into a
+sequence of specific errors. Adding an honest health probe *before* debugging
+would have been faster than adding it in the middle.
+
+### What warrants a second pair of eyes
+
+- The fixed subnet `10.77.0.0/24` and proxy IP `10.77.0.2`. Deterministic, and
+  it will collide on a host that already uses that range. Both are in `.env`.
+- `devMode: true` on the OIDC application, which is what permits a plain-`http`
+  redirect URI. Must go for anything real.
+- The provisioning job regenerates the client secret on every run where the
+  application already exists. Safe here because the only holder is the datadrop
+  container being restarted alongside; it would not be safe if anything else
+  held that credential.
+
+### What should be done in the future
+
+- Correct guide §13.2 and §13.3: the alias-plus-`.localhost` scheme does not
+  work, and the reason is worth keeping because it is genuinely surprising.
+- Mailpit, so `--oidc-require-verified-email` can stay true locally.
+- A `compose-smoke` target that drives sign-in headlessly, so the stack's
+  health is checkable without a browser.
+
+### Code review instructions
+
+`deploy/compose/docker-compose.yml` top to bottom — the comments carry the
+reasoning. Then `provision.sh`. Then:
+
+```bash
+make compose-nuke && make compose-up && make compose-up   # twice: idempotency
+```
+
+### Technical details
+
+Verified against the running stack, through the published port with a `Host`
+header (this machine has no `/etc/hosts` entry):
+
+```
+GET /v1/auth/login?intent=signup
+302 http://zitadel.test:17070/oauth/v2/authorize
+    ?client_id=383368137703161860
+    &code_challenge=…&code_challenge_method=S256
+    &nonce=…&prompt=create
+    &redirect_uri=http%3A%2F%2Fdatadrop.test%3A7070%2Fv1%2Fauth%2Fcallback
+    &response_type=code&scope=openid+profile+email&state=…
+Set-Cookie: dd_flow=…; Path=/v1/auth/; Max-Age=300; HttpOnly; SameSite=Lax
+```
+
+`prompt=create`, S256 PKCE, a nonce, a matching redirect URI, and the flow
+cookie scoped to `/v1/auth/`.

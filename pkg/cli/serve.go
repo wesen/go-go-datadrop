@@ -226,7 +226,7 @@ func runServe(ctx context.Context, opts serveOptions) error {
 				Str("db", st.Path()).
 				Str("blobs", blobs.Root())
 			if !opts.disableUI {
-				event = event.Str("ui", uiURL(addr))
+				event = event.Str("ui", uiURL(addr, authCfg.ExternalURL))
 			}
 			event.Msg("datadrop ready")
 		})
@@ -235,12 +235,21 @@ func runServe(ctx context.Context, opts serveOptions) error {
 	return errors.Wrap(group.Wait(), "serve")
 }
 
-// uiURL turns a bound listener address into something a human can click.
+// uiURL is the address to hand a human, which is not always the one bound.
 //
 // A wildcard bind renders as ":8080" or "[::]:8080", neither of which a browser
 // will open, so the host is rewritten to localhost. Naming the port the server
 // actually got also matters when --addr used port 0.
-func uiURL(addr net.Addr) string {
+func uiURL(addr net.Addr, externalURL string) string {
+	// The external URL wins whenever it is configured, because the bound
+	// address is not necessarily reachable from anywhere a human is sitting.
+	// In a container it never is: the listener says [::]:8080 and this line
+	// used to print http://localhost:8080/ui/, which resolves to the container
+	// itself and is exactly the wrong thing to hand someone.
+	if externalURL != "" {
+		return strings.TrimRight(externalURL, "/") + webui.MountPath
+	}
+
 	host, port, err := net.SplitHostPort(addr.String())
 	if err != nil {
 		return "http://" + addr.String() + webui.MountPath

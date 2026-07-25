@@ -1,0 +1,48 @@
+# datadrop, as a single static binary in a distroless image.
+#
+# The web UI is NOT built here. `ui/dist` is committed and embedded with
+# go:embed, which is what keeps a `go install` of this module free of a
+# JavaScript toolchain (see the Makefile's `ui` target). Run `make ui` before
+# building this image if the frontend has changed.
+
+FROM golang:1.25-alpine AS build
+
+WORKDIR /src
+
+# Dependencies first, so a source-only change does not re-download the module
+# cache.
+COPY go.mod go.sum ./
+RUN go mod download
+
+COPY . .
+
+# CGO_ENABLED=0 because the SQLite driver is modernc.org/sqlite — pure Go, no
+# libsqlite3 — which is the decision (DR-2) that makes a distroless runtime
+# image possible at all.
+RUN CGO_ENABLED=0 GOWORK=off go build -trimpath -ldflags="-s -w" \
+        -o /out/datadrop ./cmd/datadrop
+
+# The data directory, created here so the named volume inherits its ownership.
+#
+# Docker initialises an empty named volume from the image's directory, including
+# its mode and owner. Without this the volume arrives owned by root, the
+# nonroot user cannot write to it, and the container crash-loops with
+#
+#     store: ping SQLite: unable to open database file (14)
+#
+# which names neither permissions nor the volume. 65532 is distroless's nonroot.
+RUN mkdir -p /out/data && chown 65532:65532 /out/data
+
+FROM gcr.io/distroless/static-debian12:nonroot
+
+COPY --from=build /out/datadrop /usr/local/bin/datadrop
+COPY --from=build --chown=65532:65532 /out/data /data
+
+# /data holds the SQLite file and the blob store, which must be on one
+# filesystem: the blob store publishes by atomic rename.
+VOLUME ["/data"]
+USER nonroot:nonroot
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/local/bin/datadrop"]
+CMD ["serve", "--addr=:8080", "--db=/data/datadrop.db"]
