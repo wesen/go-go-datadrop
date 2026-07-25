@@ -1,7 +1,7 @@
 ---
 Title: 'User accounts: Zitadel signup, sessions, API tokens and the account workspace'
 Ticket: DATADROP-5
-Status: active
+Status: review
 Topics:
     - auth
     - oidc
@@ -120,7 +120,7 @@ Full statements with alternatives and costs are in guide §19.
 
 ## Status
 
-Current status: **active**
+Current status: **review**
 
 ## Topics
 

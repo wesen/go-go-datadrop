@@ -14,3 +14,13 @@ Created DATADROP-5 and wrote the 3200-line analysis/design/implementation guide:
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/middleware.go — the current auth model this ticket replaces
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/api/client.ts — the read-only invariant this ticket narrowly retires
 
+
+## 2026-07-25
+
+Implemented all seven phases: pkg/auth pure core, migration 0003, authorization applied across every handler in one commit, OIDC sign-in and signup, the self-provisioning compose stack, four account tiles in two hardwired workspaces, the browser uploader, and sharing. ~50 new tests, lint clean, verified live against a Zitadel stack.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/deploy/compose/docker-compose.yml — the local stack, including the .test hostname finding
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/auth/role.go — EffectiveRole and Authorize — the whole decision
+
