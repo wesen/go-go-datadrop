@@ -461,10 +461,41 @@ reappear in the component that replaces it.
 | `LiveToggle.tsx` | `addEventListener("append", …)`, **never** `EventSource.onmessage` | The server writes *named* SSE frames. `onmessage` fires only for unnamed ones, so the tail connects, reports no error, and delivers nothing. Diagnosed by comparing a console `EventSource` against `curl -N`. |
 | `SourcePicker.tsx` | the file list comes from `useGetDatasetVersionQuery`, not from the dataset detail | The dataset detail response omits per-version files by design. The symptom is an empty file list with no error and nothing in the console. |
 | `TruncationBanner.tsx` | the banner is **not** dismissible | A chart drawn from 2 000 of 40 000 rows that looks complete is worse than no chart. It also names the row budget and tells the user to raise it — which is why "raise the budget" must be reachable from where the advice is read (§13.1). |
+| `LiveToggle.tsx` | `EventSource` cannot send an `Authorization` header, so the control is **disabled with an explanation** rather than made to work | The alternative is a token in a query string, which lands in server logs and browser history. A fetch-based SSE reader is the way out and is deferred (§19). |
+| `PipelineEditor.tsx` | the `summarize` editor says inline that the step drops every column but the key and the aggregate | `evaluate` really does this (`pipeline.ts:288-291`). Undocumented, it costs an afternoon. |
 | `PlotSvg.tsx` | **no scale arithmetic in the renderer** — every coordinate comes from `buildPlot` | If a mark is in the wrong place the bug is in `model/plot.ts`, where a unit test can find it without a browser. The moment the renderer computes a position, that stops being true. |
 | `App.tsx:108-114` | `logUnavailable` — the log toggle is *disabled with a reason*, not silently ignored | A log scale needs a strictly positive domain. `plot.ts` falls back silently as a second line of defence; the first line is refusing to offer the option. Becomes a selector (§20.3). |
 | `DataTable.tsx` | render a few hundred rows and count the rest | The cheapest place in the whole application to accidentally mount 50 000 DOM nodes. |
-| `EncodingEditor.tsx` | a mapped field no longer in the pipeline output renders stale, with a warning | Turns "my chart went blank" into "y points at a column your summarize step removed". |
+
+#### Two defects found during the salvage walk, to fix in the replacements
+
+The walk through these files before deleting them turned up two live defects.
+Neither is worth fixing in a file scheduled for deletion; both are acceptance
+criteria for the component that replaces it. They are the same shape — **the
+interface asserting something the state contradicts, in a well-formed sentence
+that therefore survives review.**
+
+- **`TruncationBanner.tsx:26-27` prints the same number twice.** It renders
+  *"Showing the most recent 2,000 of at least 2,000 rows"* — a sentence claiming
+  the sample is the whole source, in a banner whose only job is to deny that.
+  The server proves there is at least one more row (it requests `limit + 1` and
+  discards the extra), so the lower bound is `row_count + 1`.
+  **`TruncationNotice` must render "of at least 2,001".**
+
+- **`EncodingEditor.tsx:62-73` silently blanks a stale mapping.** The options are
+  filtered to the channel's accepted types; `value={spec.mapping[channel] ?? ""}`
+  then falls back to blank when a `summarize` step removes the mapped column. The
+  control reads as unset while `spec.mapping` still holds the dead name and
+  `buildPlot` refuses with `y ↦ mean_x is not in the pipeline output`.
+  **`ChannelRow` must render a mapped-but-absent field as a stale chip with a
+  warning** — which is what the prototype does (`pbui-gog.jsx:1818`), and what an
+  earlier draft of this table wrongly credited to our component.
+
+A third, smaller: `EncodingEditor` compares `field.type` rather than the
+effective type, so a per-chart override would not change which channels accept a
+field. Harmless today because nothing sets overrides, wrong the moment §13.4
+lands. **Every type comparison in the new components goes through
+`effectiveType(field, overrides)`.**
 
 Three more behaviours already live in `model/` and `api/`, which are **not**
 deleted, so they are safe — but know where they are, because a rewrite that
