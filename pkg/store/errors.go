@@ -18,6 +18,15 @@ var (
 	// which is an idempotent replay rather than a failure — the caller gets
 	// the original event alongside this error.
 	ErrAlreadyExists = errors.New("already exists")
+
+	// ErrConflict means the request is well-formed and permitted but conflicts
+	// with the current state: claiming a drop that already has an owner,
+	// demoting an owner out of their own drop.
+	//
+	// Distinct from ErrAlreadyExists, which is about a key collision. These map
+	// to the same 409 today, but conflating them at this layer would lose the
+	// distinction in the audit trail and in error messages.
+	ErrConflict = errors.New("conflict")
 )
 
 // isNoRows reports whether err is database/sql's empty-result sentinel.

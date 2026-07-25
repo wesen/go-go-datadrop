@@ -20,6 +20,20 @@ type Drop struct {
 
 	// PublicRead exempts read endpoints on this drop from bearer auth.
 	PublicRead bool `json:"public_read"`
+
+	// OwnerID is the user who owns this drop, or empty for an unowned one.
+	//
+	// Every drop created before DATADROP-5 is unowned, and stays that way until
+	// someone claims it: assigning an owner at migration time would be a silent
+	// grant of access to data (DR-25). Unowned is not unprotected — only the
+	// root principal, or PublicRead, opens such a drop.
+	OwnerID string `json:"owner_id,omitempty"`
+
+	// YourRole is the calling principal's effective role, filled in by the HTTP
+	// layer and never stored. It exists so the UI can grey out an action it
+	// knows will 403 rather than offering it and failing — the same principle
+	// as a disabled menu entry showing the rule instead of hiding it.
+	YourRole string `json:"your_role,omitempty"`
 }
 
 // DropStats is the inspection view of a drop: metadata plus cheap counters.

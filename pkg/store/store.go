@@ -55,6 +55,11 @@ type Store struct {
 
 	// now is injectable so tests can pin the clock.
 	now func() time.Time
+
+	// tokenTouch throttles api_tokens.last_used_at writes to at most one per
+	// minute per token. On this Store rather than in a package variable so two
+	// stores in one test process do not share a throttle. See touchToken.
+	tokenTouch tokenTouchCache
 }
 
 // Open opens (creating if needed) the SQLite database at path and applies any

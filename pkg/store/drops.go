@@ -23,8 +23,10 @@ func (s *Store) CreateDrop(ctx context.Context, d datadrop.Drop) (datadrop.Drop,
 	}
 
 	_, err := s.db.ExecContext(ctx,
-		`INSERT INTO drops(name, created_at, retention, public_read) VALUES(?, ?, ?, ?)`,
-		d.Name, FormatTime(d.CreatedAt), nullableString(d.Retention), boolToInt(d.PublicRead))
+		`INSERT INTO drops(name, created_at, retention, public_read, owner_id)
+		 VALUES(?, ?, ?, ?, ?)`,
+		d.Name, FormatTime(d.CreatedAt), nullableString(d.Retention),
+		boolToInt(d.PublicRead), nullableString(d.OwnerID))
 	if err != nil {
 		if isUniqueViolation(err) {
 			return datadrop.Drop{}, errors.Wrapf(ErrAlreadyExists, "drop %q", d.Name)
@@ -38,6 +40,7 @@ func (s *Store) CreateDrop(ctx context.Context, d datadrop.Drop) (datadrop.Drop,
 		Detail: jsonObject(map[string]any{
 			"retention":   d.Retention,
 			"public_read": d.PublicRead,
+			"owner":       d.OwnerID,
 		}),
 	}); err != nil {
 		return datadrop.Drop{}, err
@@ -49,8 +52,7 @@ func (s *Store) CreateDrop(ctx context.Context, d datadrop.Drop) (datadrop.Drop,
 
 // GetDrop reads one drop. It returns ErrNotFound when the name is unknown.
 func (s *Store) GetDrop(ctx context.Context, name string) (datadrop.Drop, error) {
-	row := s.db.QueryRowContext(ctx,
-		`SELECT name, created_at, retention, public_read FROM drops WHERE name = ?`, name)
+	row := s.db.QueryRowContext(ctx, `SELECT `+dropColumns+` FROM drops WHERE name = ?`, name)
 
 	d, err := scanDrop(row)
 	if err != nil {
@@ -62,10 +64,22 @@ func (s *Store) GetDrop(ctx context.Context, name string) (datadrop.Drop, error)
 	return d, nil
 }
 
-// ListDrops returns every drop, name-ordered.
+// ListDrops returns every drop, name-ordered, with no regard for who is asking.
+//
+// The HTTP surface calls VisibleDrops instead; this stays for the root
+// principal and for the CLI's administrative paths.
 func (s *Store) ListDrops(ctx context.Context) ([]datadrop.Drop, error) {
-	rows, err := s.db.QueryContext(ctx,
-		`SELECT name, created_at, retention, public_read FROM drops ORDER BY name`)
+	return s.queryDrops(ctx, `ORDER BY name`)
+}
+
+// queryDrops runs a SELECT over drops with the given suffix appended.
+//
+// The suffix is always a literal in this package — never anything derived from
+// a request — and the values are bound. Factored out so that VisibleDrops'
+// membership predicate and ListDrops share one column list and one scanner,
+// which is what stops the two drifting apart when a column is added.
+func (s *Store) queryDrops(ctx context.Context, suffix string, args ...any) ([]datadrop.Drop, error) {
+	rows, err := s.db.QueryContext(ctx, `SELECT `+dropColumns+` FROM drops `+suffix, args...)
 	if err != nil {
 		return nil, errors.Wrap(err, "store: list drops")
 	}
@@ -126,14 +140,18 @@ func (s *Store) DropStats(ctx context.Context, name string) (datadrop.DropStats,
 // scanner abstracts *sql.Row and *sql.Rows so scanDrop serves both.
 type scanner interface{ Scan(dest ...any) error }
 
+// dropColumns is the one place the drops column list is written down.
+const dropColumns = `name, created_at, retention, public_read, owner_id`
+
 func scanDrop(sc scanner) (datadrop.Drop, error) {
 	var (
 		d          datadrop.Drop
 		createdAt  string
 		retention  sql.NullString
 		publicRead int
+		ownerID    sql.NullString
 	)
-	if err := sc.Scan(&d.Name, &createdAt, &retention, &publicRead); err != nil {
+	if err := sc.Scan(&d.Name, &createdAt, &retention, &publicRead, &ownerID); err != nil {
 		return datadrop.Drop{}, err
 	}
 
@@ -144,5 +162,6 @@ func scanDrop(sc scanner) (datadrop.Drop, error) {
 	d.CreatedAt = t
 	d.Retention = retention.String
 	d.PublicRead = publicRead != 0
+	d.OwnerID = ownerID.String
 	return d, nil
 }

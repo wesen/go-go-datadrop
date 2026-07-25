@@ -287,3 +287,158 @@ ddp_7f3k9m2qx4vb3_8h2n6p4r9tzw3xk5mcqf7bdy1sav0jne
 
 Lowercase base32 (`abcdefghijklmnopqrstuvwxyz234567`), no padding, parsed
 case-insensitively.
+
+## Step 3: Phase 1 — the schema and the stores
+
+Migration 0003 and four new store files: users, sessions (plus the sign-in
+flows), API tokens, and membership. Nothing in `pkg/server` changes yet, which
+is what makes this phase safe to land on its own — the tables exist and are
+exercised, and no request path has been touched.
+
+The interesting work was not the SQL. It was deciding what each query must
+refuse, and then writing the test that proves it refuses.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 1 of the plan — the accounts schema and its store layer.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 1`
+
+### What I did
+
+- `pkg/store/migrations/0003_accounts.sql` — `users`, `sessions`, `auth_flows`,
+  `api_tokens`, `drop_members`, and `drops.owner_id`.
+- `pkg/datadrop/account.go` — `User`, `Session`, `APIToken`, `Member`,
+  `AuthFlow`, the token request/response types, and `ParseExpiresIn`.
+- `pkg/store/users.go`, `sessions.go`, `tokens.go`, `members.go`.
+- `pkg/store/drops.go` — `owner_id` throughout, plus a `queryDrops` helper so
+  `ListDrops` and `VisibleDrops` share one column list and one scanner.
+- `pkg/store/errors.go` — `ErrConflict`, distinct from `ErrAlreadyExists`.
+- `pkg/store/accounts_test.go` — 17 tests.
+
+### Why
+
+Guide §11. The three properties worth restating: users key on
+`(issuer, subject)` and never on email; sessions store the SHA-256 of the cookie
+rather than the cookie; and no refresh token is stored at all (DR-20).
+
+### What worked
+
+- `DropACL` as a plain struct that `EffectiveRole` consumes means the store and
+  the pure decision function meet at a value, and both are testable alone.
+- `ClaimDrop`'s `WHERE ... AND owner_id IS NULL` makes the claim atomic for
+  free: two people racing for one drop cannot both win, and the loser gets a
+  409 rather than silently stealing it.
+- Adding `owner_id` to `drops` needed a `dropColumns` constant. That turned out
+  to matter immediately — `VisibleDrops` and `ListDrops` would otherwise have
+  been two column lists to keep in step.
+
+### What didn't work
+
+Two tests failed on the first run, and both were bugs in the tests rather than
+in the code — but they were the *useful* kind, because they exposed a fail-open
+default worth writing down.
+
+```
+--- FAIL: TestExpiryIsEnforcedWithoutTheSweeper
+    accounts_test.go:285: an idle session resolved
+--- FAIL: TestStaleAuthFlowIsBurnedNotReusable
+    accounts_test.go:325: a stale flow was accepted (err = <nil>)
+```
+
+I had written "already stale" as a **negative** duration — `GetSession(ctx, raw,
+-time.Second)` and `TakeAuthFlow(ctx, "old", -time.Second)`. Both APIs treat a
+non-positive limit as "this check is disabled", so the guard was skipped and the
+assertion tested nothing. Fixed by backdating the row instead: the session's
+`last_seen_at` is pushed two hours into the past and the check runs with a real
+one-minute idle.
+
+The underlying observation is worth keeping: **"0 means no limit" is a fail-open
+default on a security deadline.** It is the right ergonomics for an optional
+idle timeout, but it means a caller who forgets to configure one silently gets
+none. So `Session.Expired` now says so in its doc comment, the responsibility
+for supplying a real value is pinned on the server config, and the absolute
+deadline deliberately has no such escape. The idle test now also asserts the
+*positive* case — `idle=0` still resolves — so the assertion is about idleness
+rather than accidentally about expiry.
+
+### What I learned
+
+- SQLite's `ALTER TABLE ... ADD COLUMN` with a `REFERENCES` clause is fine here
+  precisely because the column is nullable: SQLite requires an added column with
+  a foreign key to default to NULL, which is exactly what DR-25 wanted anyway.
+- `PRAGMA foreign_keys(on)` was already in the DSN
+  (`store.go:dsnForPath`), with a comment warning that copying the reference
+  implementation's DSN verbatim would silently disable it. The cascade test
+  passes because of that, and now fails loudly if it is ever lost.
+
+### What was tricky to build
+
+**Token resolution ordering.** `ResolveAPIToken` compares the secret hash
+*before* checking `revoked_at` and `expires_at`. The natural order is the
+reverse — cheap checks first — and it is wrong: it turns the endpoint into an
+oracle for "does this token id exist and is it live", answerable without knowing
+the secret. Every failure path also returns the same `ErrNotFound`, for the same
+reason.
+
+**`last_used_at` would have been a write per request.** A busy ingest loop
+would turn one indexed read into one write, and SQLite writes serialise behind a
+single connection — so the credential check would have become the bottleneck of
+the ingest path it is supposed to guard. `touchToken` throttles to one write per
+minute per token via a `sync.Map` on the `Store`, and a failed write is logged
+at debug rather than failing the request.
+
+**Two implementations of one rule.** `VisibleDrops` filters in SQL because a
+listing is the one place the number of drops is unbounded; `EffectiveRole`
+decides per drop in Go. Two implementations drift, so
+`TestVisibleDropsAgreesWithEffectiveRole` asserts they agree across the whole
+fixture — five principals against four drops — rather than spot-checking.
+
+### What warrants a second pair of eyes
+
+- The `VisibleDrops` SQL predicate against `auth.EffectiveRole`. The agreement
+  test covers the current fixture; a new rule added to one and not the other
+  would only be caught if the fixture grows to exercise it.
+- `SetMember`'s refusal to touch the owner returns `ErrConflict`. If a future
+  "transfer ownership" endpoint appears it must go through a different path,
+  not by relaxing this.
+- `DropACL` is read on every authorized request: one primary-key lookup plus
+  one indexed member scan. That is the deliberate price of DR-24, but it is the
+  thing to measure first if request latency ever becomes a question.
+
+### What should be done in the future
+
+- Ownership transfer, which is deliberately absent: today the only ways a drop
+  changes hands are a claim on an unowned drop and a database edit.
+- `usersByID` builds an `IN (?, ?, …)` list. Fine for a member list; it would
+  need chunking if it were ever used for something unbounded.
+
+### Code review instructions
+
+Start with the migration, which carries the reasoning. Then
+`pkg/store/tokens.go:ResolveAPIToken` (check ordering) and
+`pkg/store/members.go:DropACL` / `VisibleDrops`.
+
+```bash
+GOWORK=off go test ./pkg/store/ -count=1 -run 'Account|User|Token|Session|Drop|Member|Claim|Visible|Sweep|AuthFlow'
+```
+
+### Technical details
+
+The tables added, and the one column:
+
+```
+users(id, issuer, subject, email, name, created_at, last_seen_at, disabled)
+      UNIQUE (issuer, subject)
+sessions(id = sha256(cookie), user_id, created_at, last_seen_at, expires_at,
+         id_token, user_agent, ip)
+auth_flows(state, nonce, verifier, return_to, created_at)
+api_tokens(id, user_id, name, secret_hash, scopes, created_at, expires_at,
+           last_used_at, revoked_at)
+drop_members(drop_name, user_id, role, added_at, added_by)
+drops.owner_id  -- nullable; NULL on every pre-existing row
+```
