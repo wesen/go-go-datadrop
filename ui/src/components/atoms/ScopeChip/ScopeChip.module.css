@@ -1,0 +1,16 @@
+.scope {
+  display: inline-block;
+  padding: 0 var(--pbui-space-2);
+  border: var(--pbui-border-grid);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane-alt);
+  font-size: var(--pbui-fs-tiny);
+  white-space: nowrap;
+}
+
+/* Bolder and hairline-bordered rather than coloured: the tone scale already
+ * carries presentation type, and a red scope chip would read as an error. */
+.privileged {
+  border: var(--pbui-border-hair);
+  font-weight: 700;
+}

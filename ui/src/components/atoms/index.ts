@@ -25,3 +25,9 @@ export { CheckboxRow } from "./CheckboxRow";
 export type { CheckboxRowProps } from "./CheckboxRow";
 export { LinkAction } from "./LinkAction";
 export type { LinkActionProps } from "./LinkAction";
+
+// Added by DATADROP-6 phase 4.
+export { Swatch } from "./Swatch";
+export { StateGlyph } from "./StateGlyph";
+export type { GlyphState } from "./StateGlyph";
+export { ScopeChip } from "./ScopeChip";

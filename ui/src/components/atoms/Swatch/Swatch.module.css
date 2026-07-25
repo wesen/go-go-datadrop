@@ -1,0 +1,10 @@
+/* 11px, from ChartApp's legend. Square, hairline-bordered, and flex-shrink 0 so
+ * a long legend label never squeezes the colour it describes into a sliver. */
+.swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  flex-shrink: 0;
+}

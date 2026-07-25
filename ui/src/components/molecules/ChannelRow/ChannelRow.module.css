@@ -1,0 +1,6 @@
+/* A fixed 44px so the five channel names form a column and the controls beside
+ * them line up. "facet" is the longest and sets the width. */
+.channel {
+  display: inline-block;
+  width: 44px;
+}

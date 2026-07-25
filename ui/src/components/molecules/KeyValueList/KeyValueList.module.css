@@ -1,0 +1,22 @@
+.list {
+  margin: 0;
+  display: grid;
+  gap: var(--pbui-space-1);
+  min-width: 0;
+}
+
+.row {
+  display: grid;
+  /* The key column is fixed so keys align down the block; `minmax(0, 1fr)`
+   * rather than `1fr` because a grid track defaults to `min-content` as its
+   * floor and would refuse to shrink below a long unbroken value. */
+  grid-template-columns: 88px minmax(0, 1fr);
+  gap: var(--pbui-space-3);
+  align-items: baseline;
+}
+
+.dense .row { grid-template-columns: 64px minmax(0, 1fr); }
+
+.key { margin: 0; text-transform: uppercase; letter-spacing: var(--pbui-track-label); }
+
+.value { margin: 0; min-width: 0; overflow-wrap: anywhere; }
