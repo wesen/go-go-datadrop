@@ -65,6 +65,11 @@ export const withTile: Decorator = (Story, ctx) => {
         background: "var(--pbui-pane)",
         minWidth: 0,
         minHeight: 0,
+        // A real tile clips. Without this a child that fails to bound itself
+        // paints outside the frame and the story looks fine while the
+        // component is broken — which is how a 360-row table came to render
+        // past the bottom of a 420px tile.
+        overflow: "hidden",
       }}
     >
       <Story />

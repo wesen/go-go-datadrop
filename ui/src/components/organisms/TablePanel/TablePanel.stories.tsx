@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TablePanel } from "./TablePanel";
-import { READINGS, chartSpec, pipelineOf, readings, step } from "../../../fixtures";
+import { READINGS, chartSpec, pipelineOf, readings, step, tableAfter } from "../../../fixtures";
 
 /**
  * The pipeline's output relation, computed by the pipeline.
@@ -37,21 +37,23 @@ export const Populated: Story = {};
  * the property that makes the table a view of the transform rather than of the
  * source.
  */
+const summarized = chartSpec({ steps: [step.summarize(READINGS.station, "mean", READINGS.temp)] });
+
 export const Summarized: Story = {
-  args: {
-    pipeline: pipelineOf(
-      chartSpec({ steps: [step.summarize(READINGS.station, "mean", READINGS.temp)] }),
-    ),
-  },
+  // The environment gets the pipeline output, exactly as `useTableFor` gives
+  // it to the application. Without this the header chips resolve against the
+  // source and `mean_data.temp_c` renders stale — which is the defect this
+  // story found.
+  parameters: { pbui: { table: tableAfter(summarized) } },
+  args: { pipeline: pipelineOf(summarized) },
 };
 
 /** A derived column, computed by the pipeline and typed by it. */
+const derived = chartSpec({ steps: [step.derive("delta", READINGS.temp, "-", READINGS.humidity)] });
+
 export const WithADerivedColumn: Story = {
-  args: {
-    pipeline: pipelineOf(
-      chartSpec({ steps: [step.derive("delta", READINGS.temp, "-", READINGS.humidity)] }),
-    ),
-  },
+  parameters: { pbui: { table: tableAfter(derived) } },
+  args: { pipeline: pipelineOf(derived) },
 };
 
 /** Sorted and capped, so the visible rows are the interesting ones. */

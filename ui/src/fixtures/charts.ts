@@ -130,3 +130,21 @@ export function chartPlot(spec: ChartSpec = chartSpec(), table: Table = readings
 export function pipelineOf(spec: ChartSpec = chartSpec(), table: Table = readings) {
   return evaluate(table, spec.steps, spec.typeOverrides);
 }
+
+/**
+ * The pipeline output shaped back into a `Table`.
+ *
+ * This is what `useTableFor` hands the PBUI environment, and a story that
+ * renders field chips over a transformed relation must supply the same thing —
+ * otherwise the chips resolve against the *source*, and every produced column
+ * (`mean_data.temp_c`, a derived name) renders as a stale field that is "not in
+ * the pipeline output" when it is precisely that.
+ *
+ * That was a live defect until this follow-up, found by a story of a summarized
+ * table. Pass this through `parameters.pbui.table` wherever a story shows a
+ * transformed relation.
+ */
+export function tableAfter(spec: ChartSpec = chartSpec(), table: Table = readings): Table {
+  const out = evaluate(table, spec.steps, spec.typeOverrides);
+  return { ...table, fields: out.fields, rows: out.rows };
+}

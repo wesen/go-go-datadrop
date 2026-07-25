@@ -81,6 +81,26 @@ export function useDocTable(docId: DocId | null): {
  *
  * Reads straight from the RTK Query cache rather than through a hook, because
  * descriptors are called from a menu handler rather than from render.
+ *
+ * **Returns the PIPELINE OUTPUT, not the source table**, and that distinction
+ * is the whole point of this function.
+ *
+ * A presentation describes something the user is looking at. After a summarize
+ * step the columns on screen are `data.station` and `mean_data.temp_c`; the
+ * latter exists nowhere in the source. Resolving against the source made every
+ * produced column render as a *stale* field chip — dashed border, warning
+ * glyph, "not in the pipeline output" — which is exactly backwards, and made
+ * the encoding editor contradict itself: it computes staleness from
+ * `pipeline.fields` (correctly) and then drew a chip that disagreed.
+ *
+ * The same argument settles the statistics a descriptor reports. `n`, `min`,
+ * `max` and `mean` should describe the rows the chart drew, not the rows the
+ * server sent. A source column that a step has since dropped now resolves as
+ * missing, which is correct: it is genuinely not in the output any more.
+ *
+ * Found by a Storybook story of a summarized table (DATADROP-6 follow-up).
+ * Reaching it by clicking needs a loaded source, a summarize step, a group key
+ * and an aggregate; reaching it in a story needs one line.
  */
 export function useTableFor(): (docId: DocId | null) => Table | null {
   const world = useSelector((state: RootState) => state.world);
@@ -101,7 +121,10 @@ export function useTableFor(): (docId: DocId | null) => Table | null {
           (data.source.dataset ?? "") === (doc.spec.source.dataset ?? "") &&
           (data.source.path ?? "") === (doc.spec.source.path ?? "")
         ) {
-          return data;
+          // A Table shaped from the pipeline result: same source, same
+          // truncation reporting, but the rows and fields the chart drew.
+          const out = evaluate(data, doc.spec.steps, doc.spec.typeOverrides);
+          return { ...data, fields: out.fields, rows: out.rows };
         }
       }
       return null;

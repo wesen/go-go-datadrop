@@ -2156,3 +2156,167 @@ ChartPanel (new organism)          —     217
 molecules used by nothing          4       0   (3 adopted, 1 deleted)
 stories                          181     193
 ```
+
+## Step 13: Three panels, and two live defects the stories found
+
+`ChartPanel`, `SourcePanel` and `TablePanel`. ChartApp 238 → 77 lines, SourceApp
+181 → 93, TableApp 93 → 31. Storybook at 208 stories.
+
+The extraction was the task. The two defects it surfaced are the result worth
+recording, because both had been live for two releases and both were invisible
+to a green test suite.
+
+### Prompt Context
+
+**User prompt (verbatim):** "properly set up the chartpanel so it actually shows data, it needs a pipeline for that. Maybe we can use hooks for data source / pipeline source ?"
+
+**Second user prompt (verbatim):** "the table seems to spread outside of the frame, but that's maybe because the frame is limited? in http://localhost:6006/?path=/story/component-library-organisms-tablepanel--populated"
+
+**Assistant interpretation:** Make the chart stories show real data through the
+real pipeline rather than contrived arguments; then diagnose the table
+overflowing its tile.
+
+**Inferred user intent:** A story that does not show the component doing its
+actual job is not coverage. And they had spotted, correctly, that a table
+painting outside its frame is a bug rather than a framing artifact.
+
+**Commit (code):** `b707970` — "Extract SourcePanel and TablePanel"
+**Commit (code):** `5463c64` — "Fix two defects the panel stories found"
+
+### What I did
+
+- Extracted `ChartPanel`, `SourcePanel`, `TablePanel`, each with stories.
+- Added `fixtures/charts.ts` so stories drive `buildPlot` and `evaluate`.
+- Fixed `useTableFor` to return the pipeline output (see below).
+- Fixed the Storybook decorator chain, which had an unbounded middle.
+
+### Why
+
+**`useTableFor` returning the source table was wrong, and the encoding editor
+contradicted itself because of it.** `resolveField` resolves a field chip
+against `env.tableFor(docId)`, which returned the *source* table from the RTK
+Query cache. So any column a step **produces** — `mean_data.temp_c`, a derived
+name — was not found, and the chip rendered stale: dashed border, warning glyph,
+"not in the pipeline output". It *is* the pipeline output; it is the source it
+is absent from.
+
+`EncodingApp` computes staleness correctly, from `pipeline.fields`, and then
+drew a chip beside it that computed the opposite answer. After any summarize
+step the row said "not stale" and the chip in it said "stale".
+
+The fix returns the evaluated table. The user chose that over adding a second
+resolver, and it settles a second question in the same stroke: a descriptor's
+statistics — `n`, `min`, `max`, `mean` — now describe the rows the chart *drew*
+rather than the rows the server sent, which is what a presentation of something
+on screen should report. A source column that a step has since dropped now reads
+as missing, which is correct.
+
+### What didn't work
+
+**A story that built, typechecked, passed the suite, and was nonsense.** The
+first `ChartPanel` stories used `ts` and `temp_c`. The `readings` fixture is an
+event stream, so its payload columns are dotted: `time`, `data.temp_c`. Both are
+strings, so nothing failed, and the story rendered:
+
+```text
+Nothing to draw yet
+ · x ↦ ts is not in the pipeline output
+```
+
+The panel was behaving perfectly and the arguments were wrong. `fixtures/charts.ts`
+now names those columns once so it cannot happen five more times.
+
+**The SVG clipped, because of a rule in the reset.** `reset.css` sets
+`svg { max-width: 100% }`, so a plot drawn at 560px inside a 620px tile — minus
+padding — is scaled down and its right-hand content is cut off. Four bars became
+three and a half. In the application this cannot happen: the ResizeObserver
+measures the container and hands that number to `buildPlot`, so the two agree by
+construction. In a story they are independent and must be chosen to agree.
+
+**And then the table escaped its tile entirely — which the user spotted.** My
+first instinct was that `AppBody` has `overflow: auto` so it must be scrolling,
+and the frame was simply short. Measuring instead of reasoning found otherwise:
+
+```text
+tile      620 × 420   overflow: visible   scrollHeight: 3145
+  child   h 416       min-height: 320px   flex: 0 1 auto
+```
+
+The tile's only child is `withPbui`'s wrapper, and it had `minHeight: 320` with
+**no `flex: 1` and no `min-height: 0`**. So it grew to fit its content instead of
+being bounded by the tile, `AppBody`'s `overflow: auto` never engaged, and 360
+rows painted straight out of the bottom of the frame.
+
+That is not a TablePanel problem. **Every tile-decorated story in the whole
+Storybook had an unbounded middle**; only a story with tall content could show
+it, and until this one there was none. The chart stories missed it because an
+SVG has a fixed height.
+
+Two changes: the wrapper takes `flex: 1; min-height: 0`, and the tile decorator
+gains `overflow: hidden` — because a real tile clips, and without that a child
+that fails to bound itself paints outside the frame while the story looks fine.
+
+### What I learned
+
+**`min-height: 0` is the half that is always omitted.** A flex child defaults to
+`min-height: auto`, which refuses to shrink below its content. `Stack`'s CSS has
+a comment calling this "the single most common flexbox bug and cheaper to
+prevent everywhere than to diagnose once" — and the story harness had it anyway,
+in a file nobody thought of as a component.
+
+**A decorator is production code for the purposes of being wrong.** It renders
+in every story, so a defect in it is a defect in every story simultaneously, and
+it is the one place nothing reviews because it is "just the harness".
+
+**Stories should hand the environment what the application hands it.**
+`tableAfter()` exists so a story of a transformed relation supplies the pipeline
+output to the PBUI environment, exactly as `useTableFor` now does. Without it
+the story would have gone on showing stale chips after the application stopped.
+
+### What was tricky to build
+
+**Deciding whether `ChartPanel` may wrap its own marks in `Presentation`.**
+DR-38 forbids it and four molecules take render props to avoid it — but a
+scatter plot has hundreds of marks and a render prop per mark is an absurdity
+rather than a seam. It holds the same exception the `*Chip` atoms hold, for the
+same stated reason: a presentation is what a mark *is*, not a decoration applied
+to it. `TablePanel` claims the same exception for its cells. That is now two
+exceptions, and the next one needs a better argument than these.
+
+### What warrants a second pair of eyes
+
+- **`useTableFor` now evaluates the pipeline on every call**, and descriptors
+  call it from menu handlers. `evaluate` is memoised nowhere in that path. It
+  runs once per menu open over at most the row budget, so this is very probably
+  fine, and it is the sort of "very probably" worth a second opinion.
+- **Statistics changed meaning** for every descriptor. A `<field>` inspected
+  after a summarize step now reports n=4, not n=360. That is what was asked for
+  and it is still a behaviour change users will notice.
+- **`overflow: hidden` on the tile decorator** makes stories stricter than
+  before. If a story now clips something it did not, the component was already
+  overflowing and the story was hiding it.
+
+### What should be done in the future
+
+- The remaining nine applications. `PipelinePanel` is next by size.
+- A regression guard for the `tableFor` semantics. The story shows it; nothing
+  fails if it regresses.
+
+### Code review instructions
+
+- `apps/useTable.ts` → `useTableFor`, and its docstring, which states the
+  argument rather than the change.
+- `.storybook/withPbui.tsx` and `decorators.tsx` — the harness fix. Open any
+  tile story with tall content and confirm it scrolls inside the frame.
+- `fixtures/charts.ts` → `tableAfter`, and `TablePanel.stories.tsx` →
+  `Summarized`, which is the pair that keeps the story honest.
+
+### Technical details
+
+```text
+                        before   after
+ChartApp                   238      77
+SourceApp                  181      93
+TableApp                    93      31
+stories                    193     208
+```

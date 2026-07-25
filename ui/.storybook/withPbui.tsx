@@ -44,9 +44,32 @@ export const withPbui: Decorator = (Story, ctx) => {
 
   return (
     <PbuiProvider environment={environment} onPerform={(verb) => setLog((l) => [...l, verb])}>
-      <div style={{ display: "flex", flexDirection: "column", minHeight: 320 }}>
+      {/*
+        `flex: 1` and `min-height: 0`, not a `min-height: 320` floor.
+
+        This wrapper sits between the tile decorator and the story, so its
+        height behaviour decides every tile story's. With a 320px floor and no
+        flex it grew to fit its content instead of being bounded by the tile —
+        so `AppBody`'s `overflow: auto` never engaged and a 360-row table
+        rendered straight out of the bottom of its frame, unclipped. Every
+        tile-decorated story had an unbounded middle; only the ones with tall
+        content showed it.
+
+        `min-height: 0` is the half that is easy to omit: a flex child defaults
+        to `min-height: auto`, which refuses to shrink below its content, which
+        is exactly the failure above.
+      */}
+      <div style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
         <AcceptBanner />
-        <div style={{ flex: 1, padding: "var(--pbui-space-4)" }}>
+        <div
+          style={{
+            flex: 1,
+            minHeight: 0,
+            display: "flex",
+            flexDirection: "column",
+            padding: "var(--pbui-space-4)",
+          }}
+        >
           <Story />
         </div>
 
