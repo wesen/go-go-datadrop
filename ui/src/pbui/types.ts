@@ -21,7 +21,12 @@ export type PresentationType =
   | "cat"
   | "chart"
   | "tile"
-  | "workspace";
+  | "workspace"
+  // DATADROP-5. A person, a credential, an access-list row, one queued file.
+  | "user"
+  | "token"
+  | "member"
+  | "upload";
 
 export type DocId = string;
 
@@ -56,6 +61,48 @@ export interface DatumRef {
   row: Record<string, unknown>;
 }
 
+export interface UserRef {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
+/**
+ * An API token, BY ID.
+ *
+ * The absence of a secret field is load-bearing, not an omission (DR-28). A
+ * presentation value flows into the inspector, the watchlist, the trace and —
+ * via persist.ts — localStorage. Put the secret here and it reaches all four;
+ * leave it out and it structurally cannot. `findSecrets` is the second net
+ * under this one, not a substitute for it.
+ */
+export interface TokenRef {
+  id: string;
+  name: string;
+  scopes: string[];
+  expiresAt: string | null;
+  revokedAt: string | null;
+}
+
+export interface MemberRef {
+  drop: string;
+  user: UserRef;
+  role: "reader" | "writer" | "admin";
+  /** The owner's row cannot be changed or removed. */
+  isOwner: boolean;
+}
+
+export type UploadState = "queued" | "hashing" | "mounting" | "sending" | "done" | "failed";
+
+export interface UploadRef {
+  batchId: string;
+  path: string;
+  size: number;
+  digest: string | null;
+  state: UploadState;
+  error: string | null;
+}
+
 /** The value shape carried by each presentation type. */
 export interface PresentationValues {
   field: FieldRef;
@@ -69,6 +116,10 @@ export interface PresentationValues {
   chart: string;
   tile: string;
   workspace: string;
+  user: UserRef;
+  token: TokenRef;
+  member: MemberRef;
+  upload: UploadRef;
 }
 
 /**

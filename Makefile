@@ -38,7 +38,9 @@ build:
 # built assets are committed, so a Go build — and a `go install` of this module
 # — must not require bun. Run this after changing anything under ui/.
 ui:
-	bun --cwd ui install --frozen-lockfile
+	# `bun install --cwd ui`, not `bun --cwd ui install`: the latter makes bun
+	# look for a *script* named "install" and fail with "Script not found".
+	bun install --cwd ui --frozen-lockfile
 	bun --cwd ui run build
 
 ui-test:
@@ -57,11 +59,11 @@ compose-up:
 	cd deploy/compose && cp -n .env.example .env || true
 	cd deploy/compose && docker compose up -d --build --wait
 	@echo ""
-	@echo "  workbench: http://datadrop.test:7070/ui/"
+	@echo "  workbench: http://localhost:7070/ui/"
 	@echo "  zitadel:   http://zitadel.test:17070/   (zitadel-admin@zitadel.zitadel.test / Password1!)"
 	@echo ""
 	@echo "  If those hostnames do not resolve in your shell, add to /etc/hosts:"
-	@echo "    127.0.0.1 zitadel.test datadrop.test"
+	@echo "    127.0.0.1 zitadel.test"
 
 compose-down:
 	cd deploy/compose && docker compose down

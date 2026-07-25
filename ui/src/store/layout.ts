@@ -23,6 +23,19 @@ export interface Workspace {
   id: string;
   name: string;
   tree: Node;
+  /**
+   * A pinned workspace is defined in code, not by the user.
+   *
+   * It is re-created from source on every load, cannot be deleted, and its tree
+   * replaces whatever was stored. That is what makes "hardwired" true rather
+   * than aspirational: without it, a user who closed the account space in one
+   * release has no account space in the next, and the only route back is
+   * clearing localStorage (DR-29).
+   *
+   * The cost is that tiles added to a pinned space are lost on reload, which is
+   * the intended meaning and is why the workspace strip marks them.
+   */
+  pinned?: boolean;
 }
 
 export interface LayoutState {

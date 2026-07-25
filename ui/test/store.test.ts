@@ -16,6 +16,7 @@ import {
 import { TRACE_CAP, worldActions, worldSlice, type WorldState } from "../src/store/world";
 import { actionsForVerb, environmentFor } from "../src/store/applyVerb";
 import { findSecrets, validate } from "../src/store/persist";
+import { ACCOUNT_SPACE_ID, WELCOME_SPACE_ID } from "../src/store/spaces";
 
 /**
  * The shell reducers: pure functions, tested without a DOM.
@@ -359,7 +360,53 @@ describe("persistence is defensive", () => {
       world: { docs: {}, docOrder: [] },
       layout: { spaces: [{ id: "s", name: "x", tree }], currentSpaceId: "gone" },
     });
-    expect(valid?.layout.currentSpaceId).toBe("s");
+    // The hardwired spaces are prepended on load, so "first" is now `welcome`
+    // rather than whatever was stored. The property under test is the fallback,
+    // not the identity of the space it falls back to.
+    expect(valid?.layout.currentSpaceId).toBe(WELCOME_SPACE_ID);
+    expect(valid?.layout.spaces.map((space) => space.id)).toContain("s");
+  });
+
+  test("the hardwired spaces are restored from code, not from storage", () => {
+    // DR-29. A user who deleted the account space in a previous release must
+    // get it back, and a stored tree under a pinned id must not win.
+    const valid = validate({
+      version: 1,
+      world: { docs: {}, docOrder: [] },
+      layout: {
+        spaces: [
+          {
+            id: ACCOUNT_SPACE_ID,
+            name: "renamed by a user",
+            tree: { id: "n", type: "leaf", app: "chart" },
+          },
+        ],
+        currentSpaceId: ACCOUNT_SPACE_ID,
+      },
+    });
+
+    const ids = valid?.layout.spaces.map((space) => space.id) ?? [];
+    expect(ids).toContain(WELCOME_SPACE_ID);
+    expect(ids).toContain(ACCOUNT_SPACE_ID);
+    // Exactly once: merging must not duplicate a pinned space that was stored.
+    expect(ids.filter((id) => id === ACCOUNT_SPACE_ID)).toHaveLength(1);
+
+    const account = valid?.layout.spaces.find((space) => space.id === ACCOUNT_SPACE_ID);
+    expect(account?.name).toBe("account");
+    expect(account?.pinned).toBe(true);
+  });
+
+  test("user-created spaces survive the merge", () => {
+    const valid = validate({
+      version: 1,
+      world: { docs: {}, docOrder: [] },
+      layout: {
+        spaces: [{ id: "mine", name: "mine", tree: { id: "n", type: "leaf", app: "chart" } }],
+        currentSpaceId: "mine",
+      },
+    });
+    expect(valid?.layout.spaces.find((space) => space.id === "mine")?.name).toBe("mine");
+    expect(valid?.layout.currentSpaceId).toBe("mine");
   });
 
   test("credential-shaped keys are detected anywhere in the payload", () => {

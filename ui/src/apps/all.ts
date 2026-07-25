@@ -22,3 +22,9 @@ import "./tutorials/Tut1";
 import "./tutorials/Tut2";
 import "./tutorials/Tut3";
 import "./tutorials/Tut4";
+
+// Accounts (DATADROP-5).
+import "./SignInApp/SignInApp";
+import "./ProfileApp/ProfileApp";
+import "./TokensApp/TokensApp";
+import "./UploadApp/UploadApp";

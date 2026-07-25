@@ -6,7 +6,11 @@ import { docDescriptor } from "./descriptors/doc";
 import { fieldDescriptor } from "./descriptors/field";
 import { geomDescriptor } from "./descriptors/geom";
 import { sourceDescriptor } from "./descriptors/source";
+import { memberDescriptor } from "./descriptors/member";
 import { stepDescriptor } from "./descriptors/step";
+import { tokenDescriptor } from "./descriptors/token";
+import { uploadDescriptor } from "./descriptors/upload";
+import { userDescriptor } from "./descriptors/user";
 
 /**
  * One descriptor per presentation type.
@@ -48,6 +52,10 @@ const DESCRIPTORS: Partial<Record<PresentationType, PresentationDescriptor<never
   datum: datumDescriptor as PresentationDescriptor<never>,
   geom: geomDescriptor as PresentationDescriptor<never>,
   step: stepDescriptor as PresentationDescriptor<never>,
+  user: userDescriptor as PresentationDescriptor<never>,
+  token: tokenDescriptor as PresentationDescriptor<never>,
+  member: memberDescriptor as PresentationDescriptor<never>,
+  upload: uploadDescriptor as PresentationDescriptor<never>,
 };
 
 export function descriptorFor(ptype: PresentationType): PresentationDescriptor<never> | null {

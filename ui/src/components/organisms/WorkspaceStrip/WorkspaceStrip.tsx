@@ -25,7 +25,10 @@ export function WorkspaceStrip() {
       <SectionLabel>Workspaces</SectionLabel>
       <Stack direction="row" gap={2} wrap align="center">
         {spaces.map((space) =>
-          renaming === space.id ? (
+          // A pinned space cannot be renamed: the name comes from code and
+          // would be overwritten on the next load, so offering the edit would
+          // be a lie (DR-29).
+          renaming === space.id && !space.pinned ? (
             <input
               key={space.id}
               autoFocus
@@ -69,9 +72,10 @@ export function WorkspaceStrip() {
                   fontSize: "var(--pbui-fs-small)",
                   fontWeight: current === space.id ? 700 : 400,
                 }}
-                onDoubleClick={() => setRenaming(space.id)}
+                onDoubleClick={() => !space.pinned && setRenaming(space.id)}
+                title={space.pinned ? "defined in code — cannot be renamed or deleted" : undefined}
               >
-                {space.name}
+                {space.pinned ? `⌾ ${space.name}` : space.name}
               </span>
             </Presentation>
           ),
@@ -91,7 +95,8 @@ export function WorkspaceStrip() {
           + workspace
         </button>
         <Text size="tiny" tone="faint">
-          L switches · double-click renames · R for duplicate / delete
+          L switches · double-click renames · R for duplicate / delete · ⌾ is
+          defined in code
         </Text>
       </Stack>
     </Toolbar>

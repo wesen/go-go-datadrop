@@ -164,3 +164,76 @@ describe("an unknown presentation type degrades rather than throws", () => {
     expect(labelFor("tile", "n7", env())).toBe("n7");
   });
 });
+
+/* ------------------------------------------------------- accounts (DR-5) -- */
+
+describe("the account descriptors", () => {
+  const token = {
+    id: "7f3k9m2qx4vb3",
+    name: "ci ingest",
+    scopes: ["drops:write"],
+    expiresAt: null,
+    revokedAt: null,
+  };
+
+  test("a token's menu offers revocation, and explains when it cannot", () => {
+    const live = actionsFor("token", token, env());
+    expect(live[0]?.verb).toEqual({ kind: "revokeToken", tokenId: token.id });
+    expect(live[0]?.disabledBecause).toBeUndefined();
+
+    const revoked = actionsFor("token", { ...token, revokedAt: "2026-07-25T00:00:00Z" }, env());
+    // Greyed with a reason rather than hidden: a user who never sees the entry
+    // never learns the token is already dead.
+    expect(revoked[0]?.disabledBecause).toBe("this token is already revoked");
+  });
+
+  test("nothing a token presentation exposes can carry a secret", () => {
+    // DR-28. `describe` feeds the inspector, which is precisely the surface
+    // that would leak one. TokenRef has no field for a secret, so this asserts
+    // the property holds through the descriptor as well as through the type.
+    const described = JSON.stringify(describeFor("token", token, env()));
+    expect(described).not.toContain("ddp_");
+    expect(described).toContain(token.id);
+
+    for (const action of actionsFor("token", token, env())) {
+      expect(JSON.stringify(action.verb)).not.toContain("ddp_");
+    }
+  });
+
+  test("the owner's member row cannot be changed or removed", () => {
+    const owner = {
+      drop: "lab",
+      user: { id: "usr_a", name: "Ada", email: "ada@example.org" },
+      role: "admin" as const,
+      isOwner: true,
+    };
+    for (const action of actionsFor("member", owner, env())) {
+      if (action.verb.kind === "setMemberRole" || action.verb.kind === "removeMember") {
+        expect(action.disabledBecause).toBe("the owner's role cannot be changed");
+      }
+    }
+
+    const member = { ...owner, isOwner: false, role: "reader" as const };
+    const roles = actionsFor("member", member, env())
+      .filter((action) => action.verb.kind === "setMemberRole")
+      .map((action) => (action.verb as { role: string }).role);
+    // Every role except the one they already hold.
+    expect(roles).toEqual(["writer", "admin"]);
+  });
+
+  test("an upload that has not been hashed says why, rather than looking broken", () => {
+    const described = describeFor(
+      "upload",
+      {
+        batchId: "b1",
+        path: "data/readings.csv",
+        size: 900_000_000,
+        digest: null,
+        state: "sending",
+        error: null,
+      },
+      env(),
+    ) as { digest: string };
+    expect(described.digest).toContain("the server will hash");
+  });
+});

@@ -51,7 +51,21 @@ export type Verb =
   | { kind: "restoreSnapshot"; snapshotId: string; docId: DocId | null }
   | { kind: "restoreAsNewDoc"; snapshotId: string }
   | { kind: "pinSnapshot"; slot: 0 | 1; snapshotId: string }
-  | { kind: "deleteSnapshot"; snapshotId: string };
+  | { kind: "deleteSnapshot"; snapshotId: string }
+  // ── accounts (DATADROP-5) ──────────────────────────────────────────────────
+  //
+  // Still plain serialisable data. `createToken` carries a name and scopes; the
+  // SECRET is in the HTTP response and in one component's state, and appears in
+  // no verb, no presentation value and no trace entry (DR-28).
+  | { kind: "signIn"; intent: "signin" | "signup" }
+  | { kind: "signOut"; global: boolean }
+  | { kind: "createToken"; name: string; scopes: string[]; expiresIn: string | null }
+  | { kind: "revokeToken"; tokenId: string }
+  | { kind: "setMemberRole"; drop: string; userId: string; role: "reader" | "writer" | "admin" }
+  | { kind: "removeMember"; drop: string; userId: string }
+  | { kind: "claimDrop"; drop: string }
+  | { kind: "retryUpload"; batchId: string; path: string }
+  | { kind: "cancelUpload"; batchId: string };
 
 /** One entry in an object menu. */
 export interface Action {
@@ -84,6 +98,26 @@ export function describeVerb(verb: Verb): string {
       return `geom ${verb.geom}`;
     case "setYScale":
       return `y scale ${verb.scale}`;
+    case "signIn":
+      return verb.intent === "signup" ? "create an account" : "sign in";
+    case "signOut":
+      return verb.global ? "sign out everywhere" : "sign out";
+    case "createToken":
+      // The name and the scopes, never the secret — this string reaches the
+      // trace, which is a teaching surface people screenshot.
+      return `mint token "${verb.name}" (${verb.scopes.join(", ")})`;
+    case "revokeToken":
+      return `revoke token ${verb.tokenId}`;
+    case "setMemberRole":
+      return `${verb.userId} → ${verb.role} on ${verb.drop}`;
+    case "removeMember":
+      return `remove ${verb.userId} from ${verb.drop}`;
+    case "claimDrop":
+      return `claim ${verb.drop}`;
+    case "retryUpload":
+      return `retry ${verb.path}`;
+    case "cancelUpload":
+      return "cancel the upload";
     default:
       return verb.kind;
   }

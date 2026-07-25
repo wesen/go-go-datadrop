@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import "../../../apps/all";
+import { useMeQuery } from "../../../api/client";
 import { useTableFor } from "../../../apps/useTable";
 import {
   AcceptBanner,
@@ -11,8 +12,9 @@ import {
 } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { actionsForVerb, environmentFor } from "../../../store/applyVerb";
-import { countLeaves } from "../../../store/layout";
+import { countLeaves, layoutActions } from "../../../store/layout";
 import { save } from "../../../store/persist";
+import { ACCOUNT_SPACE_ID, WELCOME_SPACE_ID } from "../../../store/spaces";
 import { NodeView, WorkspaceStrip } from "../../organisms";
 import { Surface, Toolbar } from "../../layout";
 import { Text } from "../../foundation";
@@ -36,6 +38,34 @@ export function Workbench() {
   );
   const spaceCount = useSelector((state: RootState) => state.layout.spaces.length);
   const tableFor = useTableFor();
+  const { data: me } = useMeQuery();
+
+  /**
+   * The signed-out gate (DR-31).
+   *
+   * ONE gate, at the shell, not a check per tile. A per-tile check is a promise
+   * to remember it on every future tile, and that promise is always broken. It
+   * is not a security boundary either way — the server denies the data
+   * regardless — but it is the difference between a sign-in screen and twelve
+   * tiles all saying "401".
+   */
+  const lockedOut = me?.auth_mode === "oidc" && !me.authenticated;
+
+  useEffect(() => {
+    if (lockedOut) dispatch(layoutActions.setCurrentSpace(WELCOME_SPACE_ID));
+  }, [dispatch, lockedOut]);
+
+  // A first sign-in lands in the account workspace rather than wherever this
+  // browser was last, because a new user has nothing to go back to. The flag is
+  // true exactly once, so it is read and stripped rather than stored.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("first") !== "1") return;
+    dispatch(layoutActions.setCurrentSpace(ACCOUNT_SPACE_ID));
+    params.delete("first");
+    const query = params.toString();
+    window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
+  }, [dispatch]);
 
   /**
    * The environment descriptors resolve against.
@@ -86,7 +116,7 @@ export function Workbench() {
         </Surface>
 
         <AcceptBanner />
-        <WorkspaceStrip />
+        {!lockedOut && <WorkspaceStrip />}
 
         <div className={styles.canvas}>{space && <NodeView node={space.tree} />}</div>
 

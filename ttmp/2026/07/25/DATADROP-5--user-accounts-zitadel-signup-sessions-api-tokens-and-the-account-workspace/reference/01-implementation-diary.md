@@ -1013,3 +1013,150 @@ remembering when tempted to inline a two-line predicate.
 make compose-up
 curl -s http://localhost:7070/v1/me | jq '{auth_mode, provider}'
 ```
+
+## Step 8: Phase 5 — the account tiles
+
+Four tiles, four presentation types, three atoms, two hardwired workspaces, one
+signed-out gate. The interesting part was not writing them; it was what looking
+at them in a browser showed.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Build the frontend half — sign-in, profile, tokens and upload tiles in fixed workspaces, and retire the read-only invariant narrowly.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 5`
+
+### What I did
+
+- `ui/src/api/client.ts` — `credentials: "same-origin"`, six account endpoints,
+  and both stale security comments rewritten.
+- `ui/src/pbui/{types,verbs}.ts` — `user`, `token`, `member`, `upload` and nine
+  new verbs.
+- `ui/src/pbui/descriptors/{user,token,member,upload}.ts`.
+- `ui/src/components/atoms/{UserChip,TokenChip,RoleBadge}`.
+- `ui/src/apps/{SignInApp,ProfileApp,TokensApp,UploadApp}` — upload is a stub
+  until phase 6.
+- `ui/src/store/spaces.ts` — `pinnedSpaces`, `mergePinned`, fixed ids.
+- `ui/src/store/persist.ts` — pinned spaces restored from code, not storage.
+- `ui/src/components/pages/Workbench` — the signed-out gate and the `first=1`
+  landing.
+- `ui/test/api-surface.test.ts` and four new descriptor tests; 152 tests total.
+
+### What worked
+
+- **The layer test passed unchanged.** Four new presentation types, four
+  descriptors, three atoms and four apps, and not one edge needed adding to the
+  graph — because descriptors hold no components and apps may already reach
+  everything below them. That is DATADROP-4's boundary paying a dividend a
+  ticket later.
+- The verbs-as-data seam held again. `createToken` carries a name and scopes,
+  the trace renders it, and the secret is in neither.
+- The tokens tile's disabled mint form is the "show the rule, do not hide it"
+  principle working in a real screen: a token-authenticated caller sees the
+  whole form greyed with *"a token may not mint another token — otherwise
+  revoking a leaked credential would leave whatever it created still working"*.
+
+### What didn't work
+
+**Three things only a browser showed**, all found by rendering the account
+workspace against a running server:
+
+1. **"you are a admin".** In the `RoleBadge` tooltip, which a screen reader
+   reads aloud.
+2. **The identity-provider prose appeared in token mode.** "Your name, email,
+   password and two-factor settings live in the identity provider" — describing
+   a system that is not there. Gated on `me.provider`.
+3. **A "Signed in on" heading with nothing under it** for the root principal,
+   which has no sessions. Gated on `me.kind === "session"`.
+
+None of these would have failed a test, and all three are the kind of thing that
+makes an interface feel unfinished.
+
+**One test needed changing rather than fixing.** `mergePinned` prepends the
+hardwired spaces, so "a currentSpaceId naming a missing space falls back to the
+first" now falls back to `welcome`. The property under test is the fallback, not
+the identity of the space — so the assertion changed and a comment says why,
+rather than the behaviour being bent to keep an old expectation.
+
+**`defaultSpaces()` briefly made everyone land in `welcome`,** because the
+pinned spaces are prepended and `currentSpaceId` was `spaces[0]`. Now it names
+`build` explicitly, and the signed-out gate is the only thing that forces
+`welcome`.
+
+**`make ui` was broken and had been for some time.** `bun --cwd ui install`
+makes bun look for a *script* named `install`:
+
+```
+error: Script not found "install"
+```
+
+The correct form is `bun install --cwd ui`. Nobody had noticed because the built
+assets are committed, so the target is only run when the frontend changes.
+
+### What I learned
+
+- `api.endpoints[name].useMutation` is the cheapest honest way to tell an RTK
+  Query mutation from a query without reaching into internals. The
+  `api-surface` test uses it to pin the exact mutating set.
+- `fetchBaseQuery`'s `credentials` option is swallowed by a closure and is not
+  reachable from the built `api` object. An unreachable security-relevant
+  setting is exactly the kind that gets changed without anyone noticing, so that
+  assertion reads the source file — the same tactic `layers.test.ts` uses.
+
+### What was tricky to build
+
+**The asymmetry in `mergePinned`.** Pinned spaces are taken wholesale from code
+so that a tile added in a release actually appears; everything else comes from
+storage so a user's arrangement survives. The consequence — tiles a user adds to
+a pinned space are lost on reload — is the intended meaning of "hardwired" and
+would read as a bug without the ⌾ marker and the tooltip on the strip.
+
+**Deciding where the signed-out gate goes.** One gate at the shell, not a check
+per tile (DR-31). A per-tile check is a promise to remember it on every future
+tile, and that promise is always broken. It is not a security boundary either
+way — the server denies the data regardless — but it is the difference between a
+sign-in screen and twelve tiles all saying "401".
+
+### What warrants a second pair of eyes
+
+- `api-surface.test.ts` is a change-detector by design. If it fails, the right
+  response is to read the new mutation and decide, not to update the literal.
+- The tokens tile holds the minted secret in component state. That is the only
+  place it exists in the browser, and the panel is dismissed irreversibly. Worth
+  checking nothing else ever reads `minted`.
+- `SignInApp` renders provider error codes through a lookup table. A code with
+  no entry falls back to generic text; provider-supplied text is never rendered.
+
+### What should be done in the future
+
+- The upload tile is a stub. Phase 6.
+- Membership editing has descriptors and verbs but no tile: the profile tile
+  lists drops without a member editor. Phase 7.
+- An expired session shows a 401 with no explanation; the SPA should notice and
+  re-run the sign-in redirect, which is usually invisible.
+
+### Code review instructions
+
+`ui/src/api/client.ts` first — the two rewritten comments are the argument for
+everything else. Then `store/spaces.ts` and `persist.ts` for DR-29, and
+`pages/Workbench` for the gate.
+
+```bash
+cd ui && bun run typecheck && bun test
+```
+
+### Technical details
+
+Verified in a browser against a live server, in both modes:
+
+| | oidc (compose) | token (local) |
+|---|---|---|
+| workspace strip | hidden | shown |
+| forced workspace | `welcome` | none |
+| sign-in tile | sign-in + create-account links | token field |
+| profile tile | user, drops, sessions | "root principal — no user record" |
+| tokens tile | mint form live | mint form disabled, with the reason |

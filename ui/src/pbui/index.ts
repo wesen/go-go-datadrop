@@ -23,5 +23,10 @@ export type {
   ChannelRef,
   CatRef,
   DatumRef,
+  UserRef,
+  TokenRef,
+  MemberRef,
+  UploadRef,
+  UploadState,
   DocId,
 } from "./types";

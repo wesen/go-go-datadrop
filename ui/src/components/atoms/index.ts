@@ -5,3 +5,7 @@ export { ProvenanceBadge } from "./ProvenanceBadge";
 export { FieldChip } from "./FieldChip";
 export { SourceChip } from "./SourceChip";
 export { DocChip } from "./DocChip";
+export { UserChip } from "./UserChip";
+export { TokenChip } from "./TokenChip";
+export { RoleBadge } from "./RoleBadge";
+export type { Role } from "./RoleBadge";

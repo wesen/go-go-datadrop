@@ -30,9 +30,8 @@ Use capture-pane to read the output.
 
 <goGuidelines>
 - When implementing go interfaces, use the var _ Interface = &Foo{} to make sure the interface is always implemented correctly.
-- When building web applications, use bootstrap CSS unless otherwise indicated.
 - Always use a context argument when appropriate.
-- Use cobra for command-line applications.
+- Use glazed command framework for command-line applications.
 - Use the "defaults" package name, instead of "default" package name, as it's reserved in go.
 - Use github.com/pkg/errors for wrapping errors.
 - When starting goroutines, use errgroup.
@@ -49,7 +48,6 @@ Use capture-pane to read the output.
 
 <webGuidelines>
 - Use bun, react and rtk-query. Use typescript.
-- Use bootstrap for styling.
 - Store css, html and js in different files in a static directory.
 - Use go:embed to serve static files.
 - Always serve static files under /static/ URL paths, never directly under functional paths like /admin/

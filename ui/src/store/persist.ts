@@ -1,4 +1,5 @@
 import type { LayoutState, Node, Workspace } from "./layout";
+import { mergePinned } from "./spaces";
 import type { WorldState } from "./world";
 
 /**
@@ -84,15 +85,21 @@ export function validate(raw: unknown): Persisted | null {
   if (!data.layout.spaces.every(isWorkspace)) return null;
   if (typeof data.world.docs !== "object" || !Array.isArray(data.world.docOrder)) return null;
 
+  // The hardwired spaces are re-created from code on every load, replacing
+  // whatever was stored under their ids (DR-29). A user who deleted the account
+  // space in a previous release gets it back; a user who added a tile to it
+  // loses that tile, which is what "hardwired" means.
+  const spaces = mergePinned(data.layout.spaces);
+
   // A currentSpaceId naming a space that is gone would render nothing.
-  const current = data.layout.spaces.some((s) => s.id === data.layout?.currentSpaceId)
+  const current = spaces.some((s) => s.id === data.layout?.currentSpaceId)
     ? data.layout.currentSpaceId
-    : (data.layout.spaces[0] as Workspace).id;
+    : (spaces[0] as Workspace).id;
 
   return {
     version: VERSION,
     world: data.world,
-    layout: { spaces: data.layout.spaces, currentSpaceId: current },
+    layout: { spaces, currentSpaceId: current },
   };
 }
 
