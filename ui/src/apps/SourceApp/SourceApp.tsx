@@ -12,15 +12,15 @@ import {
 import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
-import { AppBody, Stack, Toolbar } from "../../components/layout";
-import { SectionLabel, Text } from "../../components/foundation";
-import { Button, SelectInput, SourceChip, TextInput } from "../../components/atoms";
+import { SourcePanel } from "../../components/organisms";
 
 /**
- * The source browser: drops, then their streams and dataset files.
+ * The source browser — the container half.
  *
- * Every stream and every file is a `<source>` presentation, so loading one is a
- * left-click and raising the row budget is a menu verb on the same object.
+ * Five queries, chained: the chosen drop decides which streams and datasets are
+ * listed, the chosen dataset decides which version is fetched, and the version
+ * decides which files exist. Every one of them can legitimately return nothing,
+ * which is why `SourcePanel` has more absence states than populated ones.
  */
 function SourceApp(_props: AppProps) {
   const dispatch = useDispatch();
@@ -54,121 +54,33 @@ function SourceApp(_props: AppProps) {
   );
 
   return (
-    <>
-      <Toolbar tight bordered>
-        <SectionLabel>Token</SectionLabel>
-        <TextInput
-          type="password"
-          label="bearer token"
-          placeholder="bearer token (public-read drops need none)"
-          value={token}
-          width="fill"
-          size="tiny"
-          onValueChange={(next) => {
-            setToken(next);
-            writeToken(next);
-          }}
-        />
-      </Toolbar>
-
-      <AppBody>
-        <Stack gap={4}>
-          {drops.error != null && (
-            <Text size="small" tone="danger">
-              Could not list drops. If this server requires a token, enter one above.
-            </Text>
-          )}
-
-          <Stack gap={2}>
-            <SectionLabel>Drop</SectionLabel>
-            <SelectInput
-              label="drop"
-              variant="framed"
-              value={chosen}
-              onValueChange={(next) => {
-                setDrop(next);
-                setDataset("");
-              }}
-              options={(drops.data?.drops ?? []).map((d) => ({
-                value: d.name,
-                label: d.public_read ? `${d.name} (public)` : d.name,
-              }))}
-            />
-          </Stack>
-
-          <Stack gap={2}>
-            <SectionLabel>Row budget — how much of the source is loaded</SectionLabel>
-            <Stack direction="row" gap={2} wrap align="center">
-              {[500, 2000, 10000, 50000].map((option) => (
-                <Button
-                  key={option}
-                  variant="framed"
-                  selected={limit === option}
-                  onClick={() =>
-                    dispatch(worldActions.setDocLimit({ docId: activeDocId, limit: option }))
-                  }
-                >
-                  {option.toLocaleString()}
-                </Button>
-              ))}
-              <Text size="tiny" tone="faint">
-                the pipeline's `limit` step is a different thing
-              </Text>
-            </Stack>
-          </Stack>
-
-          <Stack gap={2}>
-            <SectionLabel>Streams</SectionLabel>
-            <Stack direction="row" gap={2} wrap>
-              {(streams.data?.streams ?? []).map((s) => (
-                <SourceChip
-                  key={s.stream}
-                  source={{ kind: "stream", drop: chosen, stream: s.stream }}
-                />
-              ))}
-              {streams.data?.streams?.length === 0 && (
-                <Text size="small" tone="faint">
-                  no streams in this drop
-                </Text>
-              )}
-            </Stack>
-          </Stack>
-
-          <Stack gap={2}>
-            <SectionLabel>Datasets</SectionLabel>
-            <SelectInput
-              label="dataset"
-              variant="framed"
-              value={chosenDataset}
-              onValueChange={setDataset}
-              options={(datasets.data?.datasets ?? []).map((d) => ({
-                value: d.name,
-                label: d.name,
-              }))}
-            />
-            <Stack direction="row" gap={2} wrap>
-              {(versionDetail.data?.files ?? []).map((file) => (
-                <SourceChip
-                  key={file.path}
-                  source={{
-                    kind: "dataset",
-                    drop: chosen,
-                    dataset: chosenDataset,
-                    version: version?.version ?? 1,
-                    path: file.path,
-                  }}
-                />
-              ))}
-              {version && (versionDetail.data?.files ?? []).length === 0 && (
-                <Text size="small" tone="faint">
-                  no files in version {version.version}
-                </Text>
-              )}
-            </Stack>
-          </Stack>
-        </Stack>
-      </AppBody>
-    </>
+    <SourcePanel
+      token={token}
+      drops={(drops.data?.drops ?? []).map((d) => ({
+        name: d.name,
+        public_read: d.public_read ?? false,
+      }))}
+      chosenDrop={chosen}
+      streams={(streams.data?.streams ?? []).map((s) => s.stream)}
+      datasets={(datasets.data?.datasets ?? []).map((d) => d.name)}
+      chosenDataset={chosenDataset}
+      files={(versionDetail.data?.files ?? []).map((file) => file.path)}
+      latestVersion={version?.version ?? null}
+      limit={limit}
+      error={drops.error != null}
+      onTokenChange={(next) => {
+        setToken(next);
+        writeToken(next);
+      }}
+      onDropChange={(next) => {
+        setDrop(next);
+        setDataset("");
+      }}
+      onDatasetChange={setDataset}
+      onLimitChange={(next) =>
+        dispatch(worldActions.setDocLimit({ docId: activeDocId, limit: next }))
+      }
+    />
   );
 }
 

@@ -5,6 +5,9 @@ export { WorkspaceStrip } from "./WorkspaceStrip";
 // Presentational panels. Added by DATADROP-6 phase 5, which is when they became
 // legal: apps may import organisms only because DR-33 deleted the reverse edge.
 export { ChartPanel } from "./ChartPanel";
+export { SourcePanel, BUDGETS } from "./SourcePanel";
+export type { DropOption } from "./SourcePanel";
+export { TablePanel, RENDER_LIMIT } from "./TablePanel";
 export { SignInPanel } from "./SignInPanel";
 export type { SignInMode } from "./SignInPanel";
 export { ProfilePanel } from "./ProfilePanel";

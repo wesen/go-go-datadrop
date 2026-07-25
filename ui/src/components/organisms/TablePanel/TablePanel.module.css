@@ -27,3 +27,13 @@
   border-bottom: 1px dotted var(--pbui-faint);
   color: var(--pbui-faint);
 }
+
+/*
+ * The padded region for anything that is not the table itself.
+ *
+ * `AppBody flush` removes the body padding so the table can draw to its own
+ * edges, which means every message beside it has to supply its own.
+ */
+.notice {
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+}
