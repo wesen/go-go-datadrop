@@ -633,3 +633,214 @@ rmapi put DATADROP-6-design-system-coverage-and-decomposition.pdf Projects/2026/
 Result: 30 pages, 206 KB, no missing characters, at
 `Projects/2026/07/DATADROP-6-design-system-coverage-and-decomposition` on the
 device.
+
+## Step 5: Phase 0 and Phase 1 — the control atoms
+
+Phase 0 recorded the baseline. Phase 1 built the six control atoms the design
+system never had — `Button`, `IconButton`, `TextInput`, `SelectInput`,
+`CheckboxRow`, `LinkAction` — each with a component, a CSS module, a story and a
+barrel entry, and nothing substituted into the applications yet.
+
+The phase found something the analysis had missed, and it changes the shape of
+`Button`: there are **two** visual treatments of a button in this codebase, not
+one, and the guide's design assumed one. §7.2 measured the six copies of
+`const btn` and concluded "the design system has no button". True — but it also
+means the other twenty-nine hand-written buttons were not unstyled by
+oversight. They were *deliberately* bare, because `reset.css` strips buttons
+down to text.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Implement the ticket / refactor. Keep a frequent detailed diary, commit at appropriate intervals. The dairy should be in the skills diary format. NEVER FORGET DIARY."
+
+**Assistant interpretation:** Execute DATADROP-6's seven phases, writing a diary
+step per phase in the skill's format and committing per phase.
+
+**Inferred user intent:** They want the work done and they want the record of it
+to be usable afterwards — including the parts that did not go to plan.
+
+**Commit (code):** `0ab9e4e` — "DATADROP-6 phase 1: the six control atoms"
+
+### What I did
+
+- Recorded the phase 0 baseline (see Technical details).
+- Read `styles/reset.css`, which turned out to be the decisive file.
+- Built the six atoms, each as `Component.tsx` + `Component.module.css` +
+  `Component.stories.tsx` + `index.ts`, and extended `atoms/index.ts` with a
+  comment separating the presentation chips from the new controls.
+- Wrote 19 stories across the six.
+- `bun run --cwd=ui typecheck`, `bun test --cwd ui` (166 pass),
+  `bun run --cwd=ui build-storybook` (succeeds).
+
+### Why
+
+**`Button` has `variant: "bare" | "framed"` because the codebase has both.**
+`reset.css:71` is:
+
+```css
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+```
+
+so `<button type="button"><Text size="small">Commit</Text></button>` — the form
+every DATADROP-5 application uses — renders as plain text with a pointer
+cursor. Meanwhile the six chart applications apply `style={{...btn}}` and get a
+bordered, alt-background, bold control. Twenty-nine bare, thirteen framed.
+
+A single-treatment `Button` would have silently restyled twenty-nine call sites
+in phase 2, which is precisely the visual regression §21 forbids. Making the
+default `bare` means the majority substitution is a literal no-op.
+
+**The `opacity: 0.4` question resolved itself by reading the call sites.** The
+guide (§24.1) planned to carry it as a `dim` prop and fix it in phase 6. But
+every site that dimmed also set `disabled`:
+
+```tsx
+disabled={index === 0}  style={{ ...btn, opacity: index === 0 ? 0.4 : 1 }}
+disabled={!mapped}      style={{ ...btn, opacity: mapped ? 1 : 0.4 }}
+```
+
+so the opacity *was* the disabled treatment, written out longhand at each site
+with the condition duplicated. It moves to `.root:disabled` and the prop is not
+needed. That is strictly better than the plan: a disabled button can no longer
+look enabled, which is the failure that shape invites. The 0.4 value is still
+too low and phase 6 still owns raising it — the CSS says so where someone will
+find it.
+
+### What worked
+
+Writing the stories immediately, in the same commit as the components, rather
+than deferring them to phase 3. Two of the six changed shape because of a story:
+
+- `SelectInput` gained `placeholder` as a real prop after writing the
+  `WithPlaceholder` story and realising UploadApp's "choose a drop…" is a
+  *state*, not decoration — the surface below it is disabled and says why while
+  it is selected. So the placeholder option has to stay selectable, which is a
+  decision I would not have reached from the call site alone.
+- `SelectInput`'s `Empty` story (no writable drops) is the state a first-day
+  account sees, and it made me keep `options: []` working rather than assuming
+  at least one entry.
+
+### What didn't work
+
+**`satisfies Meta<typeof Component>` requires `args` on the meta when the
+component has required props**, and eight stories failed with:
+
+```text
+src/components/atoms/TextInput/TextInput.stories.tsx(28,14): error TS2322:
+  Property 'args' is missing in type '{ render: () => React.JSX.Element; }'
+  but required in type '{ args: { children?: ReactNode; ... } }'
+```
+
+`Button`, `IconButton` and `CheckboxRow` had `args` already and passed;
+`TextInput` and `SelectInput` did not. The fix is a meta-level `args` with
+placeholder values, and it needs a comment, because those values are the
+control-panel defaults and are *not* what any story renders — every story here
+uses a `Live` wrapper with `useState`. Someone reading `args: { value: "" }` and
+looking for an empty field on screen would be confused.
+
+**A typo shipped into a story and the typechecker caught it:**
+`<Text size="tiny" tone="danger" size2>`. Worth recording only because it is the
+argument for the strict meta typing that caused the previous failure — the same
+mechanism that made me write boilerplate `args` also caught a real mistake four
+lines later.
+
+### What I learned
+
+**A controlled input in a story needs a `Live` wrapper or the story is
+misleading.** `<TextInput value="readings" onValueChange={() => {}} />` renders
+correctly and cannot be typed into. A reviewer clicking it concludes the
+component is broken. Every input story here therefore wraps the component in a
+five-line local with `useState`, which is a pattern the remaining phases will
+reuse for `ScopeChecklist`, `MemberInvite` and the upload form.
+
+**`reset.css` is load-bearing for component design, not just for normalisation.**
+I read it looking for a button default and found the reason two treatments
+exist. Any future atom that wraps a native element should start by reading what
+the reset already does to it.
+
+### What was tricky to build
+
+**Deciding whether `LinkAction` should exist at all**, given DR-21's general
+suspicion of near-duplicate components. The case for it is narrow and specific:
+an OIDC authorization request is a top-level navigation, the provider answers
+with HTML on another origin, and it cannot be a `fetch`. So the element must be
+an `<a href>` — but if its appearance is written inline next to a `Button`, the
+two drift, and the sign-in affordance stops reading as an action of the same
+kind as everything else.
+
+What settled it was writing the `MatchesButton` story, which puts a
+`LinkAction` and a `Button` side by side in both variants. That story is the
+regression test for the thing the atom exists to prevent, and it only works
+because the two are separate components with deliberately identical CSS. I also
+gave `LinkAction` an `Omit<…, "onClick">` so it cannot become a button wearing a
+link's clothes — that breaks middle-click, copy-link and open-in-new-tab, and it
+is the mistake this shape invites.
+
+**`IconButton`'s required `label`.** Making it required rather than optional is
+the whole reason it is a separate atom instead of `<Button>✕</Button>`. Every
+hand-written glyph button in the tree happens to have an `aria-label` — six
+authors remembering six times — and the seventh would have been the bug. The
+type checker now holds it.
+
+### What warrants a second pair of eyes
+
+- **`Button`'s default variant.** `bare` is right by headcount (29 of 42) but it
+  means the more visible treatment is the one you have to ask for. A reviewer
+  might prefer no default at all, forcing the choice at every call site.
+- **`.root:disabled { opacity: 0.4 }`.** Deliberately reproducing a bad value.
+  Phase 6 must not be dropped; the CSS comment is the reminder but a reviewer is
+  the guarantee.
+- **`min-width: 1.5em` on `IconButton`.** A compromise between WCAG 2.5.8's 24px
+  target and a deliberately dense interface. It is a judgement call and it is
+  the kind that should be made once, visibly, rather than per call site.
+
+### What should be done in the future
+
+- Phase 2: substitute all six into the 20 applications. That is where a visual
+  regression would enter, so it goes in its own commit with nothing else in it.
+- **Guide correction:** §15.2 proposes an `Inline` layout primitive. `Stack`
+  already takes `direction="row"` with the same gap scale, so `Inline` would be
+  a second name for one thing — exactly the padding §21 warns about. It is
+  dropped, and phase 4's count goes from 3 new layout primitives to 2.
+- **Guide correction:** §24.1's `Button` sketch has one variant and a `dim`
+  prop. Both are wrong, for the reasons above. The implemented shape is
+  `variant` × `tone` × `size` with disabled handled by CSS.
+
+### Code review instructions
+
+- Start with `styles/reset.css:71` and `atoms/Button/Button.module.css`. The
+  `.bare` block restates what the reset already does; if that reads as
+  redundant, the two-treatment argument has not landed and the rest of the
+  review will not either.
+- Then `Button.stories.tsx` → `BothSizes`. It is the finding from guide §7.2 put
+  on screen deliberately.
+- Validate:
+  ```bash
+  bun run --cwd=ui typecheck
+  bun test --cwd ui
+  bun run --cwd=ui build-storybook
+  make storybook   # Design System/Atoms/*
+  ```
+
+### Technical details
+
+Phase 0 baseline, recorded 2026-07-25T15:42:41-04:00:
+
+```text
+raw <button> (excl. stories)   42
+raw <select>                    9
+raw <input>                    14
+inline style={{                80
+React.CSSProperties             8
+component directories          24
+story files                     2
+apps/*.tsx total            3 528 lines
+```
+
+Phase 1 result: 30 component directories, 8 story files, 166 tests still
+passing, `build-storybook` succeeds. No application file was touched.

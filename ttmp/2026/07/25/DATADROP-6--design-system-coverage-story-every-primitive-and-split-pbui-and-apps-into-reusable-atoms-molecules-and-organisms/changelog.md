@@ -23,3 +23,12 @@ Guide converted to a 30-page PDF and uploaded to reMarkable at Projects/2026/07;
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ttmp/2026/07/25/DATADROP-6--design-system-coverage-story-every-primitive-and-split-pbui-and-apps-into-reusable-atoms-molecules-and-organisms/reference/01-diary.md — step 4 records the pandoc invocation and the glyph fix
 
+
+## 2026-07-25
+
+Phase 1: the six control atoms (commit 0ab9e4e). reset.css strips buttons to text, so Button needs variant=bare|framed — 29 of the 42 hand-written buttons were deliberately bare, not unstyled. The planned dim prop is gone: every dimming call site also set disabled, so the opacity was the disabled treatment
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/atoms/Button/Button.module.css — the two treatments, and the 0.4 disabled opacity phase 6 owns
+
