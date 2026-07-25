@@ -154,3 +154,29 @@ describe("a temporal x is continuous, not banded", () => {
     expect(january.x).toBeLessThan(december.x);
   });
 });
+
+describe("sub-second spans", () => {
+  // A high-frequency stream produces windows shorter than a second, and the
+  // ladder used to bottom out at SECOND — so any such window got exactly one
+  // tick and an axis with a single label says nothing about its own extent.
+  // Found by charting 120 events that a seeding loop pushed in 825 ms.
+  test("a sub-second span gets several ticks, not one", () => {
+    const ticks = timeTicks(0, 825, 6);
+    expect(ticks.length).toBeGreaterThan(2);
+  });
+
+  test("sub-second labels carry milliseconds, so they differ from each other", () => {
+    const labels = timeTicks(0, 900, 6).map((t) => t.label);
+    expect(new Set(labels).size).toBe(labels.length);
+    expect(labels[0]).toMatch(/^\d{2}:\d{2}\.\d{3}$/);
+  });
+
+  test("a second or more still labels without milliseconds", () => {
+    // The extra precision must not leak upward: a five-minute axis reading
+    // "09:00.000" would be worse than the problem it fixes.
+    const labels = timeTicks(Date.parse("2026-07-24T09:00:00Z"), Date.parse("2026-07-24T12:00:00Z"), 6).map(
+      (t) => t.label,
+    );
+    for (const label of labels) expect(label).not.toContain(".");
+  });
+});

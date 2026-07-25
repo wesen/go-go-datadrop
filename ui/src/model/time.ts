@@ -20,6 +20,7 @@ export function toInstant(value: unknown): number {
   return Date.parse(value);
 }
 
+const MILLISECOND = 1;
 const SECOND = 1000;
 const MINUTE = 60 * SECOND;
 const HOUR = 60 * MINUTE;
@@ -33,6 +34,20 @@ const DAY = 24 * HOUR;
  * base ten.
  */
 const STEPS = [
+  // Sub-second steps, because datadrop is a timeseries store and a
+  // high-frequency stream really does produce sub-second windows. Without
+  // these the ladder bottoms out at one second and any span under a second
+  // gets exactly ONE tick — an axis with a single label, which says nothing
+  // about its own extent. Found by charting 120 events that were pushed in
+  // 825 ms.
+  MILLISECOND,
+  5 * MILLISECOND,
+  10 * MILLISECOND,
+  25 * MILLISECOND,
+  50 * MILLISECOND,
+  100 * MILLISECOND,
+  250 * MILLISECOND,
+  500 * MILLISECOND,
   SECOND,
   5 * SECOND,
   15 * SECOND,
@@ -103,6 +118,13 @@ const pad = (n: number) => String(n).padStart(2, "0");
  */
 export function formatInstant(ms: number, stepMs: number): string {
   const d = new Date(ms);
+  // Below a second the milliseconds ARE the information; without them every
+  // tick on a sub-second axis carries the same label.
+  if (stepMs < SECOND) {
+    return `${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}.${String(
+      d.getUTCMilliseconds(),
+    ).padStart(3, "0")}`;
+  }
   if (stepMs < MINUTE) {
     return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
   }

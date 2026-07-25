@@ -1,9 +1,10 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { api } from "../api/client";
-import { layoutSlice, initialLayout, type LayoutState } from "./layout";
+import { layoutSlice, type LayoutState } from "./layout";
 import { worldSlice, initialWorld, type WorldState } from "./world";
 import { load } from "./persist";
+import { defaultSpaces } from "./spaces";
 
 /**
  * The store.
@@ -49,7 +50,7 @@ export function makeStore(preloaded?: PreloadedState) {
   const preloadedState = preloaded
     ? {
         world: { ...initialWorld, ...preloaded.world },
-        layout: preloaded.layout ?? initialLayout(),
+        layout: preloaded.layout ?? defaultSpaces(),
       }
     : undefined;
 
@@ -75,9 +76,24 @@ export function makeStore(preloaded?: PreloadedState) {
  * previous version produces the defaults rather than a blank screen.
  */
 const restored = typeof window === "undefined" ? null : load();
-export const store = makeStore(
-  restored ? { world: restored.world, layout: restored.layout } : undefined,
-);
+export const store = makeStore({
+  ...(restored ? { world: restored.world, layout: restored.layout } : {}),
+});
+
+/**
+ * A first run needs a document.
+ *
+ * The four document-bound applications are views OF a composition; with no
+ * document they have nothing to be views of, and every one of them shows "no
+ * documents" with no way forward. The prototype seeds two on construction
+ * (pbui-gog.jsx:697-702) for the same reason.
+ *
+ * One, not two: the second exists in the prototype to demonstrate the
+ * multi-chart story, which belongs to phase 5.
+ */
+if (store.getState().world.docOrder.length === 0) {
+  store.dispatch(worldSlice.actions.newDoc(null));
+}
 
 export type AppStore = ReturnType<typeof makeStore>;
 export type RootState = ReturnType<AppStore["getState"]>;

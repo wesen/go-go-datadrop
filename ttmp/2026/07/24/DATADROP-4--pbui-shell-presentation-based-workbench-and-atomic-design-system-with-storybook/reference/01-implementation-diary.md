@@ -778,3 +778,174 @@ The corrected layer graph:
 model  →  pbui  →  store  →  atoms → molecules → organisms → pages
    ↘ foundation ↗
 ```
+
+---
+
+## Step 5: Phase 3 — the shell, and the thesis demonstrated
+
+Built the window manager, the shell, and five applications. The interval that
+began when the old shell was demolished is over: `/ui/` serves the tiled
+workbench again, and the binary's own end-to-end smoke test passes against the
+new bundle.
+
+The phase ends with the claim the whole ticket rests on, verified in a browser
+against a live server rather than argued for. Right-clicking a legend swatch on
+a chart of 120 sensor readings produced a menu headed
+`<cat> data.station = cellar`; clicking *Keep only data.station = cellar
+(chart α)* took the chart from 120 marks to 30 **and** put a real `FILTER` step
+into the pipeline tile — with a checkbox that disables it without deleting it
+and dropdowns that edit it. The click on the legend and the step in the chain
+are the same act seen from two surfaces.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 3 — the shell, and enough
+applications to be usable.
+
+**Inferred user intent:** A running workbench.
+
+### What I did
+
+- `store/layout.ts` consumers: `SplitView` with a pointer-and-keyboard divider,
+  `Tile` with its title bar, `useDrag` for drag-to-dock, `WorkspaceStrip`.
+- `pages/Workbench` — the shell, ~100 lines, holding no chart state.
+- `apps/registry.ts` and six applications: launcher, sources, pipeline,
+  encoding, chart, table.
+- `molecules/DocBar`, `molecules/TruncationNotice`.
+- Four more descriptors: `cat`, `datum`, `geom`, `step`.
+- `store/spaces.ts` — the `build` and `explore` presets.
+- Seeded a live server with 120 readings and drove the whole thing in Chromium.
+
+### What worked
+
+- **The `build` preset does what the deleted `App.tsx` did**, which was the
+  phase's acceptance test: pipeline and encoding on the left, chart and table on
+  the right, all four bound to one document and moving together.
+- **The verb seam cost nothing to cross.** `Workbench` passes one `perform`
+  callback that runs `actionsForVerb` and dispatches. Nothing in `pbui/` changed
+  between the phase where verbs were displayed and the phase where they mutate
+  the world — which was the entire argument for making verbs data.
+- The end-to-end Go smoke test passes unchanged against the new bundle: the UI
+  is served, the API's 404s are still 404s, and both table endpoints still
+  return typed tables.
+
+### What didn't work
+
+**1. A freshly-sourced document had no chart.** Loading a source produced
+*"Nothing to draw yet · map x to a field · map y to a field"*.
+
+`setDocSource` builds an empty spec, and nothing ever applied `defaultChart` —
+the reducer cannot, because it has no table and must not fetch one. Fixed with
+an effect in `useDocTable` that applies the default encoding when the table
+first arrives, guarded on "every channel is still null" so it is idempotent and
+several tiles calling it for one document dispatch once between them.
+
+Without it the workbench opens on exactly the blank canvas that `defaultChart`'s
+own docstring argues against.
+
+**2. A sub-second window gets one x tick.** The chart drew a single axis label,
+`05:41:50`. Measured: the 120 events spanned **825 ms**, because the seeding loop
+pushed them as fast as the CLI would go.
+
+That is not a defect in the seed — it is a real gap. `STEPS` in `model/time.ts`
+bottomed out at one second, so any span under a second yields one tick, and an
+axis with a single label says nothing about its own extent. datadrop is a
+timeseries store and a 100 Hz stream produces sub-second windows as a matter of
+course.
+
+Extended the ladder down to 1 ms and taught `formatInstant` to show milliseconds
+below a second. The 825 ms window now gets four ticks — `41:49.750`,
+`41:50.000`, `41:50.250`, `41:50.500`. Three tests pin it, including one that
+the extra precision does **not** leak upward: a five-minute axis reading
+"09:00.000" would be worse than the problem it fixes.
+
+**3. Two more layer violations, and the second was a latent cycle.**
+`organisms/Tile` imports `apps/registry` to resolve an app id to a component,
+and `pages/Workbench` imports `apps/useTable`. Allowing both is right — but my
+declared graph also let `apps` import `organisms`, which would have closed the
+loop. Added the edges in one direction and a separate test asserting nothing
+under `apps/` reaches back to `organisms` or `pages`, because the graph walk
+cannot express a one-way edge and a cycle here surfaces as a confusing
+module-initialisation error rather than as a layering mistake.
+
+**4. `[object Object]` in a menu header.** The registry's fallback `labelFor`
+did `String(value)`, which is fine for a string id and useless for the four
+presentation types whose value is an object. Fixed before adding the
+descriptors, because the fallback is what every future type gets on its first
+day.
+
+### What I learned
+
+- **Seed data that is too fast is its own kind of unrealistic.** A tight loop
+  produces a degenerate time axis, and the fix was in the axis rather than in
+  the loop — the loop merely found it.
+- **A reducer that cannot see the data cannot choose a default.** The split
+  between "what to draw" (world) and "what was loaded" (RTK Query) is right, and
+  the price is exactly one effect at the seam.
+- Every layer violation so far has been a mistake in the *plan* rather than in
+  the code. Three for three.
+
+### What was tricky to build
+
+**Drag-to-dock needs a synchronous, global registry of tile elements.** The hit
+test runs on every pointer move and a dragged tile must see tiles it is not an
+ancestor of, so React state is the wrong shape. It is a module-level `Map` with
+an `isConnected` check at hit-test time, because a closed tile leaves its entry
+behind and a phantom drop target is memorably hard to diagnose.
+
+**`ResizeObserver` has to be debounced** or a divider drag re-runs `buildPlot`
+twenty times a second over the whole table. 80 ms is enough to make a drag
+smooth without the chart visibly lagging the tile.
+
+### What warrants a second pair of eyes
+
+- **`useTableFor` scans the RTK Query cache** to match a document's source to a
+  cached table. It is O(cache entries) per call and correct, but a document
+  pointed at a source that is also loaded at a *different* row budget will match
+  whichever entry it finds first. Two documents on one source with different
+  budgets is a real scenario (§13.1) and this should key on the budget too.
+- The default `y` on the seeded stream is `data.humidity` rather than
+  `data.temp_c` — both are payload quantitative columns and the rule picks the
+  first, which is alphabetical. Defensible, and worth a second opinion on
+  whether there is a better tiebreak than alphabetical.
+
+### What should be done in the future
+
+- Phase 4: gallery, compare, inspector, watchlist, trace, charts.
+- The live tail is not wired into the chart application yet; DR-15's pause
+  during accept lands with it.
+- `useTableFor` should key on `(source, limit)`.
+
+### Code review instructions
+
+- `components/pages/Workbench/Workbench.tsx` — the shell; note it holds no
+  chart state, and the `perform` callback that is the whole verb seam.
+- `components/organisms/Tile/useDrag.ts` — the module-level registry and why.
+- `apps/useTable.ts` — the default-chart effect and its idempotency guard.
+- `model/time.ts` — the extended ladder.
+- Run it: `cd ui && bun run dev`, with a server on 8080.
+
+### Technical details
+
+The thesis, read out of the live DOM:
+
+```
+menu header: <cat> data.station = cellar
+verbs:       Keep only data.station = cellar  (chart α)
+             Exclude data.station = cellar
+             Facet by data.station · Inspect · Add to watchlist
+
+after "Keep only":
+  marks       120 → 30
+  pipeline    filter data.station = cellar     (a real step, with a checkbox)
+  OUT         30 rows
+```
+
+```
+$ bun test                  141 pass  0 fail
+$ go test ./... -count=1    all packages ok
+$ curl -s localhost/ui/     index-YSOhfNeV.js   (the new bundle)
+$ curl -s localhost/v1/drop 404                 (the API is not shadowed)
+```

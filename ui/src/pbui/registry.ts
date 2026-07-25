@@ -1,8 +1,12 @@
 import type { PbuiEnvironment, PresentationType } from "./types";
 import type { Action } from "./verbs";
+import { catDescriptor } from "./descriptors/cat";
+import { datumDescriptor } from "./descriptors/datum";
 import { docDescriptor } from "./descriptors/doc";
 import { fieldDescriptor } from "./descriptors/field";
+import { geomDescriptor } from "./descriptors/geom";
 import { sourceDescriptor } from "./descriptors/source";
+import { stepDescriptor } from "./descriptors/step";
 
 /**
  * One descriptor per presentation type.
@@ -40,6 +44,10 @@ const DESCRIPTORS: Partial<Record<PresentationType, PresentationDescriptor<never
   field: fieldDescriptor as PresentationDescriptor<never>,
   source: sourceDescriptor as PresentationDescriptor<never>,
   doc: docDescriptor as PresentationDescriptor<never>,
+  cat: catDescriptor as PresentationDescriptor<never>,
+  datum: datumDescriptor as PresentationDescriptor<never>,
+  geom: geomDescriptor as PresentationDescriptor<never>,
+  step: stepDescriptor as PresentationDescriptor<never>,
 };
 
 export function descriptorFor(ptype: PresentationType): PresentationDescriptor<never> | null {
@@ -48,7 +56,16 @@ export function descriptorFor(ptype: PresentationType): PresentationDescriptor<n
 
 export function labelFor(ptype: PresentationType, value: unknown, env: PbuiEnvironment): string {
   const descriptor = descriptorFor(ptype);
-  return descriptor ? descriptor.label(value as never, env) : String(value);
+  if (descriptor) return descriptor.label(value as never, env);
+  // The fallback has to handle object-valued presentations. `String(value)` on
+  // one produces "[object Object]" in a menu header, which tells the reader
+  // nothing about what they right-clicked.
+  if (typeof value === "string" || typeof value === "number") return String(value);
+  try {
+    return JSON.stringify(value)?.slice(0, 48) ?? String(value);
+  } catch {
+    return `<${ptype}>`;
+  }
 }
 
 export function describeFor(

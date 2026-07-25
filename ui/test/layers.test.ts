@@ -53,9 +53,26 @@ const ALLOWED: Record<string, string[]> = {
   layout: ["foundation"],
   atoms: ["foundation", "layout", "pbui", "model"],
   molecules: ["foundation", "layout", "atoms", "pbui", "model", "store"],
-  organisms: ["foundation", "layout", "atoms", "molecules", "pbui", "model", "store", "api"],
-  pages: ["foundation", "layout", "atoms", "molecules", "organisms", "pbui", "model", "store", "api"],
-  apps: ["foundation", "layout", "atoms", "molecules", "organisms", "pbui", "model", "store", "api"],
+  // `organisms` may reach `apps` for the registry alone: Tile has to resolve an
+  // app id to a component. The reverse is forbidden below, which is what keeps
+  // the pair acyclic — an application importing Tile would close the loop.
+  organisms: ["foundation", "layout", "atoms", "molecules", "pbui", "model", "store", "api", "apps"],
+  pages: [
+    "foundation",
+    "layout",
+    "atoms",
+    "molecules",
+    "organisms",
+    "pbui",
+    "model",
+    "store",
+    "api",
+    "apps",
+  ],
+  // Note the absence of `organisms` and `pages`. Applications are organisms in
+  // everything but directory, and they compose molecules; they must never reach
+  // back up to the shell that hosts them.
+  apps: ["foundation", "layout", "atoms", "molecules", "pbui", "model", "store", "api"],
 };
 
 const COMPONENT_LAYERS = new Set([
@@ -143,6 +160,25 @@ describe("the layer graph is one-way", () => {
           strays.push(`${relative(SRC, file)} -> package ${specifier}`);
         } else if (specifier === "react") {
           strays.push(`${relative(SRC, file)} imports React — the engine must stay DOM-free`);
+        }
+      }
+    }
+    expect(strays).toEqual([]);
+  });
+
+  test("the organisms/apps pair stays acyclic", () => {
+    // `organisms -> apps` is permitted for the registry, so the guard against a
+    // cycle is that nothing under apps/ reaches back. Stated as its own test
+    // because the graph walk above cannot express "this edge exists only in one
+    // direction", and because a cycle here would be diagnosed as a confusing
+    // module-initialisation error rather than as a layering mistake.
+    const strays: string[] = [];
+    for (const file of FILES.filter((f) => layerOf(f) === "apps")) {
+      for (const specifier of importsOf(readFileSync(file, "utf8"))) {
+        if (!specifier.startsWith(".")) continue;
+        const to = layerOf(resolve(dirname(file), specifier));
+        if (to === "organisms" || to === "pages") {
+          strays.push(`${relative(SRC, file)} -> ${specifier} (${to})`);
         }
       }
     }
