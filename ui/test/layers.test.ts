@@ -27,19 +27,25 @@ const ALLOWED: Record<string, string[]> = {
   // The data layer knows the wire types and nothing else.
   api: ["model"],
   export: ["model"],
-  // The presentation protocol knows the engine, the store, and `foundation`.
+  // The presentation protocol knows the engine and `foundation`, and NOT the
+  // store. The guide declared `pbui -> store`, which is backwards and would
+  // have been a cycle: `store` consumes the verb and presentation vocabulary
+  // that `pbui` defines, never the reverse. Nothing in pbui/ ever imported the
+  // store, so the declaration was speculative — and this test is what turned a
+  // speculative dependency into a corrected one rather than a latent cycle.
   //
-  // `foundation` is an exception granted deliberately rather than a leak. It is
-  // the bottom of the component stack — tokens made usable in React, importing
-  // nothing itself — so depending on it cannot create a cycle, and the
-  // alternative is pbui re-implementing VisuallyHidden and the type scale.
+  // `foundation` is an exception granted deliberately. It is the bottom of the
+  // component stack — tokens made usable in React, importing nothing itself —
+  // so depending on it cannot create a cycle, and the alternative is pbui
+  // re-implementing VisuallyHidden and the type scale.
   //
-  // What pbui may NOT import is atoms and above, which is the rule that
-  // matters: descriptors hold no components (registry.ts explains why), so the
-  // chip that draws a presentation lives in atoms and the type-to-chip mapping
-  // lives there with it.
-  pbui: ["model", "store", "api", "foundation"],
-  store: ["model", "api"],
+  // What pbui may NOT import is atoms and above: descriptors hold no components
+  // (registry.ts explains why), so the chip that draws a presentation lives in
+  // atoms and the type-to-chip mapping lives there with it.
+  pbui: ["model", "foundation"],
+  // The store speaks the presentation vocabulary: WatchEntry carries a
+  // PresentationType, and applyVerb maps a Verb onto reducers.
+  store: ["model", "api", "pbui"],
   styles: [],
   fixtures: ["model"],
   // Components, in dependency order.

@@ -620,3 +620,161 @@ disabled: Map to y  (chart α) — y accepts quantitative
 $ bun test
  106 pass  0 fail  across 9 files
 ```
+
+---
+
+## Step 4: Phase 2 — the store, and the verbs land
+
+Built the `world` and `layout` slices, the verb-to-action mapping that phase 1
+designed the seam for, and defensive `localStorage` persistence. 31 new reducer
+assertions, all pure, no DOM.
+
+The phase produced one genuine trap and one correction to the plan's dependency
+graph. Both were caught by tests written before the code was believed, which is
+the argument for writing §16.2's list as a list rather than as prose.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 2 of the guide.
+
+**Inferred user intent:** Serialisable state for documents and layout, so
+phase 3 has something to assemble a shell around.
+
+### What I did
+
+- `store/world.ts` — documents, snapshots, pins, watchlist, a capped trace, and
+  twenty reducers.
+- `store/layout.ts` — workspaces and the five split-tree operations, ported from
+  `pbui-gog.jsx:1126-1152`.
+- `store/applyVerb.ts` — `Verb` → actions, plus `environmentFor`.
+- `store/persist.ts` — versioned, validating `localStorage` persistence.
+- `store/index.ts` — both slices wired, restored on load.
+- `test/store.test.ts` — 31 assertions.
+
+### What worked
+
+The invariants that are easy to get subtly wrong are now pinned, and several
+were worth the trouble:
+
+- `updateNode` returns the **identical** object when nothing changed, and shares
+  every untouched subtree. Asserted with `toBe`, because `toEqual` would pass on
+  a full rebuild and the whole point is object identity.
+- Deleting the active document reassigns `activeDocId`. Leaving it dangling
+  makes every ambient verb a silent no-op, which for an interface built on
+  ambient verbs is the worst available failure.
+- Clearing the last type override leaves `undefined`, not `{}`, so a spec with
+  no overrides serialises identically however it got there. Permalinks and
+  snapshot equality compare the serialised form.
+- Swapping two tiles exchanges `app` and `docId` and leaves the ids in place —
+  DR-11 in one assertion.
+- `findSecrets` walks the persisted payload for credential-shaped keys and
+  `save` **refuses** rather than truncating. Losing a layout is an annoyance;
+  writing a bearer token to durable storage, in a payload designed to be shared,
+  is not.
+
+### What didn't work
+
+**1. `structuredClone` throws on an Immer draft.**
+
+```
+DataCloneError: The object can not be cloned.
+  at reducer (src/store/world.ts:317:17)
+```
+
+`createSlice` runs reducers under Immer, so `doc.spec` is a Proxy over a draft
+rather than a plain object, and a Proxy cannot be structurally cloned. Fixed
+with Immer's `current()` to materialise the draft first.
+
+Worth understanding rather than pattern-matching, because **the obvious
+alternative does not throw**. A spread produces a shallow copy that aliases
+`steps` and `mapping`, so every snapshot silently tracks the document it was
+taken from — the exact defect the snapshot tests exist to catch, and one that
+would survive review because the code reads correctly. The loud failure was the
+lucky outcome.
+
+**2. The guide's dependency graph had `pbui → store` backwards.** The layer test
+reported seven violations at once:
+
+```
+store/world.ts (store) imports ../pbui/types (pbui) — store may import: model, api
+store/applyVerb.ts (store) imports ../pbui/verbs (pbui) — …
+```
+
+Checking rather than assuming: nothing in `pbui/` has ever imported the store.
+The real direction is `store → pbui` — the store speaks the presentation
+vocabulary (`WatchEntry` carries a `PresentationType`, `applyVerb` maps a
+`Verb`), never the reverse. Had I "fixed" it by adding `store` to pbui's allowed
+list, I would have declared a cycle rather than a dependency.
+
+**3. `preloadedState` broke type inference again**, the same way it did in phase
+0 and one level in. A preloaded object whose `layout` key is conditionally
+spread makes `configureStore` infer that the layout reducer must accept
+`undefined`. Fixed by always supplying both slices.
+
+### What I learned
+
+- **A test that pins object identity catches things equality cannot.**
+  `expect(updateNode(t, "absent", f)).toBe(t)` is the only way to state the
+  structural-sharing contract, and structural sharing is the whole reason the
+  window manager will be able to hold fifteen tiles.
+- **When a boundary check fires, check the direction before relaxing the rule.**
+  The reflex is to widen the allowed list; here that would have introduced the
+  cycle the rule exists to prevent.
+- Immer is invisible until it is not. Anything that leaves a reducer — a clone,
+  a serialisation, a structural comparison — meets a draft first.
+
+### What was tricky to build
+
+The clone, described above. The second-order problem is that `cloneSpec` has to
+work both inside a reducer (draft) and outside one (plain object), since
+`restoreSnapshot` reads a stored spec that is itself a draft of stored state.
+`isDraft(spec) ? current(spec) : spec` handles both and is worth the branch.
+
+The other sharp edge was `snapshot` needing a timestamp. A reducer that calls
+`Date.now()` is not a pure function of its inputs and a state tree that changes
+when replayed is not replayable, so the instant is passed in by `applyVerb` and
+the reducer stays pure.
+
+### What warrants a second pair of eyes
+
+- **`setDocSource` resets the pipeline and the encoding.** That is deliberate —
+  keeping them would name columns the new source may not have, producing a chart
+  that refuses to draw with no obvious cause — but it silently discards work if
+  a user re-points a document at a similar source. Worth reconsidering once the
+  source picker exists and the gesture is real.
+- The persisted payload deliberately excludes the trace. If anyone later wants a
+  cross-session transcript, it needs its own store and its own cap.
+
+### What should be done in the future
+
+- Phase 3 replaces `withPbui`'s verb collector with `actionsForVerb` + dispatch.
+- `selectors.ts` with `makeSelectPipeline(docId)` is not written yet: there are
+  no tiles to subscribe. It lands with the tiles in phase 3, and §14.1's warning
+  about `createSelector` memoising one argument set applies then.
+- A subscription writing `save(world, layout)` on change, debounced, is wired in
+  phase 3 when there is a layout worth saving.
+
+### Code review instructions
+
+- `src/store/world.ts` — start at `cloneSpec` and its comment, then the snapshot
+  and duplicate reducers.
+- `src/store/layout.ts:updateNode` — the identity contract.
+- `src/store/applyVerb.ts` — the seam; one case per verb, no dispatch.
+- `src/store/persist.ts:findSecrets` and `validate`.
+- `bun test test/store.test.ts` — 31 assertions, ~150 ms.
+
+### Technical details
+
+```
+$ bun test
+ 137 pass  0 fail  across 10 files
+```
+
+The corrected layer graph:
+
+```
+model  →  pbui  →  store  →  atoms → molecules → organisms → pages
+   ↘ foundation ↗
+```
