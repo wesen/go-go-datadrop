@@ -208,3 +208,50 @@ func (s *Server) writeDatasetError(w http.ResponseWriter, r *http.Request, err e
 	}
 	s.writeStoreError(w, r, err)
 }
+
+// handleListDraftVersions lists the versions still being assembled.
+//
+// Gated on writer, not reader: handleGetDatasetVersion's rule that "a reader
+// must never observe a version that is still being assembled" stays true. A
+// writer observing a half-assembled version is a different thing — it is the
+// person assembling it, trying to recover from an interrupted upload.
+//
+// Without this the upload tile cannot resume or discard: the draft version
+// number is gone on reload, nothing in the API admits the version exists, and
+// its blob references keep garbage collection from reclaiming the bytes
+// (guide §4.5, §12.4).
+func (s *Server) handleListDraftVersions(w http.ResponseWriter, r *http.Request) {
+	dropName, datasetName, ok := s.datasetPath(w, r)
+	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDatasetsWrite); !ok {
+		return
+	}
+
+	versions, err := s.store.ListDraftDatasetVersions(r.Context(), dropName, datasetName)
+	if err != nil {
+		s.writeStoreError(w, r, err)
+		return
+	}
+
+	// Files too: resuming means diffing what is already uploaded against what
+	// the user has selected, and a listing without them would need a request
+	// per draft to be useful.
+	for i := range versions {
+		files, err := s.store.ListDatasetFiles(
+			r.Context(), dropName, datasetName, versions[i].Version)
+		if err != nil {
+			s.writeStoreError(w, r, err)
+			return
+		}
+		versions[i].Files = files
+	}
+
+	writeJSON(w, r, http.StatusOK, map[string]any{
+		"drop":     dropName,
+		"dataset":  datasetName,
+		"count":    len(versions),
+		"versions": versions,
+	})
+}

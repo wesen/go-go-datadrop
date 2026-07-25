@@ -1160,3 +1160,177 @@ Verified in a browser against a live server, in both modes:
 | sign-in tile | sign-in + create-account links | token field |
 | profile tile | user, drops, sessions | "root principal — no user record" |
 | tokens tile | mint form live | mint form disabled, with the reason |
+
+## Step 9: Phase 6 — the uploader
+
+The batch state machine, browser hashing, the digest mount fast path, resume,
+and the draft-listing endpoint the design analysis predicted would be needed.
+A file dragged onto a tile now becomes a committed dataset version and then a
+typed table, without leaving the browser.
+
+The endpoint is the interesting part. §4.5 of the guide identified the gap by
+reading the code — `ListDatasetVersions` is committed-only — and reasoned that
+without it an interrupted upload would be unrecoverable and would leak disk.
+Building the tile confirmed the prediction exactly.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Mid-turn request (verbatim):** "add an upload file button to the dataset section (csv) , not just drop surface."
+
+**Assistant interpretation:** Build the uploader, and give it an explicit file-picker button rather than relying on a drag-and-drop surface alone.
+
+**Inferred user intent:** A drop target assumes a mouse, a window arrangement showing both the file manager and the browser, and the knowledge that the surface is droppable at all. A button assumes none of those, and it is what a keyboard reaches.
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 6`
+
+### What I did
+
+- `pkg/store/datasets.go` — `ListDraftDatasetVersions`, and a shared
+  `listDatasetVersions` behind it.
+- `pkg/server/handlers_datasets.go` — `GET …/datasets/{d}/drafts`, gated on
+  writer and returning the files so resuming needs one request rather than N.
+- `ui/src/apps/UploadApp/upload.ts` — the pure half: `digestOf`,
+  `normalisePath`, `newBatch`, `withItem`, `phaseOf`, `pendingAfterResume`,
+  `pooled`, `formatBytes`.
+- `ui/src/apps/UploadApp/UploadApp.tsx` — the tile, including the explicit
+  "Choose CSV files…" button.
+- `ui/test/upload.test.ts` — 14 tests, no DOM and no server.
+
+### Why
+
+Guide §15. And DR-30: the browser hashes before it uploads so the server can
+skip bytes it already holds.
+
+### What worked
+
+- **Keeping the state machine in a plain module.** The parts a UI test would
+  have the hardest time reaching — the digest threshold, the path
+  normalisation, the resume diff, the concurrency pool — are exactly the parts
+  with the most to lose from being wrong, and all fourteen tests run with no
+  DOM, no server and no file picker.
+- **The mount fast path, verified against a running server:**
+
+  ```
+  PUT (body)     -> 201     # version 1, 66 bytes transferred
+  HEAD blob      -> 200     # the server already holds them
+  PUT (no body)  -> 201     # version 2
+  draft v2: 1 file, 37 bytes — transferred 0
+  ```
+
+- **The draft gap, closed and demonstrated:**
+
+  ```
+  GET  …/versions/1  -> 404          # a reader must not see a draft
+  GET  …/drafts      -> [1]          # the writer assembling it must
+  ```
+
+- The whole loop in a browser: choose a drop, name a dataset, pick a CSV,
+  upload, commit — and the table endpoint then reports
+  `station:n, temp_c:q, ok:n`, which is a chart away.
+
+### What didn't work
+
+- **TypeScript could not keep the narrowing across the upload closures.**
+  `if (!batch) return;` narrows, but `current` is reassigned inside the pooled
+  callbacks, so it widens back to `Batch | null` at every use. Fixed with an
+  explicitly typed non-nullable local and a comment, rather than by scattering
+  non-null assertions.
+- **Two console errors on every page load**, both explicable, only one worth
+  fixing:
+  - `403 /v1/me/tokens` — the root principal has no user record, so the
+    endpoint correctly refuses. But a 403 in the console on every load is
+    noise, and noise is where real errors go to hide. The query now skips when
+    there is no user.
+  - `404 /v1/blobs/{digest}` — this one is the fast path *working*: 404 is the
+    answer "send the bytes". The browser logs it as an error regardless. Left
+    alone with a comment, because the alternative is changing a correct status
+    code to quieten a console.
+
+### What I learned
+
+**A drop surface is not an affordance for everyone.** The user's mid-turn
+request landed on something I had rationalised away: the drop zone was
+clickable, so I told myself the button was redundant. It is not. Clicking a
+large dashed rectangle is discoverable only if you already suspect it does
+something, and it is invisible to a keyboard. The button is now first, the drop
+surface second, and the input carries an `accept` list led by CSV.
+
+**`accept` should not be exclusive.** The obvious reading of "csv" is
+`accept=".csv"`. But a dataset is "a body of files with a manifest"
+(DATADROP-2), and a README beside the data is ordinary rather than exceptional,
+so the list leads with CSV and includes the rest.
+
+### What was tricky to build
+
+**Deciding what `phaseOf` should say when one file has failed and others are
+still moving.** Reporting `partial` immediately would offer a retry button that
+races the uploads still in flight. So a failure with anything still in flight is
+`uploading`, and `partial` only when everything has settled — which is also
+what makes `partial` a state with a sensible action rather than a banner.
+
+**`fetch` rather than RTK Query for the transfers.** The payload is a `File`,
+the response is discarded, and caching a 400 MB upload would be actively
+harmful. That is a deliberate exception to the data layer, and it is why the
+`api-surface` test's mutation set is three rather than six: the upload triad
+never enters the cache at all. Worth stating, because the guide's §14.1
+predicted six.
+
+**Path normalisation happens before the bytes are sent.** A
+`webkitRelativePath` from a dropped directory can contain `..`, a leading
+slash, or Windows separators, and the server rejects all three — after the
+upload. Normalising in the tile means the user sees what they are actually
+publishing, and the test table includes each case.
+
+### What warrants a second pair of eyes
+
+- `run()` mutates a local `current` and calls `setBatch` from inside a
+  concurrency pool. It is correct because every write is a fresh object and the
+  last write wins per file, but it is the kind of code that rewards a second
+  read.
+- The commit sends only a title. `row_count` is deliberately not guessed: it is
+  extracted into a column that listings display, and a wrong number there is
+  worse than an absent one.
+- `HASH_LIMIT` is 64 MiB. Above it the mount fast path is unavailable, which is
+  a real cost for exactly the files where it would matter most. A streaming
+  digest would need a WASM implementation or `crypto.subtle` gaining one.
+
+### What should be done in the future
+
+- Progress within a file. The tile reports per-file state, not bytes sent, so a
+  single large file looks stalled while it uploads.
+- "Import into a stream" after a commit, which the server already supports and
+  the guide's §15.5 names alongside "open in a chart".
+- Resuming requires re-selecting the files, because a `File` handle cannot
+  survive a reload. The tile says so; the File System Access API could fix it
+  where available.
+
+### Code review instructions
+
+`ui/src/apps/UploadApp/upload.ts` first — it is the whole state machine and
+`upload.test.ts` reads as its specification. Then the server side:
+
+```bash
+GOWORK=off go test ./pkg/store/ ./pkg/server/ -count=1
+cd ui && bun test test/upload.test.ts
+```
+
+To see it work, against a server with a drop you may write:
+
+```
+POST …/datasets/{d}/versions        -> a draft version
+HEAD /v1/blobs/{digest}             -> 200 means skip the transfer
+PUT  …/versions/{v}/files/{path}?digest=…   (no body when mounted)
+POST …/versions/{v}/commit
+```
+
+### Technical details
+
+Verified in a browser against a live server: draft opened, file hashed,
+uploaded, committed, and then read back through the table projection —
+
+```
+fields: [('station','n'), ('temp_c','q'), ('ok','n')]
+rows:   [{'station':'roof','temp_c':21.5,'ok':True}, …]
+```

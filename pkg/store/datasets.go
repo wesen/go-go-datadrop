@@ -442,13 +442,38 @@ func (s *Store) GetDataset(ctx context.Context, drop, dataset string) (datadrop.
 func (s *Store) ListDatasetVersions(
 	ctx context.Context, drop, dataset string,
 ) ([]datadrop.DatasetVersion, error) {
+	return s.listDatasetVersions(ctx, drop, dataset, datadrop.StateCommitted)
+}
+
+// ListDraftDatasetVersions returns the versions still being assembled.
+//
+// Separate from ListDatasetVersions, and deliberately not a boolean parameter
+// on it: every read path in the API filters on committed, because
+// "a reader must never observe a version that is still being assembled"
+// (handlers_datasets.go). Drafts are visible to WRITERS only, which is a
+// different question with a different answer, and a flag that flips it is a
+// flag someone passes wrongly.
+//
+// This exists because without it a client cannot recover from an interrupted
+// upload: the draft version number is gone on reload, the API will not admit
+// the version exists, and its blob references keep garbage collection from
+// reclaiming the bytes. A slow disk leak with no visible cause (guide §4.5).
+func (s *Store) ListDraftDatasetVersions(
+	ctx context.Context, drop, dataset string,
+) ([]datadrop.DatasetVersion, error) {
+	return s.listDatasetVersions(ctx, drop, dataset, datadrop.StateDraft)
+}
+
+func (s *Store) listDatasetVersions(
+	ctx context.Context, drop, dataset string, state datadrop.VersionState,
+) ([]datadrop.DatasetVersion, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT drop_name, dataset_name, version, state, manifest, schema_spec,
 		       file_count, total_bytes, created_at, committed_at
 		  FROM dataset_versions
 		 WHERE drop_name = ? AND dataset_name = ? AND state = ?
 		 ORDER BY version DESC`,
-		drop, dataset, string(datadrop.StateCommitted))
+		drop, dataset, string(state))
 	if err != nil {
 		return nil, errors.Wrapf(err, "store: list versions of %s/%s", drop, dataset)
 	}

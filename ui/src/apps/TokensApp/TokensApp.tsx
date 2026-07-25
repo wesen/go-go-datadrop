@@ -31,7 +31,12 @@ const EXPIRIES: Array<{ label: string; value: string }> = [
 function TokensApp(_props: AppProps) {
   const { data: me } = useMeQuery();
   const [showRevoked, setShowRevoked] = useState(false);
-  const { data } = useListTokensQuery(showRevoked, { skip: !me?.authenticated });
+  // Skipped for the root principal as well as for anonymous: root has no user
+  // record, so /v1/me/tokens 403s — correctly, but a 403 in the console on
+  // every page load is noise, and noise is where real errors go to hide.
+  const { data } = useListTokensQuery(showRevoked, {
+    skip: !me?.authenticated || !me.user,
+  });
   const [createToken, { isLoading: minting }] = useCreateTokenMutation();
   const [revokeToken] = useRevokeTokenMutation();
   const pbui = usePbui();

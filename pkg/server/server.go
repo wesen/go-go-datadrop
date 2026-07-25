@@ -248,6 +248,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}", s.handleGetDataset)
 	mux.HandleFunc("PUT /v1/drops/{name}/datasets/{dataset}/data", s.handlePutDatasetData)
 	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions", s.handleOpenDatasetVersion)
+	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/drafts", s.handleListDraftVersions)
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}", s.handleGetDatasetVersion)
 	mux.HandleFunc("DELETE /v1/drops/{name}/datasets/{dataset}/versions/{version}", s.handleDeleteDatasetVersion)
 	mux.HandleFunc("POST /v1/drops/{name}/datasets/{dataset}/versions/{version}/commit", s.handleCommitDatasetVersion)
