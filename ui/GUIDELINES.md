@@ -215,7 +215,249 @@ the component and is tested directly.** `apps/UploadApp/upload.ts` is the model:
 a state machine with no DOM, no server and no file picker, tested in
 milliseconds.
 
-## 8. Review checklist
+***
+
+## 8. How to add a new component
+
+This section is procedural. §2 decides *which* layer; this is what to type once
+you know. Every step is required by a test unless it says otherwise, and each
+example is copied from something in the tree rather than invented.
+
+Read `components/atoms/Chip/` first — 80 lines across two files, and it
+demonstrates every convention below.
+
+### 8.1 The four files
+
+```bash
+L=atoms N=Swatch                    # pick the layer from §2
+mkdir -p src/components/$L/$N
+touch src/components/$L/$N/{$N.tsx,$N.module.css,$N.stories.tsx,index.ts}
+```
+
+Then add one line to the layer barrel, `src/components/$L/index.ts`:
+
+```ts
+export { Swatch } from "./Swatch";
+export type { SwatchProps } from "./Swatch";   // if it exports types
+```
+
+Run `bun test --cwd ui` now, and again after each of the next three steps. Note
+what it does and does not catch at this point: the four files *exist*, so the
+"has a story", "has a component and a barrel" and "no empty directories" checks
+all pass. The one failure is
+
+```text
+(fail) story coverage > every story title uses its layer's prefix
+  components/atoms/Swatch/Swatch.stories.tsx: no title in the meta literal
+```
+
+which is the honest state of affairs — a directory of empty files is not a
+missing component, it is an unfinished one, and the title is the first thing
+that can actually be wrong.
+
+### 8.2 Writing the component
+
+The shape every component in the tree follows:
+
+```tsx
+import styles from "./Swatch.module.css";
+
+/**
+ * One sentence saying what this is.
+ *
+ * Then the constraint. Not what the code does — the reader can see that — but
+ * what would go wrong without it, or which call site forced this shape. This is
+ * the most valuable part of the file and the part most often skipped.
+ */
+export interface SwatchProps {
+  /** Say why a prop exists when the name does not. */
+  color: string;
+  label: string;
+}
+
+export function Swatch({ color, label }: SwatchProps) {
+  return <span className={styles.swatch} style={{ background: color }} title={label} />;
+}
+```
+
+Rules that apply to every one of them:
+
+- **Named function export, not a default.** A default export lets two files
+  disagree about a component's name.
+- **Props are an exported interface** when there is more than one, so the barrel
+  can re-export the type and a story can build objects against it.
+- **Class names come from the module** and are joined with
+  `[a, b].filter(Boolean).join(" ")`. There is no `clsx`; adding one for this is
+  a dependency for four characters.
+- **Inline `style` is allowed only for the three cases in §5** — dynamic
+  geometry, CSS variable plumbing, and a tone passed as a variable reference.
+- **A prop that is easy to forget should be required.** `IconButton.label` and
+  `TextInput.label` are required because they become `aria-label`, and requiring
+  them found six unlabelled controls that had survived review. Reach for this
+  deliberately.
+- **Handlers unwrap the event.** `onValueChange(value: string)`, not
+  `onChange(event)`. Every call site wanted the value; making the component
+  unwrap it removes a chance to forget `.target.value`.
+- **Ground the prop values in call sites.** `TextInput` has four widths because
+  four call sites asked for four widths. A small/medium/large scale nothing uses
+  is how a component becomes a styling API.
+
+### 8.3 Writing the CSS module
+
+```css
+/*
+ * Why this geometry, not what it is.
+ *
+ * 11px square, from ChartApp's legend. `flex-shrink: 0` because a long legend
+ * label must never squeeze the colour it describes into a sliver.
+ */
+.swatch {
+  display: inline-block;
+  width: 11px;
+  height: 11px;
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  flex-shrink: 0;
+}
+```
+
+Tokens for every value that has one. No raw colours, no font literals, no global
+selectors, no utility classes. A component that is pure composition over other
+components correctly has no module at all — several atoms do not.
+
+### 8.4 Writing the story
+
+```tsx
+import type { Meta, StoryObj } from "@storybook/react-vite";
+import { Swatch } from "./Swatch";
+
+const meta = {
+  title: "Design System/Atoms/Swatch",   // MUST be a literal — see §3
+  component: Swatch,
+  parameters: { tile: false },           // atoms have no business assuming a height
+  args: { color: "var(--pbui-cat-1)", label: "series 1" },
+} satisfies Meta<typeof Swatch>;
+
+export default meta;
+type Story = StoryObj<typeof meta>;
+
+export const Default: Story = {};
+```
+
+Four things that trip people up:
+
+- **`satisfies Meta<typeof Component>` requires `args` on the meta** when the
+  component has required props, even if every story uses `render`. Those args
+  are the control-panel defaults, not what the stories show; say so in a comment
+  when they differ.
+- **`parameters: { tile: false }`** for atoms, foundation and layout. Omit it for
+  organisms and anything whose behaviour depends on being bounded — the tile
+  decorator imposes a bounded flex column, which is the property under test for
+  `AppBody` and `Tile`.
+- **A controlled input needs a `Live` wrapper**, or the story renders correctly
+  and cannot be typed into, and a reviewer concludes the component is broken:
+
+  ```tsx
+  function Live(props: Omit<TextInputProps, "value" | "onValueChange">) {
+    const [value, setValue] = useState("");
+    return <TextInput value={value} onValueChange={setValue} {...props} />;
+  }
+  ```
+
+- **Components using the presentation protocol need no setup.** The global
+  `withPbui` decorator supplies the provider; pass fixtures through
+  `parameters: { pbui: { table: readings } }`.
+
+Which states to write is §3. The short version: populated, empty, error, and
+**the awkward mode** — the state that is expensive to reach by clicking and
+cheap to render.
+
+### 8.5 Adding a new application (a tile)
+
+An application is a container: it holds the hooks and the fetches and hands
+DTOs to a presentational organism. Three files, in this order.
+
+**1. The panel**, in `components/organisms/<Name>Panel/`, built exactly as
+above. Props in, callbacks out, no `api` import, no hooks beyond local UI state.
+
+**2. The application**, in `apps/<Name>App/<Name>App.tsx`:
+
+```tsx
+import { useThingQuery } from "../../api/client";
+import { registerApp, type AppProps } from "../../appkit/registry";
+import { ThingPanel } from "../../components/organisms";
+
+function ThingApp({ leafId, docId }: AppProps) {
+  const { data } = useThingQuery();
+  return <ThingPanel things={data?.things ?? []} onDoIt={() => {}} />;
+}
+
+registerApp({
+  id: "thing",                       // the id a tile stores; never renamed
+  title: "thing",                    // shown in the tile title bar
+  tone: "var(--pbui-tone-step)",     // a token name, never a hex value
+  docBound: false,                   // true adds a DocBar and makes it re-pointable
+  Component: ThingApp,
+});
+```
+
+**3. One import line** in `apps/all.ts`. The registry is populated by import for
+side effects, so adding an application touches its own file and this one, and
+forgetting the import is the only way to lose it — which the launcher makes
+immediately obvious.
+
+Notes on the descriptor:
+
+- **`id` is persisted.** A workspace layout stores it. Renaming one strands
+  every saved layout that names it, and `Tile` will render the
+  "unknown application" state.
+- **`docBound: true` is for views of one composition.** Exactly four
+  applications are — chart, table, pipeline, encoding — because two tiles on one
+  document stay in lockstep by reading one object rather than two copies. If a
+  tile merely *shows* something, it is not document-bound.
+- **`tone` is a token reference**, so the tile title bar stays inside the
+  palette.
+
+An application does *not* need a story. The panel it renders does, and page-level
+stories test integration rather than components — the whole tree has exactly
+one, for the shell.
+
+### 8.6 Adding a hardwired workspace
+
+Pinned workspaces are defined in code, re-created from source on every load, and
+cannot be deleted or renamed (DR-29). Without that, a user who closed a
+workspace in one release would not get it back in the next except by clearing
+`localStorage`.
+
+Edit `pinnedSpaces()` in `store/spaces.ts`:
+
+```ts
+{
+  id: "ws-account",       // stable; storage is merged against it
+  name: "account",
+  pinned: true,
+  tree: split("row", leaf("profile"), split("col", leaf("tokens"), leaf("upload"), 0.55), 0.38),
+}
+```
+
+`leaf(appId)` names an application by the `id` from its descriptor. The cost of
+pinning is that tiles a user adds to the space are lost on reload, which is the
+intended meaning and is why the workspace strip marks pinned spaces with ⌾.
+
+### 8.7 Before you commit
+
+```bash
+bun run --cwd=ui typecheck     # note the = ; see §9
+bun test --cwd ui              # layers, stories, raw controls, tokens, api surface
+make storybook                 # look at it
+```
+
+If a test fails, read the message rather than the rule name — all four of these
+tests are written to name the offending path and the thing to use instead.
+
+***
+
+## 9. Review checklist
 
 ```markdown
 - [ ] Correct layer, by the five questions in §2.
@@ -237,7 +479,7 @@ Note `--cwd=ui` with the equals sign. `bun run --cwd ui typecheck` prints bun's
 usage page and **exits 0 without running anything**, which is why the `ui-test`
 target once went weeks without typechecking.
 
-## 9. What the tests actually guarantee
+## 10. What the tests actually guarantee
 
 | Test | Guarantees |
 |---|---|
@@ -250,7 +492,7 @@ target once went weeks without typechecking.
 Nothing tests that a component *looks* right. That is what Storybook and a
 reviewer are for.
 
-## 10. Key references
+## 11. Key references
 
 - `src/styles/tokens.css` — the whole visual language
 - `src/components/atoms/Chip/` — 80 lines demonstrating every convention here

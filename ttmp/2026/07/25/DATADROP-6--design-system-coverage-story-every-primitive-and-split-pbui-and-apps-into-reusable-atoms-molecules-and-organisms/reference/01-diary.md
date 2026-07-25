@@ -1855,3 +1855,135 @@ bun tests              166    177
 raw form controls       65      0
 apps/*.tsx lines     3 528  2 867
 ```
+
+## Step 11: The vault report, and an authoring guide for GUIDELINES.md
+
+Two follow-ups after the ticket closed: a v0.5 project report for the Obsidian
+vault continuing the v0.1–v0.4 series, and a new §8 in `ui/GUIDELINES.md`
+covering how to actually write and add a component, an application, or a
+hardwired workspace.
+
+### Prompt Context
+
+**User prompt (verbatim):** "write a detailed project report for the obsidian vault as a deep dive technical analysis blog post using a textbook writing style (no analogies, see skill).      \n Commit and push the bsidian vault when done (go-go-parc vault).   \n\nThen update ui/GUIDELINES.md document on how to write and add new tsx elements (atoms, molecules, organisms, apps, tiles, etc...)."
+
+**Assistant interpretation:** Write the v0.5 report in the series' textbook
+style, push the vault, then extend the guidelines with a procedural authoring
+section covering every kind of thing someone might add.
+
+**Inferred user intent:** The guidelines as written say what the rules *are*.
+They do not say what to type. Someone adding their first component needs both,
+and the second is what makes the first survive contact with a deadline.
+
+**Commit (vault):** `72590db` — "PROJECT REPORT - go-go-datadrop v0.5"
+**Commit (code):** `9e1d20b` — "GUIDELINES: how to add a component, an application, or a workspace"
+
+### What I did
+
+- Wrote the 390-line report at
+  `Projects/2026/07/25/PROJECT REPORT - go-go-datadrop v0.5 - The Missing Middle, and Six Copies of One Style Object.md`.
+  One mermaid diagram of the graph change; four wikilinks to v0.1–v0.4, all
+  verified to resolve; grep for analogy markers returned nothing.
+- Staged only the report, leaving `.obsidian/app.json`, `.pi/` and `.ttmp.yaml`
+  untouched. Committed `72590db` and pushed to `main`.
+- Added `GUIDELINES.md` §8 in seven subsections: the four files, the component,
+  the CSS module, the story, a new application, a hardwired workspace, and what
+  to run before committing. Renumbered the three sections after it.
+
+### Why
+
+**The report's spine is the measurement rather than the refactor.** A project
+report about a refactor is usually unreadable because its subject is a
+judgement. This one has an empirical claim at the centre — six copies of one
+style object that had already split into two font sizes — so the structure
+follows from it: the starting position, the measurement, why coverage is
+downstream of decomposition, then the findings in the order they were found.
+
+**§8 exists because §1–§7 answer a different question.** They say what the rules
+are; someone adding their first atom needs to know what to type. The two most
+useful parts are the ones I would not have thought to write without having hit
+them: `satisfies Meta<typeof Component>` demanding `args` on the meta even when
+every story uses `render`, and the `Live` wrapper for controlled inputs — a
+story rendering `<TextInput value="x" onValueChange={() => {}} />` looks right
+and cannot be typed into, and a reviewer concludes the component is broken.
+
+### What worked
+
+**Smoke-testing the scaffolding I had just documented, which caught me
+overstating what the tests report.** §8.1 originally said "`bun test` now tells
+you what is missing". Running the exact commands as written:
+
+```text
+(pass) every component directory has a story
+(pass) every component directory has a component and a barrel
+(pass) no empty component directories
+(fail) every story title uses its layer's prefix
+  components/atoms/DocTest/DocTest.stories.tsx: no title in the meta literal
+```
+
+Four empty files *exist*, so three of the four checks pass. The section now says
+so, and says why it is the honest state of affairs: a directory of empty files
+is not a missing component, it is an unfinished one, and the title is the first
+thing that can actually be wrong. Documentation that describes output nobody
+ran is how a guide starts being ignored.
+
+### What didn't work
+
+Nothing failed. One thing was avoided: I did not renumber §8's cross-references
+by hand. The insert shifted three sections, and a stale "see §8 of the
+checklist" pointer survived the first pass — caught by grepping for `§` rather
+than by reading.
+
+### What I learned
+
+**A "how to write X" section should be built from the mistakes made writing X,
+not from the finished result.** Everything in §8.2 and §8.4 that is worth
+reading came from a specific stumble during phases 1–5: the meta `args`
+requirement (eight failing stories in phase 1), the `tile: false` parameter
+(atoms have no business assuming a height), unwrapping handlers, and grounding
+prop values in call sites (the invented width scale, corrected in phase 2). A
+guide written from the end state would have listed the conventions and none of
+the reasons.
+
+### What was tricky to build
+
+**Deciding how much of the application-registration mechanism to explain.**
+`registerApp` is called for side effects at module scope, and `apps/all.ts`
+imports every application for that effect alone. It is a legitimately unusual
+pattern and the temptation is to explain the whole design. What §8.5 says
+instead is the two things that will actually bite: the `id` is persisted in
+saved layouts so renaming one strands them, and `docBound: true` means "a view
+of one composition" rather than "shows something", which is why exactly four
+applications are.
+
+### What warrants a second pair of eyes
+
+- **§8 is 240 lines and the whole document is now 503.** There is a length past
+  which a guideline stops being read. Splitting the authoring procedure into its
+  own file is a reasonable counter-argument.
+- **The report claims 12 122 insertions across 182 files.** That includes the
+  built bundle under `pkg/webui/dist`, which is committed. Not wrong, but a
+  reader may reasonably expect that number to be source.
+
+### What should be done in the future
+
+Nothing outstanding. The four open questions from guide §29.3 remain open and
+are restated in the report.
+
+### Code review instructions
+
+- `ui/GUIDELINES.md` §8.1 — run the commands exactly as written and confirm the
+  output block matches. If it does not, the section is stale and everything
+  after it is suspect.
+- Then §8.5 against `apps/SignInApp/SignInApp.tsx`, which is the shortest
+  container in the tree and the template the section describes.
+- The vault report needs no code review, but its §"What generalises" is the part
+  worth disagreeing with.
+
+### Technical details
+
+```text
+vault report      390 lines, 1 mermaid diagram, 4 wikilinks (all resolve)
+GUIDELINES.md     263 -> 503 lines; §8 added, §§9-11 renumbered
+verification      bun test --cwd ui: 177 pass
+```
