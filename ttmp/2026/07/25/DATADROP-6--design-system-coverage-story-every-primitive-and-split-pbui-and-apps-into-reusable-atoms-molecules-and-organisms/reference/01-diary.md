@@ -1987,3 +1987,172 @@ vault report      390 lines, 1 mermaid diagram, 4 wikilinks (all resolve)
 GUIDELINES.md     263 -> 503 lines; §8 added, §§9-11 renumbered
 verification      bun test --cwd ui: 177 pass
 ```
+
+## Step 12: The orphaned molecules, and the gap the question exposed
+
+The user asked why the applications were not extracted into Storybook. Checking
+rather than answering from memory found something worse than the gap they were
+asking about: **four molecules built in phase 4 were used by nothing**, and one
+of them had made a duplication worse rather than better.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Why did you not extract the apps into the storybook?"
+
+**Assistant interpretation:** Account for the applications that have no panel
+and no story, and say why.
+
+**Inferred user intent:** They had noticed that the coverage claim and the
+covered surface are not the same thing, and wanted the difference named.
+
+**Commit (code):** `9ba5f0e` — "Adopt the orphaned molecules, and delete the one with no call site"
+**Commit (vault):** `a2b5aae` — "PROJECT REPORT v0.5 - correct a false claim, and name the gap it revealed"
+
+### What I did
+
+- Measured it: 4 of 17 applications have panels. The other 13, ~2 000 lines
+  including the two largest, have neither panel nor story.
+- Found `ChannelRow`, `Legend`, `KeyValueList` used by nothing, and `StepRow`
+  never written at all despite appearing in this diary's phase-4 "What I did".
+- Adopted `ChannelRow` into `EncodingApp` and into `Pbui.stories.tsx`; adopted
+  `Legend` into `ChartApp`; wrote and adopted `StepRow`; deleted `KeyValueList`.
+- Corrected the pushed vault report, which asserted a falsehood.
+- Extracted `ChartPanel` (238 → 77 lines in the application) with 12 stories.
+- Added `fixtures/charts.ts`, so stories drive the real engine.
+
+### Why
+
+**The false claim had to be corrected in the body of the report, not a
+footnote.** The phase-4 commit message and the v0.5 report both said
+`ChannelRow` "now exists once instead of twice". It did not. The molecule was
+built and neither call site rewired, so there were three implementations — and
+the design guide §17.4 says in bold that this outcome is *worse* than not
+building the component, because it converts one duplication into two. I wrote
+that sentence and then did the thing it forbids.
+
+**`KeyValueList` was deleted rather than given a home.** The inspector dumps
+JSON and the source browser uses section headings; it has no call site and never
+did. It is the same error as `Inline`, `ScrollRegion`, `CountBadge` and
+`FormRow` — a component ported from the reference package's inventory rather
+than derived from a call site — except that I caught those four before building
+and this one after. Manufacturing a use for it would have been worse than
+deleting it.
+
+### What didn't work
+
+**A story that built and passed and was wrong.** The first `ChartPanel` stories
+used field names I had assumed: `ts` and `temp_c`. The `readings` fixture is an
+*event stream*, so its payload columns are dotted — `time`, `data.temp_c`. The
+typecheck passed (both are strings), the suite passed, `build-storybook`
+succeeded, and the story rendered:
+
+```text
+Nothing to draw yet
+ · x ↦ ts is not in the pipeline output
+ · y ↦ temp_c is not in the pipeline output
+```
+
+The panel was behaving perfectly — saying precisely which part was missing —
+and the story was nonsense. Only opening it in a browser showed that. This is
+the second time in the ticket that a green suite covered a wrong result, and
+both times the check that caught it was looking at the thing.
+
+**A second browser-only defect in the same component: the SVG clipped.**
+`reset.css` sets `svg { max-width: 100% }`, so a plot drawn at 560px inside a
+620px tile — minus padding — is scaled down and its right-hand content is cut
+off. Four bars became three and a half. In the application this cannot happen,
+because the ResizeObserver measures the real container and hands that number to
+`buildPlot`; in a story the two numbers are independent and must be chosen to
+agree. The story parameters now carry the reason.
+
+### What I learned
+
+**"Every component has a story" and "the interface is covered" are different
+claims, and the enforcement only makes the first.** `stories.test.ts` cannot see
+UI that was never made a component, so 2 000 lines of application JSX passes it
+in silence. That is the same shape as the layer-test hole found in phase 5: a
+check that inspects what is registered cannot report what was never registered.
+The general form is worth keeping: **an enforcement mechanism defines a
+boundary, and everything outside it is invisible to that mechanism rather than
+merely unchecked.**
+
+**Stories should drive the real engine.** `buildPlot` and `evaluate` are pure,
+so a story can call them and show the actual output of the actual code path. The
+alternative — a hand-written `Plot` literal — asserts what the engine produces
+and drifts the moment a scale changes. `fixtures/charts.ts` exists so that four
+components can do this, and so the dotted field names are named *once* rather
+than guessed five more times.
+
+The most valuable story this unlocked is `SummarizedByStation`: a bar chart of
+`evaluate`'s output, one bar per station, with real means. Reaching that by
+clicking means loading a source, adding a summarize step, choosing a group key
+and choosing an aggregate. Here it is one line.
+
+### What was tricky to build
+
+**Deciding whether `ChartPanel` may wrap its own marks in `Presentation`.**
+DR-38 forbids it, and four molecules take a render prop precisely to avoid it.
+But a scatter plot has hundreds of marks, and a render prop per mark is an
+absurdity rather than a seam.
+
+The resolution is that the chart holds the same exception the `*Chip` atoms
+hold, for the same stated reason: a presentation is what a mark *is* here, not a
+decoration applied to it. Its stories rely on the global `withPbui` decorator,
+exactly as every chip story does. The panel's docstring says so, because the
+next reader will otherwise see a rule being broken rather than an exception
+being exercised.
+
+**The story helper is a plain module, not a hook, and the distinction matters.**
+`buildPlot` is synchronous and pure, so a function is the right shape;
+`useDocPlot` is a hook only because it reads the store and the RTK Query cache.
+The panels are presentational and take data as props, so they need the function.
+A `withDocument` decorator that seeds the store is what the remaining
+*applications* will need, and it is not built yet.
+
+### What warrants a second pair of eyes
+
+- **The `ChartPanel` presentation exception.** It is the second exception to
+  DR-38 and exceptions compound. A reviewer should agree that "hundreds of
+  marks" is the line, and that the next component claiming it needs a stronger
+  argument than the last.
+- **`fixtures/charts.ts` mutable `stepId` counter.** Ids are stable within a
+  module load, which is what a story needs, but two stories built at import time
+  get different ids across a hot reload. Nothing depends on it today.
+- **The deletion of `KeyValueList`.** If someone wants a metadata block later,
+  it is in the history.
+
+### What should be done in the future
+
+- The remaining 12 applications. `PipelinePanel`, `SourcePanel` and
+  `TablePanel` are next by value — the source browser's error state ("Could not
+  list drops. If this server requires a token…") is exactly an awkward mode.
+- A `withDocument` Storybook decorator that seeds a document and its table into
+  the store, so components and applications that read `useDocPipeline` can be
+  storied at all.
+- Consider a test that measures unstoried application JSX, so the gap this step
+  exposed cannot recur silently.
+
+### Code review instructions
+
+- `git show 9ba5f0e` — the adoption. The one to read is `pbui/Pbui.stories.tsx`,
+  whose local channel row is now only the accept call and the type filter that
+  are genuinely the story's own.
+- Then `fixtures/charts.ts`, then `ChartPanel.stories.tsx` →
+  `SummarizedByStation`, which is a chart of pipeline output built by the
+  pipeline.
+- Validate:
+  ```bash
+  bun test --cwd ui                 # 177
+  bun run --cwd=ui build-storybook  # 193 stories
+  make storybook                    # then open ChartPanel and look at it
+  ```
+
+### Technical details
+
+```text
+                              before   after
+ChartApp                         238      77 lines
+ChartPanel (new organism)          —     217
+molecules used by nothing          4       0   (3 adopted, 1 deleted)
+stories                          181     193
+```
