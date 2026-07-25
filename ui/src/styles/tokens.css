@@ -1,0 +1,116 @@
+/*
+ * The visual language of the workbench.
+ *
+ * Extracted from pbui-gog.jsx:29-44 and from the constants that recur through
+ * its ~600 inline style objects. There is no CSS framework (DR-13): this file
+ * plus reset.css and scrollbars.css is the entire foundation.
+ *
+ * The look is not decoration. Monospace at 9-13px with hairline hard borders
+ * and zero radius is what lets fifteen tiles fit on a screen and stay readable,
+ * and identical chip geometry across six contexts is what makes a legend swatch
+ * and a table header read as the same KIND of object — which is the premise of
+ * a presentation-based interface.
+ *
+ * The ten rules that govern use of these tokens are in the design guide §10.3
+ * and are rendered as a story in components/foundation/Foundation.stories.tsx.
+ */
+
+:root {
+  /* ---- surfaces (pbui-gog.jsx:29-35) ------------------------------------ */
+  --pbui-paper: #ffffff; /* the page behind the tiles */
+  --pbui-pane: #ffffff; /* a tile body */
+  --pbui-pane-alt: #f1f1ee; /* zebra rows, inset toolbars, disabled fills */
+  --pbui-ink: #23262b; /* every border, all body text, the dark bars */
+
+  /*
+   * Secondary text: hints, axis labels, trace metadata, the right-hand half of
+   * every chip. Darkened from the prototype's #7b8087, which measures 3.98:1 on
+   * --pbui-pane and 3.51:1 on --pbui-pane-alt — below the 4.5:1 threshold, at
+   * the 8.5-10.5px sizes where it matters most. #696e75 is the lightest value
+   * on the same hue line that clears it (5.14:1 and 4.54:1).
+   */
+  --pbui-faint: #696e75;
+
+  --pbui-line: #d9d9d4; /* hairlines, grid lines, dotted rules */
+  --pbui-selected: #fdeec6; /* selection and hover fill — the only one */
+  --pbui-danger: #c2503a;
+  --pbui-ok: #3f9d6b;
+
+  /* ---- presentation-type tones: the 4px left border of every chip ------- */
+  --pbui-tone-field: #7aa6c9;
+  --pbui-tone-source: #7cae9b;
+  --pbui-tone-doc: #c2503a;
+  --pbui-tone-step: #a99fc9;
+  --pbui-tone-chart: #e0b95c;
+  --pbui-tone-cat: #d59a86;
+  --pbui-tone-geom: #8fc7b0;
+  --pbui-tone-neutral: #8892a8;
+
+  /* ---- field-type tones: quantitative, nominal, temporal ---------------- */
+  --pbui-type-q: #7aa6c9;
+  --pbui-type-n: #e0b95c;
+  --pbui-type-t: #7cae9b;
+
+  /* ---- categorical palette --------------------------------------------- *
+   * GENERATED from PALETTE in src/model/plot.ts. Do not hand-edit: run
+   *   bun run tokens
+   * and let test/tokens.test.ts prove the two still agree. buildPlot is a pure
+   * function with no DOM access, so it must put a concrete colour on each mark;
+   * these tokens colour the legend swatches that describe those marks. A legend
+   * that disagrees with its marks is a bug that survives review, because both
+   * halves look right in isolation. */
+  /* ---- BEGIN GENERATED PALETTE ---- */
+  --pbui-cat-1: #3b6fb6;
+  --pbui-cat-2: #c0504d;
+  --pbui-cat-3: #d6a419;
+  --pbui-cat-4: #7a9a6b;
+  --pbui-cat-5: #8f7bb0;
+  --pbui-cat-6: #c07a94;
+  --pbui-cat-7: #5fa9a0;
+  --pbui-cat-8: #8892a8;
+  --pbui-ramp-low: #3b6fb6;
+  --pbui-ramp-high: #c0504d;
+  --pbui-neutral: #8892a8;
+  /* ---- END GENERATED PALETTE ---- */
+
+  /* ---- type: one family, a small scale, tight leading ------------------- *
+   * IBM Plex Mono is named first but never downloaded: the bundle is embedded
+   * in a Go binary and served offline, so a webfont request would either fail
+   * or reach a third party. Anyone who has it installed gets it; everyone else
+   * gets the platform monospace, which is what the prototype assumed too. */
+  --pbui-font: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+  --pbui-fs-micro: 8.5px; /* type badges, facet titles */
+  --pbui-fs-tiny: 9.5px; /* section labels, trace rows */
+  --pbui-fs-small: 10.5px; /* chips, controls, table cells */
+  --pbui-fs-base: 11.5px; /* prose inside a tile */
+  --pbui-fs-title: 13px; /* tile titles, headings */
+  --pbui-lh-tight: 1.35;
+  --pbui-lh-prose: 1.5;
+  --pbui-track-label: 0.08em; /* uppercase section labels */
+  --pbui-track-banner: 0.28em; /* the top title bar only */
+
+  /* ---- structure: hard edges, no radius, unblurred shadow --------------- */
+  --pbui-border-hair: 1px solid var(--pbui-ink);
+  --pbui-border-firm: 2px solid var(--pbui-ink);
+  --pbui-border-rule: 1px dashed var(--pbui-line);
+  --pbui-border-grid: 1px solid var(--pbui-line);
+  --pbui-tone-edge: 4px; /* the chip left-border width */
+  --pbui-radius: 0; /* everywhere. a deliberate exception must name itself */
+  --pbui-shadow-hard: 2px 2px 0 var(--pbui-ink); /* buttons */
+  --pbui-shadow-menu: 4px 4px 0 var(--pbui-ink); /* menus, floating panels */
+
+  /* ---- focus: ours to define, because there is no framework ------------- *
+   * Deliberately distinct from the red accept outline, so "this has keyboard
+   * focus" and "this can satisfy the pending command" are never confused. */
+  --pbui-focus-ring: 2px solid var(--pbui-ink);
+  --pbui-focus-offset: 1px;
+
+  /* ---- spacing: the prototype's actual values, not a doubling scale ----- */
+  --pbui-space-1: 2px;
+  --pbui-space-2: 4px;
+  --pbui-space-3: 6px;
+  --pbui-space-4: 10px;
+  --pbui-space-5: 16px;
+  --pbui-space-6: 24px;
+}

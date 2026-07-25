@@ -1,0 +1,40 @@
+/*
+ * Scrollbars, ported from pbui-gog.jsx:2702-2704.
+ *
+ * A tiled workbench has a lot of these — every tile body scrolls independently
+ * — so a default platform scrollbar in the middle of flat pale surfaces with
+ * square hard borders reads as a foreign object. Rule 10 of §10.3.
+ *
+ * The -webkit- properties cover Chrome, Edge and Safari; the standard
+ * scrollbar-color/scrollbar-width cover Firefox. Neither is a complete
+ * substitute for the other yet, so both are here.
+ */
+
+* {
+  scrollbar-color: var(--pbui-line) var(--pbui-pane);
+  scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--pbui-pane);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pbui-line);
+  /* The pane-coloured border is what gives the thumb its inset look without a
+   * radius or a gradient. */
+  border: 3px solid var(--pbui-pane);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pbui-faint);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--pbui-pane);
+}

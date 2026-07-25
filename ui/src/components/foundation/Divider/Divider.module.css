@@ -1,0 +1,48 @@
+.divider {
+  border: 0;
+  margin: 0;
+  flex-shrink: 0;
+}
+
+.horizontal {
+  width: 100%;
+  border-top-width: 1px;
+  border-top-color: var(--pbui-line);
+}
+
+.vertical {
+  align-self: stretch;
+  border-left-width: 1px;
+  border-left-color: var(--pbui-line);
+}
+
+.dashed {
+  border-style: dashed;
+}
+
+.dotted {
+  border-style: dotted;
+}
+
+.none {
+  margin: 0;
+}
+.space-2 {
+  margin: var(--pbui-space-2) 0;
+}
+.space-3 {
+  margin: var(--pbui-space-3) 0;
+}
+.space-4 {
+  margin: var(--pbui-space-4) 0;
+}
+
+.vertical.space-2 {
+  margin: 0 var(--pbui-space-2);
+}
+.vertical.space-3 {
+  margin: 0 var(--pbui-space-3);
+}
+.vertical.space-4 {
+  margin: 0 var(--pbui-space-4);
+}

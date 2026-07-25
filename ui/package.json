@@ -5,12 +5,15 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:check": "tsc -b && vite build --outDir dist-check --emptyOutDir",
     "typecheck": "tsc -b --noEmit",
-    "test": "bun test"
+    "test": "bun test",
+    "tokens": "bun run scripts/make-tokens.ts",
+    "storybook": "storybook dev -p 6006 --no-open",
+    "build-storybook": "storybook build -o storybook-static"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",
-    "bootstrap": "^5.3.8",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "react-redux": "^9.3.0"

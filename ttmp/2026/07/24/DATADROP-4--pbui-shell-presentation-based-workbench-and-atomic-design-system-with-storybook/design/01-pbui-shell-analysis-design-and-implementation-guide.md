@@ -2398,12 +2398,24 @@ Between deleting `App.tsx` in phase 0 and assembling `pages/Workbench` in phase
 non-event:
 
 - **`pkg/webui` embeds a committed `ui/dist`.** The bundle is a snapshot taken
-  at the last `make ui`. Demolishing the *source* does not touch it, so
+  at the last build. Demolishing the *source* does not touch it, so
   `go build ./...`, `go test ./...` and the running binary keep serving the
-  DATADROP-3 UI throughout. **Do not run `make ui` during the dark period** — it
-  is the one command that would replace a working bundle with a broken one. Add
-  the rule to the diary on day one; it is exactly the kind of thing that gets
-  rediscovered at the wrong moment.
+  DATADROP-3 UI throughout.
+
+  **The command to avoid is `bun run build`, not just `make ui`.** An earlier
+  draft of this section named only `make ui`, which is wrong and was found by
+  running the build: `vite.config.ts` sets `outDir: "../pkg/webui/dist"` with
+  `emptyOutDir: true`, so *any* production build writes straight into the Go
+  tree — that is deliberate, because a copy step between the two is one more
+  thing that can go stale. During the interval it means a routine
+  "does it still compile?" replaces the interface the binary serves.
+
+  Use **`bun run build:check`** instead, which is the same build pointed at
+  `ui/dist-check` (gitignored). `bun run build` returns to normal service in
+  phase 3. If the embedded bundle does get clobbered, `git checkout --
+  pkg/webui/dist` restores it, and any *newly hashed* asset files will be left
+  behind as untracked — delete those too, or the directory accumulates orphans
+  that `go:embed` will happily ship.
 - **`bun test` stays green the whole way.** The 58 model tests do not depend on
   a single React component.
 - **`cmd/datadrop/table_smoke_test.go` stays green**, because it asserts against
