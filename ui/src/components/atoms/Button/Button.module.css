@@ -1,0 +1,71 @@
+/*
+ * Two treatments, one component.
+ *
+ * `.framed` is the six `const btn` objects reconciled, property for property:
+ *
+ *     border:     var(--pbui-border-hair)
+ *     background: var(--pbui-pane-alt)
+ *     padding:    0 var(--pbui-space-3)
+ *     fontWeight: 700
+ *
+ * `.bare` reproduces what reset.css already does to an unstyled button, stated
+ * explicitly here so that the two treatments read as a deliberate pair rather
+ * than as "styled" and "forgot to style".
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--pbui-radius);
+  text-align: inherit;
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+
+.bare {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.framed {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-3);
+  font-weight: 700;
+}
+
+.danger {
+  color: var(--pbui-danger);
+}
+
+.selected {
+  background: var(--pbui-selected);
+}
+
+/*
+ * Every hand-written site that dimmed a button also set `disabled`, so the
+ * opacity was the disabled treatment all along — written out longhand at each
+ * call site as `opacity: index === 0 ? 0.4 : 1`. Attaching it to `:disabled`
+ * means a disabled button cannot look enabled, which is the failure that shape
+ * invites.
+ *
+ * 0.4 is inherited from those call sites and is too low: on --pbui-pane-alt the
+ * label lands well under the 3:1 that a disabled control still ought to clear.
+ * Raising it is a visual change and therefore not part of the substitution —
+ * DATADROP-6 phase 6 owns it, with a story to review it against.
+ */
+.root:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

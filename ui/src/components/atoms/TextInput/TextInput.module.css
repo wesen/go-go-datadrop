@@ -1,0 +1,43 @@
+/*
+ * The four identical inline literals, transcribed:
+ *
+ *     font: inherit          -> inherited from reset.css, restated for clarity
+ *     padding: 2px 4px       -> var(--pbui-space-1) var(--pbui-space-2)
+ *     border: hairline
+ *
+ * The two pixel values were literals at every call site and map exactly onto
+ * the spacing scale, so nothing changes on screen and the next reader gets a
+ * token instead of a magic number.
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  min-width: 0;
+}
+
+.narrow { max-width: 90px; }
+.normal { max-width: 180px; }
+.wide   { max-width: 320px; }
+
+/* Dashed, not only red: a field can be invalid on a monochrome display too
+ * (guide §5.4, and the .stale rule in Chip.module.css that named the rule). */
+.invalid {
+  border-style: dashed;
+  color: var(--pbui-danger);
+}
+
+.root:disabled {
+  background: var(--pbui-pane-alt);
+  opacity: 0.55;
+}
+
+.root::placeholder { color: var(--pbui-faint); }
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
