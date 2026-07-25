@@ -108,9 +108,14 @@ export function Workbench() {
         <Surface tone="inverted" border="none">
           <Toolbar tight>
             <Text size="title" strong>
-              <span style={{ letterSpacing: "var(--pbui-track-banner)" }}>
-                DATADROP — GRAMMAR OF GRAPHICS
-              </span>
+              <span className={styles.wordmark}>DATALAB</span>
+            </Text>
+            {/* The tagline names the four things the workbench does, in the
+                order a session actually goes: load a source, look at it, ask
+                what a value is, and end up somewhere. It is the only prose in
+                the shell chrome, so it stays on the tiny scale. */}
+            <Text size="tiny" tone="faint">
+              <span className={styles.tagline}>DATA · EXPLORE · INSPECT · UNDERSTAND</span>
             </Text>
           </Toolbar>
         </Surface>

@@ -12,3 +12,19 @@
   min-height: 0;
   padding: var(--pbui-space-3);
 }
+
+/*
+ * The wordmark and its tagline.
+ *
+ * `--pbui-track-banner` (0.28em) is deliberately extreme and exists for this
+ * one element — tokens.css says so: "the top title bar only". The tagline takes
+ * the label tracking instead, because at 9.5px the banner value would break the
+ * words apart faster than the eye can regroup them.
+ */
+.wordmark {
+  letter-spacing: var(--pbui-track-banner);
+}
+
+.tagline {
+  letter-spacing: var(--pbui-track-label);
+}
