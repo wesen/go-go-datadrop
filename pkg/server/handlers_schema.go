@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 )
@@ -14,12 +15,11 @@ import (
 // a 400 the author sees immediately rather than a 500 on somebody else's next
 // ingest.
 func (s *Server) handlePutSchema(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
-
 	dropName, ok := pathName(w, r, "drop", "name")
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDropsWrite); !ok {
 		return
 	}
 	streamName, ok := pathName(w, r, "stream", "stream")
@@ -72,7 +72,7 @@ func (s *Server) handleGetSchema(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 

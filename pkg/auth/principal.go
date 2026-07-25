@@ -40,6 +40,8 @@ func (k Kind) String() string {
 		return "session"
 	case KindToken:
 		return "token"
+	case KindAnonymous:
+		return "anonymous"
 	default:
 		return "anonymous"
 	}
@@ -60,6 +62,10 @@ type Principal struct {
 	// TokenID is the public half of an API token. It is safe to log and is
 	// exactly what you need when told a credential leaked and asked what it did.
 	TokenID string
+	// SessionID identifies the current browser session — the SHA-256 of its
+	// cookie, never the cookie. Carried so that sign-out and "revoke my other
+	// sessions" know which one is current without re-deriving it.
+	SessionID string
 }
 
 // Anonymous is the principal for a request carrying no credential, or one that
@@ -97,6 +103,8 @@ func (p Principal) Label() string {
 		return "user:" + p.UserID
 	case KindToken:
 		return "user:" + p.UserID + " via token:" + p.TokenID
+	case KindAnonymous:
+		return ""
 	default:
 		return ""
 	}

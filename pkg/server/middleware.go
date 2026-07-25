@@ -7,6 +7,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 )
@@ -22,12 +25,16 @@ func RequestIDFromContext(ctx context.Context) string {
 	return ""
 }
 
-// ActorLabel is the audit actor recorded for an authenticated caller.
+// SessionCookieName is the browser's credential.
 //
-// It is deliberately NOT the token. Tokens must never reach a log line, an
-// audit row, or a response body; when auth is enabled every caller presents
-// the same static credential anyway, so there is nothing to distinguish.
-const ActorLabel = "token"
+// Not prefixed with __Host-, which would be stricter but mandates Secure — and
+// the local compose stack runs on plain HTTP. The Secure attribute is set from
+// the configured external URL's scheme instead, and `serve` warns loudly when
+// that is http on a host browsers do not treat as trustworthy (guide §8.4).
+const SessionCookieName = "dd_session"
+
+// FlowCookieName binds a browser to one pending sign-in.
+const FlowCookieName = "dd_flow"
 
 // chain applies middleware outermost-first: chain(h, a, b) runs a, then b,
 // then h.
@@ -90,6 +97,9 @@ func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 			Int("status", recorder.status).
 			Dur("duration", time.Since(started)).
 			Str("request_id", RequestIDFromContext(r.Context())).
+			// The principal, which is what turns an access log into something
+			// questions can be asked of. Never the credential itself.
+			Str("actor", auth.FromContext(r.Context()).Label()).
 			Msg("request")
 	})
 }
@@ -123,56 +133,216 @@ func (r *statusRecorder) Flush() {
 	}
 }
 
-// authenticate checks the bearer token on a mutating request.
+// principalMiddleware resolves the caller once and puts them in the context.
 //
-// It returns false and writes a problem document when the caller is not
-// authorized, so handlers read:
-//
-//	if !s.authenticate(w, r) { return }
-func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) bool {
-	if s.cfg.Token == "" {
-		// No token configured: the server is open. `serve` logs a warning at
-		// startup so this is never a silent state.
-		return true
-	}
-
-	presented, ok := bearerToken(r)
-	if !ok || subtle.ConstantTimeCompare([]byte(presented), []byte(s.cfg.Token)) != 1 {
-		w.Header().Set("WWW-Authenticate", `Bearer realm="datadrop"`)
-		writeProblem(w, r, http.StatusUnauthorized, CodeUnauthorized,
-			"a valid bearer token is required")
-		return false
-	}
-	return true
+// It runs innermost so that a panic during resolution is still caught by
+// recoverMiddleware and still carries a request id. It never writes a response:
+// rejection is a per-handler decision, because the required role and scope are
+// per-handler facts. A resolver that wrote its own 401 would make /healthz and
+// the SPA shell unreachable without special-casing.
+func (s *Server) principalMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		next.ServeHTTP(w, r.WithContext(auth.WithPrincipal(r.Context(), s.resolve(r))))
+	})
 }
 
-// authorizeRead applies the read policy: a drop marked public_read is readable
-// without a token, everything else needs one.
+// resolve turns a request's credentials into a principal.
 //
-// This is done per-handler rather than in middleware because the decision
-// depends on the target drop, which middleware would have to look up — and a
-// drop-aware auth middleware is more surprising than an explicit call.
-func (s *Server) authorizeRead(w http.ResponseWriter, r *http.Request, dropName string) bool {
-	if s.cfg.Token == "" {
-		return true
+// Four properties are deliberate, and each is a place to get this wrong:
+//
+//   - A bearer beats a cookie. An explicit credential should win over an
+//     ambient one, so a token-authenticated curl from a browser-logged-in
+//     developer behaves as the token rather than as the human.
+//   - An invalid credential resolves to anonymous, not to an error. A request
+//     with a stale token to a public_read drop must still succeed, because the
+//     drop is public; conflating "presented something invalid" with "denied"
+//     breaks that and leaks whether a token id exists.
+//   - The static token is compared first, and in constant time. It is
+//     operator-chosen and may be anything, including something that begins
+//     "ddp_", so a prefix switch before the comparison would be wrong.
+//   - Nothing here writes to the response.
+func (s *Server) resolve(r *http.Request) auth.Principal {
+	if s.cfg.Auth == AuthNone {
+		// Every request is the operator. `serve` warns about this at startup.
+		return auth.Principal{Kind: auth.KindRoot, Scopes: auth.FullScopeSet()}
 	}
 
-	// A valid token always grants read access, without touching the database.
-	if presented, ok := bearerToken(r); ok &&
-		subtle.ConstantTimeCompare([]byte(presented), []byte(s.cfg.Token)) == 1 {
-		return true
+	if presented, ok := bearerToken(r); ok {
+		if s.cfg.Token != "" &&
+			subtle.ConstantTimeCompare([]byte(presented), []byte(s.cfg.Token)) == 1 {
+			return auth.Principal{Kind: auth.KindRoot, Scopes: auth.FullScopeSet()}
+		}
+		if s.cfg.Auth == AuthOIDC && auth.LooksLikeToken(presented) {
+			if resolved, err := s.store.ResolveAPIToken(r.Context(), presented); err == nil {
+				return auth.Principal{
+					Kind:    auth.KindToken,
+					UserID:  resolved.Token.UserID,
+					Scopes:  resolved.Scopes,
+					TokenID: resolved.Token.ID,
+				}
+			}
+		}
+		return auth.Anonymous()
 	}
 
-	if dropName != "" {
-		d, err := s.store.GetDrop(r.Context(), dropName)
-		if err == nil && d.PublicRead {
-			return true
+	if s.cfg.Auth == AuthOIDC {
+		if cookie, err := r.Cookie(SessionCookieName); err == nil && cookie.Value != "" {
+			if p, ok := s.resolveSession(r, cookie.Value); ok {
+				return p
+			}
 		}
 	}
 
+	return auth.Anonymous()
+}
+
+func (s *Server) resolveSession(r *http.Request, value string) (auth.Principal, bool) {
+	session, err := s.store.GetSession(r.Context(), value, s.cfg.OIDC.SessionIdle)
+	if err != nil {
+		return auth.Anonymous(), false
+	}
+	user, err := s.store.GetUser(r.Context(), session.UserID)
+	if err != nil || user.Disabled {
+		return auth.Anonymous(), false
+	}
+
+	// Advancing the idle clock keeps an active user signed in. It is a write
+	// on the read path, which is acceptable because it is one indexed UPDATE
+	// alongside a request that is already doing more work than that; if it ever
+	// stops being acceptable, throttle it the way store.touchToken does.
+	if err := s.store.TouchSession(r.Context(), session.ID); err != nil {
+		log.Debug().Err(err).Msg("could not touch session")
+	}
+
+	return auth.Principal{
+		Kind:   auth.KindSession,
+		UserID: session.UserID,
+		// A human at a browser acts with their full rights; a per-session
+		// scope restriction is a feature nobody asked for.
+		Scopes: auth.FullScopeSet(),
+		// Carried so that sign-out and "revoke my other sessions" know which
+		// session is the current one without re-hashing the cookie.
+		SessionID: session.ID,
+	}, true
+}
+
+// authorize gates an operation that is not about one drop: creating a drop,
+// garbage collection, anything under /v1/me.
+//
+// It returns false and writes a problem document when the caller is not
+// permitted, so handlers read:
+//
+//	p, ok := s.authorize(w, r, auth.ScopeDropsWrite)
+//	if !ok { return }
+func (s *Server) authorize(w http.ResponseWriter, r *http.Request, scope auth.Scope) (auth.Principal, bool) {
+	p := auth.FromContext(r.Context())
+	if !p.IsAuthenticated() {
+		return p, s.denyUnauthenticated(w, r)
+	}
+	if !s.checkOrigin(w, r, p) {
+		return p, false
+	}
+	if !p.Allowed(scope) {
+		writeProblem(w, r, http.StatusForbidden, CodeForbidden,
+			"this credential does not carry the "+string(scope)+" scope")
+		return p, false
+	}
+	return p, true
+}
+
+// authorizeDrop is the whole decision for an operation on one drop:
+// membership, credential scope, and the cross-origin check for
+// cookie-authenticated writes.
+//
+// The CSRF check lives INSIDE this function rather than beside it, so that
+// there is no way to authorize a mutating request without passing through it.
+// It is the control most likely to be forgotten on a new endpoint (guide §8.5).
+func (s *Server) authorizeDrop(
+	w http.ResponseWriter, r *http.Request, dropName string, required auth.Role, scope auth.Scope,
+) (auth.Principal, bool) {
+	p := auth.FromContext(r.Context())
+
+	if !s.checkOrigin(w, r, p) {
+		return p, false
+	}
+
+	acl, err := s.store.DropACL(r.Context(), dropName)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			// An unauthenticated caller must not learn whether a drop exists,
+			// so they get the same 401 they would get for a private one. An
+			// authenticated caller gets the honest 404.
+			if !p.IsAuthenticated() {
+				return p, s.denyUnauthenticated(w, r)
+			}
+			writeProblem(w, r, http.StatusNotFound, CodeNotFound,
+				"drop \""+dropName+"\" does not exist")
+			return p, false
+		}
+		s.writeStoreError(w, r, err)
+		return p, false
+	}
+
+	if auth.Authorize(p, acl, required, scope) {
+		return p, true
+	}
+
+	if !p.IsAuthenticated() {
+		return p, s.denyUnauthenticated(w, r)
+	}
+	// 403, not 404: the caller is authenticated and has already been able to
+	// learn the drop exists (creating one by that name would 409). Hiding it
+	// buys nothing and costs a comprehensible error.
+	writeProblem(w, r, http.StatusForbidden, CodeForbidden,
+		"you do not have "+string(required)+" access to drop \""+dropName+"\"")
+	return p, false
+}
+
+// denyUnauthenticated writes the 401 and always returns false, so callers can
+// `return p, s.denyUnauthenticated(w, r)`.
+func (s *Server) denyUnauthenticated(w http.ResponseWriter, r *http.Request) bool {
 	w.Header().Set("WWW-Authenticate", `Bearer realm="datadrop"`)
 	writeProblem(w, r, http.StatusUnauthorized, CodeUnauthorized,
-		"a valid bearer token is required")
+		"a valid credential is required")
+	return false
+}
+
+// checkOrigin is the CSRF defence for cookie-authenticated writes.
+//
+// A session cookie is an ambient credential: the browser attaches it to any
+// request to our origin, including one triggered by a page on another site. A
+// bearer token is not ambient — it has to be deliberately attached — so
+// bearer-authenticated requests skip this entirely.
+//
+// Origin rather than a double-submit token because it is sent by every browser
+// on every unsafe cross-origin request, cannot be set or forged by page
+// JavaScript, requires no state or token minting, and is one function with one
+// test. SameSite=Lax on the cookie is defence in depth behind it, not the
+// primary control.
+func (s *Server) checkOrigin(w http.ResponseWriter, r *http.Request, p auth.Principal) bool {
+	if p.Kind != auth.KindSession {
+		return true
+	}
+	if r.Method == http.MethodGet || r.Method == http.MethodHead || r.Method == http.MethodOptions {
+		return true
+	}
+
+	origin := r.Header.Get("Origin")
+	if origin != "" && s.cfg.ExternalURL != "" && origin == s.cfg.ExternalURL {
+		return true
+	}
+
+	// An absent Origin on a cookie-authenticated unsafe request has no
+	// legitimate source: a browser always sends it on a cross-origin unsafe
+	// request, and a non-browser client cannot hold our cookie ambiently.
+	// Being strict here costs us nothing.
+	log.Warn().
+		Str("origin", origin).
+		Str("expected", s.cfg.ExternalURL).
+		Str("path", r.URL.Path).
+		Msg("rejected a cookie-authenticated request from another origin")
+	writeProblem(w, r, http.StatusForbidden, CodeCrossOrigin,
+		"this request did not come from "+s.cfg.ExternalURL)
 	return false
 }
 
@@ -187,8 +357,12 @@ func bearerToken(r *http.Request) (string, bool) {
 }
 
 // auditContext tags the request context with the actor for audit attribution.
+//
+// The actor is the principal's label — "root", "user:usr_…", or
+// "user:usr_… via token:…" — and never the credential. Before DATADROP-5 there
+// was nothing else to say and every audit row read "token".
 func auditContext(r *http.Request) context.Context {
-	return store.WithActor(r.Context(), ActorLabel)
+	return store.WithActor(r.Context(), auth.FromContext(r.Context()).Label())
 }
 
 // pathName reads a {name}-style path parameter and validates it before it

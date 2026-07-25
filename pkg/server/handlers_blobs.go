@@ -13,6 +13,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 )
@@ -34,11 +35,11 @@ const CodeDigestMismatch = "DigestMismatch"
 //     transfer. This is the fast path that makes republishing a dataset with one
 //     changed file cheap, and it is why the upload protocol is staged at all.
 func (s *Server) handleUploadDatasetFile(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
 	dropName, datasetName, ok := s.datasetPath(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDatasetsWrite); !ok {
 		return
 	}
 
@@ -199,11 +200,11 @@ func uploadMediaType(r *http.Request, logicalPath string) string {
 // the staged operations rather than as a parallel path, so there is exactly one
 // commit implementation and one place the state transition can be wrong.
 func (s *Server) handlePutDatasetData(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
 	dropName, datasetName, ok := s.datasetPath(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDatasetsWrite); !ok {
 		return
 	}
 
@@ -272,7 +273,7 @@ func (s *Server) handleDownloadDatasetFile(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 	version, ok := s.resolveVersion(w, r, dropName, datasetName)
@@ -332,9 +333,14 @@ func (s *Server) versionModTime(r *http.Request, drop, dataset string, version i
 // republished with one changed file is the difference between re-uploading
 // gigabytes and re-uploading nothing.
 func (s *Server) handleHeadBlob(w http.ResponseWriter, r *http.Request) {
-	// A blob is shared across drops, so there is no per-drop policy to consult;
-	// existence is gated on the instance token.
-	if !s.authenticate(w, r) {
+	// A blob is shared across drops, so there is no per-drop policy to consult.
+	//
+	// Note what this leaks: an authenticated caller who can guess a file's exact
+	// bytes can confirm the server holds them. That is a weak oracle and the
+	// endpoint is load-bearing for the upload fast path, so it is documented
+	// rather than pretended away — and it is gated on authentication so the
+	// oracle is at least attributable (guide §7.5).
+	if _, ok := s.authorize(w, r, auth.ScopeDropsRead); !ok {
 		return
 	}
 
@@ -369,7 +375,7 @@ func (s *Server) handleDatasetArchive(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 	version, ok := s.resolveVersion(w, r, dropName, datasetName)

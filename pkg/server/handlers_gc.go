@@ -5,6 +5,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 )
 
@@ -21,7 +22,9 @@ import (
 // disabling the check, so there is no way to request the unsafe behaviour over
 // HTTP.
 func (s *Server) handleGarbageCollect(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
+	// Instance-wide: this deletes unreferenced bytes across every drop, so
+	// there is no per-drop sense in which a member may perform it.
+	if _, ok := s.authorize(w, r, auth.ScopeAdmin); !ok {
 		return
 	}
 

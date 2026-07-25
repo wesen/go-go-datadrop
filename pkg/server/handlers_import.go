@@ -11,6 +11,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
@@ -33,11 +34,11 @@ const DefaultImportMaxRows = 100_000
 // is what the upstream design §12.4 requires and what makes derived events
 // auditable.
 func (s *Server) handleImportDataset(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
 	dropName, datasetName, ok := s.datasetPath(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDropsWrite); !ok {
 		return
 	}
 	version, ok := s.resolveVersion(w, r, dropName, datasetName)

@@ -230,7 +230,7 @@ func (s *Store) TakeAuthFlow(ctx context.Context, state string, maxAge time.Dura
 // Hygiene, not enforcement — GetSession and TakeAuthFlow both check deadlines
 // themselves. It returns the counts so the caller can log something meaningful
 // rather than "swept".
-func (s *Store) SweepAuth(ctx context.Context, flowMaxAge time.Duration) (sessions, flows int64, err error) {
+func (s *Store) SweepAuth(ctx context.Context, flowMaxAge time.Duration) (int64, int64, error) {
 	now := s.Now()
 
 	result, err := s.db.ExecContext(ctx,
@@ -238,13 +238,13 @@ func (s *Store) SweepAuth(ctx context.Context, flowMaxAge time.Duration) (sessio
 	if err != nil {
 		return 0, 0, errors.Wrap(err, "store: sweep sessions")
 	}
-	sessions, _ = result.RowsAffected()
+	sessions, _ := result.RowsAffected()
 
 	result, err = s.db.ExecContext(ctx,
 		`DELETE FROM auth_flows WHERE created_at <= ?`, FormatTime(now.Add(-flowMaxAge)))
 	if err != nil {
 		return sessions, 0, errors.Wrap(err, "store: sweep auth flows")
 	}
-	flows, _ = result.RowsAffected()
+	flows, _ := result.RowsAffected()
 	return sessions, flows, nil
 }

@@ -24,8 +24,17 @@ type Problem struct {
 // Problem codes. These are part of the API contract: clients branch on them,
 // so they must not be renamed casually.
 const (
-	CodeInvalidRequest    = "InvalidRequest"
-	CodeUnauthorized      = "Unauthorized"
+	CodeInvalidRequest = "InvalidRequest"
+	CodeUnauthorized   = "Unauthorized"
+	// CodeForbidden is authenticated-but-not-permitted, deliberately distinct
+	// from Unauthorized. A client that cannot tell the two apart cannot tell
+	// "sign in" from "ask for access", and shows the wrong thing to the user.
+	CodeForbidden = "Forbidden"
+	// CodeCrossOrigin is the CSRF refusal. It is its own code because the fix
+	// is completely different from any other 403: it is a bug in the caller's
+	// origin, not a permissions problem.
+	CodeCrossOrigin       = "CrossOrigin"
+	CodeConflict          = "Conflict"
 	CodeNotFound          = "NotFound"
 	CodeAlreadyExists     = "AlreadyExists"
 	CodePayloadTooLarge   = "PayloadTooLarge"
@@ -76,6 +85,11 @@ func (s *Server) writeStoreError(w http.ResponseWriter, r *http.Request, err err
 		writeProblem(w, r, http.StatusNotFound, CodeNotFound, err.Error())
 	case errors.Is(err, store.ErrAlreadyExists):
 		writeProblem(w, r, http.StatusConflict, CodeAlreadyExists, err.Error())
+	case errors.Is(err, store.ErrConflict):
+		// Also a 409, but a different code: "this name is taken" and "this drop
+		// already has an owner" are the same status and completely different
+		// remedies, and a client that branches on the code can say so.
+		writeProblem(w, r, http.StatusConflict, CodeConflict, err.Error())
 	default:
 		s.internalError(w, r, err)
 	}

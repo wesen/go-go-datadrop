@@ -7,11 +7,13 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 )
 
 func (s *Server) handleCreateDrop(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
+	p, ok := s.authorize(w, r, auth.ScopeDropsWrite)
+	if !ok {
 		return
 	}
 
@@ -29,10 +31,18 @@ func (s *Server) handleCreateDrop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The creator owns it. This is the only way a drop acquires an owner other
+	// than an explicit claim, and it is why every drop created from now on is
+	// owned while every drop created before DATADROP-5 is not (DR-25).
+	//
+	// The root principal has no user id, so a drop created with the static
+	// token is unowned — deliberately: attributing it to "root" would invent an
+	// owner that no one can sign in as.
 	d, err := s.store.CreateDrop(auditContext(r), datadrop.Drop{
 		Name:       req.Name,
 		Retention:  req.Retention,
 		PublicRead: req.PublicRead,
+		OwnerID:    p.UserID,
 	})
 	if err != nil {
 		s.writeStoreError(w, r, err)
@@ -43,15 +53,22 @@ func (s *Server) handleCreateDrop(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleListDrops(w http.ResponseWriter, r *http.Request) {
-	// Listing reveals which drops exist, which is metadata about every drop
-	// rather than about one — so it always requires the token, even when some
-	// individual drops are public_read.
-	if !s.authenticate(w, r) {
+	// No authorize() call: a listing is not a single decision, it is a filter.
+	// An anonymous caller sees the public_read drops and nothing else, which is
+	// both useful and exactly what they could discover by guessing names.
+	//
+	// This is a behaviour change from v0.1, where listing required the token
+	// unconditionally on the grounds that "which drops exist" is metadata about
+	// every drop. With ownership that reasoning no longer holds: the answer is
+	// now per-caller, so there is nothing global to protect.
+	p := auth.FromContext(r.Context())
+
+	drops, err := s.store.VisibleDrops(r.Context(), p)
+	if err != nil {
+		s.writeStoreError(w, r, err)
 		return
 	}
-
-	drops, err := s.store.ListDrops(r.Context())
-	if err != nil {
+	if err := s.annotateRoles(r, p, drops); err != nil {
 		s.writeStoreError(w, r, err)
 		return
 	}
@@ -62,12 +79,29 @@ func (s *Server) handleListDrops(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// annotateRoles fills in Drop.YourRole for the calling principal.
+//
+// It exists so the UI can grey out an action it knows will 403 rather than
+// offering it and failing — the same principle as a disabled menu entry showing
+// the rule instead of hiding it. One ACL read per drop, which is acceptable for
+// a listing the caller can already see in full.
+func (s *Server) annotateRoles(r *http.Request, p auth.Principal, drops []datadrop.Drop) error {
+	for i := range drops {
+		acl, err := s.store.DropACL(r.Context(), drops[i].Name)
+		if err != nil {
+			return err
+		}
+		drops[i].YourRole = string(auth.EffectiveRole(p, acl))
+	}
+	return nil
+}
+
 func (s *Server) handleGetDrop(w http.ResponseWriter, r *http.Request) {
 	name, ok := pathName(w, r, "drop", "name")
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, name) {
+	if _, ok := s.authorizeDrop(w, r, name, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 

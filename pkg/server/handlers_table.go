@@ -7,6 +7,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/tabular"
@@ -30,7 +31,7 @@ func (s *Server) handleListStreams(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 	if _, err := s.store.GetDrop(r.Context(), dropName); err != nil {
@@ -61,7 +62,7 @@ func (s *Server) handleStreamTable(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 
@@ -129,7 +130,7 @@ func (s *Server) handleDatasetTable(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 

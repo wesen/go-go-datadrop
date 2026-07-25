@@ -15,6 +15,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -26,13 +27,67 @@ import (
 	"github.com/go-go-golems/go-go-datadrop/pkg/webui"
 )
 
+// Authentication modes. See guide §7.4 and DR-26.
+const (
+	// AuthNone requires no credential for anything. Local development only;
+	// `serve` warns at startup.
+	AuthNone = "none"
+	// AuthToken makes the static --token the only credential — the behaviour
+	// of every release before DATADROP-5.
+	AuthToken = "token"
+	// AuthOIDC enables browser sessions and per-user API tokens. A --token may
+	// still be set alongside, as an operator break-glass and a test fixture.
+	AuthOIDC = "oidc"
+)
+
+// OIDCConfig configures the relying party.
+type OIDCConfig struct {
+	Issuer       string
+	ClientID     string
+	ClientSecret string
+	// Scopes requested from the provider. These are OAuth scopes, not datadrop
+	// scopes; the two never mix.
+	Scopes []string
+	// RequireVerifiedEmail refuses a sign-in whose email_verified claim is
+	// false. Defaults to true in code: the safe value belongs where it applies
+	// to every deployment that does not explicitly opt out.
+	RequireVerifiedEmail bool
+	// SessionLifetime is absolute and is never extended by activity.
+	SessionLifetime time.Duration
+	// SessionIdle expires a session that has not been used. A non-positive
+	// value disables the check, which is why New fills in a default rather
+	// than letting a zero value mean "forever".
+	SessionIdle time.Duration
+	// FlowMaxAge bounds how long a sign-in redirect may take.
+	FlowMaxAge time.Duration
+}
+
 // Config holds the knobs `datadrop serve` exposes.
 type Config struct {
 	// Addr is the listen address, e.g. ":8080".
 	Addr string
-	// Token is the static bearer token required by mutating endpoints.
-	// Empty means "no authentication", which is only appropriate locally.
+
+	// Auth selects the authentication mode: AuthNone, AuthToken or AuthOIDC.
+	// Empty is resolved by New: AuthToken when a Token is set, else AuthNone —
+	// which is exactly the behaviour every caller had before this field
+	// existed.
+	Auth string
+
+	// Token is the static bearer token. In AuthToken mode it is the only
+	// credential; in AuthOIDC mode it additionally grants the root principal.
 	Token string
+
+	// ExternalURL is the origin a browser reaches this server on, e.g.
+	// "http://datadrop.localhost:7070".
+	//
+	// It is NOT cosmetic. It determines the OIDC redirect URI, the Secure
+	// attribute on the session cookie, and the Origin value the CSRF check
+	// compares against — so getting it wrong produces three failures that look
+	// unrelated to each other and to the cause.
+	ExternalURL string
+
+	// OIDC is used only when Auth is AuthOIDC.
+	OIDC OIDCConfig
 	// MaxBodyBytes caps request bodies. Zero selects DefaultMaxBodyBytes.
 	MaxBodyBytes int64
 
@@ -95,6 +150,35 @@ func New(cfg Config, st *store.Store, blobs *blob.Store) (*Server, error) {
 	if cfg.MaxUploadBytes <= 0 {
 		cfg.MaxUploadBytes = DefaultMaxUploadBytes
 	}
+	if cfg.Auth == "" {
+		// Preserve the pre-DATADROP-5 contract for every caller that does not
+		// know about modes: a token means token auth, no token means open.
+		cfg.Auth = AuthNone
+		if cfg.Token != "" {
+			cfg.Auth = AuthToken
+		}
+	}
+	switch cfg.Auth {
+	case AuthNone, AuthToken, AuthOIDC:
+	default:
+		return nil, errors.Errorf("server: unknown auth mode %q (want none, token or oidc)", cfg.Auth)
+	}
+	if cfg.Auth == AuthToken && cfg.Token == "" {
+		return nil, errors.New("server: auth mode \"token\" requires a token")
+	}
+	// Defaults for the session deadlines. Filled in here rather than left zero
+	// because a zero SessionIdle disables the idle check entirely, and a
+	// fail-open default should not be reachable by forgetting a field.
+	if cfg.OIDC.SessionLifetime <= 0 {
+		cfg.OIDC.SessionLifetime = 12 * time.Hour
+	}
+	if cfg.OIDC.SessionIdle <= 0 {
+		cfg.OIDC.SessionIdle = 2 * time.Hour
+	}
+	if cfg.OIDC.FlowMaxAge <= 0 {
+		cfg.OIDC.FlowMaxAge = 5 * time.Minute
+	}
+	cfg.ExternalURL = strings.TrimRight(cfg.ExternalURL, "/")
 
 	s := &Server{
 		cfg:     cfg,
@@ -153,6 +237,20 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("PUT /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleUploadDatasetFile)
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleDownloadDatasetFile)
 
+	// Accounts (DATADROP-5).
+	mux.HandleFunc("GET /v1/me", s.handleMe)
+	mux.HandleFunc("GET /v1/me/tokens", s.handleListTokens)
+	mux.HandleFunc("POST /v1/me/tokens", s.handleCreateToken)
+	mux.HandleFunc("DELETE /v1/me/tokens/{id}", s.handleRevokeToken)
+	mux.HandleFunc("GET /v1/me/sessions", s.handleListSessions)
+	mux.HandleFunc("DELETE /v1/me/sessions/{id}", s.handleDeleteSession)
+	mux.HandleFunc("GET /v1/users/lookup", s.handleLookupUser)
+
+	mux.HandleFunc("GET /v1/drops/{name}/members", s.handleListMembers)
+	mux.HandleFunc("PUT /v1/drops/{name}/members/{userId}", s.handleSetMember)
+	mux.HandleFunc("DELETE /v1/drops/{name}/members/{userId}", s.handleRemoveMember)
+	mux.HandleFunc("POST /v1/drops/{name}/claim", s.handleClaimDrop)
+
 	mux.HandleFunc("HEAD /v1/blobs/{digest}", s.handleHeadBlob)
 	mux.HandleFunc("POST /v1/blobs/gc", s.handleGarbageCollect)
 
@@ -168,6 +266,9 @@ func (s *Server) Handler() http.Handler {
 		s.recoverMiddleware,
 		s.requestIDMiddleware,
 		s.loggingMiddleware,
+		// Innermost, so a panic while resolving a credential is still caught
+		// and still carries a request id. It never rejects; see resolve.
+		s.principalMiddleware,
 	)
 }
 

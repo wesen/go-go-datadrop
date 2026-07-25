@@ -6,6 +6,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 )
@@ -18,7 +19,7 @@ func (s *Server) handleListDatasets(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 	if _, err := s.store.GetDrop(r.Context(), dropName); err != nil {
@@ -44,7 +45,7 @@ func (s *Server) handleGetDataset(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 
@@ -57,11 +58,11 @@ func (s *Server) handleGetDataset(w http.ResponseWriter, r *http.Request) {
 }
 
 func (s *Server) handleOpenDatasetVersion(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
 	dropName, datasetName, ok := s.datasetPath(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDatasetsWrite); !ok {
 		return
 	}
 
@@ -78,7 +79,7 @@ func (s *Server) handleGetDatasetVersion(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 
@@ -98,11 +99,11 @@ func (s *Server) handleGetDatasetVersion(w http.ResponseWriter, r *http.Request)
 }
 
 func (s *Server) handleCommitDatasetVersion(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
 	dropName, datasetName, ok := s.datasetPath(w, r)
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDatasetsWrite); !ok {
 		return
 	}
 
@@ -129,11 +130,14 @@ func (s *Server) handleCommitDatasetVersion(w http.ResponseWriter, r *http.Reque
 }
 
 func (s *Server) handleDeleteDatasetVersion(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
 	dropName, datasetName, ok := s.datasetPath(w, r)
 	if !ok {
+		return
+	}
+	// Admin, not writer: deleting a published version destroys something other
+	// people may already be citing, which is a different kind of act from
+	// adding to the drop.
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleAdmin, auth.ScopeDatasetsWrite); !ok {
 		return
 	}
 	version, ok := s.resolveVersion(w, r, dropName, datasetName)

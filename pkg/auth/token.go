@@ -105,7 +105,7 @@ func LooksLikeToken(raw string) bool { return strings.HasPrefix(raw, TokenPrefix
 // parses successfully and then fails to resolve, which is the correct division
 // of labour: this function must not be able to tell an attacker whether an id
 // is real.
-func ParseToken(raw string) (id, secret string, err error) {
+func ParseToken(raw string) (string, string, error) {
 	if !strings.HasPrefix(raw, TokenPrefix) {
 		return "", "", errors.New("auth: not a datadrop token")
 	}
@@ -117,7 +117,7 @@ func ParseToken(raw string) (id, secret string, err error) {
 	if len(parts) != 2 {
 		return "", "", errors.New("auth: malformed token: expected ddp_<id>_<secret>")
 	}
-	id, secret = parts[0], parts[1]
+	id, secret := parts[0], parts[1]
 	if err := validTokenPart(id, tokenIDBytes); err != nil {
 		return "", "", errors.Wrap(err, "auth: token id")
 	}

@@ -442,3 +442,162 @@ api_tokens(id, user_id, name, secret_hash, scopes, created_at, expires_at,
 drop_members(drop_name, user_id, role, added_at, added_by)
 drops.owner_id  -- nullable; NULL on every pre-existing row
 ```
+
+## Step 4: Phase 2 — authorization, applied everywhere at once
+
+The resolver middleware, `authorize`/`authorizeDrop`/`checkOrigin`, all 26
+handler call sites converted, the three auth modes, `GET /v1/me`, the member and
+claim endpoints, and the `serve` flag surface. One commit, deliberately: a
+half-converted handler table is a system where some endpoints check ownership
+and some do not, which is worse than either end state and invisible to any test
+that only exercises the happy path.
+
+No OIDC yet. `--auth=token` maps the static token to the root principal, so the
+whole existing suite runs on the new code path — which is how this phase proves
+it did not break anything before there is anything new to break.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 2 — replace the token check with the principal/role/scope model across the entire HTTP surface.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 2`
+
+### What I did
+
+- `pkg/server/middleware.go` rewritten: `principalMiddleware`, `resolve`,
+  `authorize`, `authorizeDrop`, `denyUnauthenticated`, `checkOrigin`.
+- `pkg/server/server.go`: auth modes, `OIDCConfig`, `ExternalURL`, the new
+  routes, and the resolver added innermost in the chain.
+- `pkg/server/handlers_me.go`, `handlers_members.go`, `cookies.go` — new.
+- All 26 call sites in the existing handlers converted.
+- `pkg/server/problem.go`: `CodeForbidden`, `CodeCrossOrigin`, `CodeConflict`.
+- `pkg/cli/serve.go`: eleven new flags with environment fallbacks, and
+  `resolveAuth`, which refuses to start on a misconfiguration that would fail
+  open.
+- `pkg/server/authz_test.go` — 13 tests, including a 20-row HTTP authorization
+  matrix and a 16-route CSRF enumeration.
+
+### Why
+
+Guide §7 and §8.5. The two rules being enforced: rights are the intersection of
+membership and credential scope computed per request (DR-24), and a
+cookie-authenticated unsafe method must carry a matching `Origin` (DR-21).
+
+### What worked
+
+- **The whole pre-existing suite passed on the first run after the conversion.**
+  That is the payoff for making `New` infer `AuthToken` when a token is set: no
+  test needed editing, so any breakage would have been a real behaviour change
+  rather than a fixture mismatch.
+- Putting `checkOrigin` *inside* `authorizeDrop` rather than beside it means
+  there is no way to authorize a mutating request without passing through it.
+  The enumeration test then fires all sixteen mutating routes with a foreign
+  origin and asserts the CSRF code specifically — not merely a 403, which any
+  permissions failure would also produce.
+- `authorizeDrop(w, r, dropName, role, scope)` reads at the call site almost
+  exactly like the `if !s.authenticate(w, r)` it replaced, so the diff over the
+  handlers is mechanical and reviewable.
+
+### What didn't work
+
+- `golangci-lint` rejected four `switch` statements for `exhaustive` and two
+  named returns. Both are house rules worth keeping — naming `KindAnonymous`
+  explicitly rather than letting it fall to `default` is exactly the kind of
+  thing that should be deliberate in an authorization type.
+- `envOr` already existed in `pkg/cli/root.go`; I added a second one. Removed.
+- My first pass at trimming the unused cookie helpers deleted
+  `clearSessionCookie` too, which *is* used — by revoking your own session from
+  the profile tile. Caught by the build.
+
+### What I learned
+
+**`handleListDrops` had to change behaviour, and the old comment explains why
+it could not stay.** It read:
+
+> Listing reveals which drops exist, which is metadata about every drop rather
+> than about one — so it always requires the token, even when some individual
+> drops are public_read.
+
+That reasoning was correct when there was one global answer. With ownership the
+answer is per-caller, so there is no longer anything global to protect: an
+anonymous caller now sees exactly the `public_read` drops, which is precisely
+what they could already discover by guessing names. The new comment says so and
+names the change, because silently inverting an access rule is the kind of thing
+that should never be discovered by reading a diff.
+
+**A nonexistent drop must return 401 to an anonymous caller and 404 to a signed-in
+one.** Otherwise the endpoint answers "does this drop exist" to the whole
+internet. Two matrix rows pin both halves.
+
+### What was tricky to build
+
+**Ordering.** Eight handlers called `authenticate` *before* parsing the drop
+name, which was fine when the decision did not depend on the target and is not
+fine now. Every one had to be reordered so the name is known first. Mechanical,
+but exactly the kind of edit where doing four of eight and moving on leaves a
+system that looks converted and is not — which is the argument for landing the
+phase as one commit.
+
+**Deciding what `POST /v1/drops/{name}/claim` requires.** It cannot use
+`authorizeDrop`: an unowned private drop gives an ordinary user *no* role, so
+requiring one would make it claimable only by root — and the whole point is that
+the person already using it can adopt it. What bounds it instead is the store's
+atomic `UPDATE … WHERE owner_id IS NULL`: the first claim wins, a second gets a
+409, and an owned drop can never be taken. That is a case where the safety
+property lives in the SQL rather than in the handler, so both say so.
+
+**A drop created with the static token is unowned.** The root principal has no
+user id. Attributing its drops to "root" would invent an owner nobody can sign
+in as, so `handleCreateDrop` leaves `owner_id` empty and the drop is claimable
+like any other legacy one.
+
+### What warrants a second pair of eyes
+
+- `resolve` in `middleware.go`. It is forty lines and every branch is a
+  security decision. In particular: bearer beats cookie, an invalid credential
+  yields anonymous rather than an error, and the static token comparison comes
+  first and is constant-time.
+- `checkOrigin` treats an **absent** `Origin` on a cookie-authenticated unsafe
+  request as a failure. That is deliberate, and it is the line most likely to be
+  "fixed" by someone debugging a client that does not send one.
+- The session touch happens on the read path inside `resolveSession`. One
+  indexed UPDATE per authenticated request; acceptable now, and the first thing
+  to throttle if it ever is not.
+
+### What should be done in the future
+
+- Rate-limit `HEAD /v1/blobs/{digest}` and `GET /v1/users/lookup`. Both are
+  documented oracles, both are currently only bounded by authentication.
+- `annotateRoles` reads the ACL once per drop in a listing. Fine at current
+  scale; a join would be better if a deployment ever has thousands.
+
+### Code review instructions
+
+`pkg/server/middleware.go` first — if you read one file, read that one. Then
+`authz_test.go:TestHTTPAuthorizationMatrix` and
+`TestCSRFCoversEveryMutatingRoute`.
+
+```bash
+GOWORK=off go test ./pkg/server/ -count=1 -run 'Authorization|CSRF|Me|Token|Claim|AuthNone|TokenMode' -v
+GOWORK=off golangci-lint run
+```
+
+### Technical details
+
+Verified live against a running server in token mode:
+
+```
+$ curl -s localhost:7071/v1/me
+{"auth_mode":"token","authenticated":false,"kind":"anonymous",
+ "scopes":["drops:read"],"signup_enabled":false}
+
+$ curl -s localhost:7071/v1/drops          # anonymous
+{"count":1,"drops":[{"name":"lab","public_read":true,"your_role":"reader"}]}
+```
+
+`your_role` is what lets the UI grey out an action it knows will 403 rather than
+offering it and failing.

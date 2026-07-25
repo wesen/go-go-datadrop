@@ -30,7 +30,11 @@ func (r Role) rank() int {
 		return 2
 	case RoleAdmin:
 		return 3
+	case RoleNone:
+		return 0
 	default:
+		// An unknown role from a newer version: treated as no role at all,
+		// never as a grant.
 		return 0
 	}
 }
@@ -89,6 +93,8 @@ func EffectiveRole(p Principal, acl DropACL) Role {
 			return RoleReader
 		}
 		return RoleNone
+	case KindSession, KindToken:
+		// A real person: fall through to ownership and membership below.
 	}
 
 	// An owner is an implicit admin and cannot be demoted out of their own

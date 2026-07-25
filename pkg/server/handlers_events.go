@@ -10,6 +10,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
 )
@@ -24,12 +25,11 @@ const cloudEventsContentType = "application/cloudevents+json"
 // then publish to the hub, then respond. Publishing before the commit would let
 // a subscriber observe an event that then fails to persist.
 func (s *Server) handleAppendEvent(w http.ResponseWriter, r *http.Request) {
-	if !s.authenticate(w, r) {
-		return
-	}
-
 	dropName, ok := pathName(w, r, "drop", "name")
 	if !ok {
+		return
+	}
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleWriter, auth.ScopeDropsWrite); !ok {
 		return
 	}
 
@@ -260,7 +260,7 @@ func (s *Server) handleQueryEvents(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	if !s.authorizeRead(w, r, dropName) {
+	if _, ok := s.authorizeDrop(w, r, dropName, auth.RoleReader, auth.ScopeDropsRead); !ok {
 		return
 	}
 
