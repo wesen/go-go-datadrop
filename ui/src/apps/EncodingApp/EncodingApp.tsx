@@ -1,7 +1,7 @@
 import { useDispatch, useSelector } from "react-redux";
 import { CHANNELS, CHANNEL_ACCEPTS, GEOMS } from "../../model/chart";
 import type { Channel } from "../../model/chart";
-import { TYPE_LABEL, effectiveType } from "../../model/table";
+import { effectiveType } from "../../model/table";
 import { Presentation, usePbui, type FieldRef } from "../../pbui";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPipeline } from "../useTable";
@@ -10,7 +10,8 @@ import { worldActions } from "../../store/world";
 import { AppBody, Stack } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
 import { DocBar } from "../../components/molecules";
-import { FieldChip, IconButton, Button } from "../../components/atoms";
+import { Button, FieldChip } from "../../components/atoms";
+import { ChannelRow } from "../../components/molecules";
 
 /**
  * The aesthetic mapping: slot ↦ field, plus the geom and the y scale.
@@ -97,42 +98,22 @@ function EncodingApp({ leafId, docId }: AppProps) {
               // spec still held the dead name and the plot refused.
               const stale = mapped !== null && typeOf(mapped) === null;
               return (
-                <Stack key={channel} direction="row" gap={3} align="center" wrap>
-                  <Text size="small" strong>
-                    <span style={{ display: "inline-block", width: 44 }}>{channel}</span>
-                  </Text>
-                  {mapped ? (
-                    <FieldChip field={{ docId: target, name: mapped }} testId={`mapped-${channel}`} />
-                  ) : (
-                    <Text size="small" tone="faint">
-                      — unmapped —
-                    </Text>
+                <ChannelRow
+                  key={channel}
+                  channel={channel}
+                  mapped={mapped}
+                  stale={stale}
+                  onAcceptRequest={() => void acceptFor(channel)}
+                  onClear={() =>
+                    dispatch(worldActions.setMapping({ docId: target, channel, field: null }))
+                  }
+                  // The DR-38 seam: the molecule draws the field's name, and
+                  // the application makes it a live presentation so the mapped
+                  // field can be right-clicked.
+                  renderMapped={(name) => (
+                    <FieldChip field={{ docId: target, name }} testId={`mapped-${channel}`} />
                   )}
-                  {stale && (
-                    <Text size="tiny" tone="danger">
-                      ⚠ not in the pipeline output — a step removed it
-                    </Text>
-                  )}
-                  <IconButton
-                    variant="framed"
-                    glyph="⌖"
-                    label={`accept a field for ${channel}`}
-                    title={`accept a <field> for ${channel} — click one anywhere`}
-                    onClick={() => void acceptFor(channel)}
-                  />
-                  <IconButton
-                    variant="framed"
-                    glyph="×"
-                    label={`clear ${channel}`}
-                    disabled={!mapped}
-                    onClick={() =>
-                      dispatch(worldActions.setMapping({ docId: target, channel, field: null }))
-                    }
-                  />
-                  <Text size="tiny" tone="faint">
-                    {CHANNEL_ACCEPTS[channel].map((t) => TYPE_LABEL[t]).join(" / ")}
-                  </Text>
-                </Stack>
+                />
               );
             })}
           </Stack>

@@ -10,14 +10,8 @@ import { worldActions } from "../../store/world";
 import { AppBody, Stack, Toolbar } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
 import { DocBar } from "../../components/molecules";
-import {
-  Button,
-  CheckboxRow,
-  FieldChip,
-  IconButton,
-  SelectInput,
-  TextInput,
-} from "../../components/atoms";
+import { Button, FieldChip, SelectInput, TextInput } from "../../components/atoms";
+import { StepRow } from "../../components/molecules";
 
 const KINDS: Step["kind"][] = ["filter", "derive", "summarize", "sort", "limit"];
 
@@ -104,59 +98,28 @@ function PipelineApp({ leafId, docId }: AppProps) {
             const dropped = pipeline?.dropped[step.id];
             return (
               <Stack key={step.id} gap={2}>
-                <Stack direction="row" gap={2} align="center" wrap>
-                  <CheckboxRow
-                    checked={step.on}
-                    label={`enable ${step.kind}`}
-                    hideLabel
-                    title="disable this step without deleting it"
-                    onCheckedChange={() =>
-                      dispatch(worldActions.toggleStep({ docId: target, stepId: step.id }))
-                    }
-                  />
-                  <Presentation
-                    ptype="step"
-                    value={step.id}
-                    doc={`<step> ${stepLabel(step)}`}
-                  >
-                    <span
-                      style={{
-                        border: "var(--pbui-border-hair)",
-                        borderLeft: "var(--pbui-tone-edge) solid var(--pbui-tone-step)",
-                        background: "var(--pbui-pane)",
-                        padding: "0 var(--pbui-space-3)",
-                        fontSize: "var(--pbui-fs-tiny)",
-                        fontWeight: 700,
-                        textTransform: "uppercase",
-                        opacity: step.on ? 1 : 0.5,
-                      }}
-                    >
-                      {step.kind}
-                    </span>
-                  </Presentation>
-                  <Text size="tiny" tone="faint">
-                    {stepLabel(step)}
-                  </Text>
-                  <span style={{ flex: 1 }} />
-                  <IconButton
-                    variant="framed"
-                    glyph="↑"
-                    label="move up"
-                    disabled={index === 0}
-                    onClick={() =>
-                      dispatch(worldActions.moveStep({ docId: target, stepId: step.id, by: -1 }))
-                    }
-                  />
-                  <IconButton
-                    variant="framed"
-                    tone="danger"
-                    glyph="✕"
-                    label="remove step"
-                    onClick={() =>
-                      dispatch(worldActions.removeStep({ docId: target, stepId: step.id }))
-                    }
-                  />
-                </Stack>
+                <StepRow
+                  kind={step.kind}
+                  label={stepLabel(step)}
+                  enabled={step.on}
+                  canMoveUp={index > 0}
+                  onToggle={() =>
+                    dispatch(worldActions.toggleStep({ docId: target, stepId: step.id }))
+                  }
+                  onMoveUp={() =>
+                    dispatch(worldActions.moveStep({ docId: target, stepId: step.id, by: -1 }))
+                  }
+                  onRemove={() =>
+                    dispatch(worldActions.removeStep({ docId: target, stepId: step.id }))
+                  }
+                  // The DR-38 seam: the badge becomes a live <step>
+                  // presentation, so its verbs are a right-click away.
+                  renderKind={(badge) => (
+                    <Presentation ptype="step" value={step.id} doc={`<step> ${stepLabel(step)}`}>
+                      {badge}
+                    </Presentation>
+                  )}
+                />
 
                 <StepEditor step={step} fields={available.map((f) => f.name)} onChange={update} />
 

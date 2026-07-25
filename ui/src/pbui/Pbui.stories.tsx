@@ -6,6 +6,7 @@ import { effectiveType } from "../model/table";
 import type { FieldType } from "../model/table";
 import { census, readings } from "../fixtures";
 import { DocChip, FieldChip, SourceChip } from "../components/atoms";
+import { ChannelRow } from "../components/molecules";
 import { SectionLabel, Text } from "../components/foundation";
 import { Stack, Surface } from "../components/layout";
 import { usePbui } from "./usePbui";
@@ -27,8 +28,19 @@ const meta: Meta = {
 export default meta;
 type Story = StoryObj;
 
-/** A channel row with the ⌖ that accepts a field for it. */
-function ChannelRow({
+/**
+ * The accept protocol, wired to the real `ChannelRow`.
+ *
+ * This story used to contain its own copy of the channel row — it needed one to
+ * demonstrate the protocol, there was nothing to import, so it wrote one. The
+ * two then drifted independently for two releases, which is the whole argument
+ * for DATADROP-6 in one file.
+ *
+ * What remains here is only what the story adds: the accept call itself, and
+ * the type filter that makes an invalid mapping unreachable rather than
+ * reported after the fact (DR-10).
+ */
+function AcceptableChannelRow({
   channel,
   mapped,
   onMap,
@@ -41,68 +53,29 @@ function ChannelRow({
   const accepts = CHANNEL_ACCEPTS[channel];
 
   return (
-    <Stack direction="row" gap={3} align="center">
-      <Text size="small" strong>
-        <span style={{ display: "inline-block", width: 44 }}>{channel}</span>
-      </Text>
-
-      {mapped ? (
-        <FieldChip field={{ docId: null, name: mapped }} testId={`mapped-${channel}`} />
-      ) : (
-        <Text size="small" tone="faint">
-          — unmapped —
-        </Text>
+    <ChannelRow
+      channel={channel}
+      mapped={mapped}
+      onClear={() => onMap(null)}
+      onAcceptRequest={async () => {
+        const result = await pbui.accept({
+          ptype: "field",
+          prompt: `MAP ${channel.toUpperCase()} ↦ click a FIELD anywhere`,
+          // The improvement over the prototype (DR-10): a channel that cannot
+          // use a type does not light its chips up, so the invalid state is
+          // unreachable rather than reported after the fact.
+          filter: (_ptype, value) => {
+            const ref = value as FieldRef;
+            const field = readings.fields.find((f) => f.name === ref.name);
+            return field ? accepts.includes(effectiveType(field)) : false;
+          },
+        });
+        if (result) onMap((result.value as FieldRef).name);
+      }}
+      renderMapped={(name) => (
+        <FieldChip field={{ docId: null, name }} testId={`mapped-${channel}`} />
       )}
-
-      <button
-        type="button"
-        aria-label={`accept a field for ${channel}`}
-        style={{
-          border: "var(--pbui-border-hair)",
-          background: "var(--pbui-pane-alt)",
-          padding: "0 var(--pbui-space-3)",
-          fontSize: "var(--pbui-fs-small)",
-          fontWeight: 700,
-        }}
-        onClick={async () => {
-          const result = await pbui.accept({
-            ptype: "field",
-            prompt: `MAP ${channel.toUpperCase()} ↦ click a FIELD anywhere`,
-            // The improvement over the prototype (DR-10): a channel that cannot
-            // use a type does not light its chips up, so the invalid state is
-            // unreachable rather than reported after the fact.
-            filter: (_ptype, value) => {
-              const ref = value as FieldRef;
-              const field = readings.fields.find((f) => f.name === ref.name);
-              return field ? accepts.includes(effectiveType(field)) : false;
-            },
-          });
-          if (result) onMap((result.value as FieldRef).name);
-        }}
-      >
-        ⌖
-      </button>
-
-      <button
-        type="button"
-        aria-label={`clear ${channel}`}
-        disabled={!mapped}
-        style={{
-          border: "var(--pbui-border-hair)",
-          background: "var(--pbui-pane-alt)",
-          padding: "0 var(--pbui-space-3)",
-          fontSize: "var(--pbui-fs-small)",
-          opacity: mapped ? 1 : 0.4,
-        }}
-        onClick={() => onMap(null)}
-      >
-        ×
-      </button>
-
-      <Text size="tiny" tone="faint">
-        accepts {accepts.join(", ")}
-      </Text>
-    </Stack>
+    />
   );
 }
 
@@ -127,7 +100,7 @@ function Playground() {
         <Stack gap={3}>
           <SectionLabel>Encoding — each ⌖ accepts a field</SectionLabel>
           {CHANNELS.map((channel) => (
-            <ChannelRow
+            <AcceptableChannelRow
               key={channel}
               channel={channel}
               mapped={mapping[channel]}

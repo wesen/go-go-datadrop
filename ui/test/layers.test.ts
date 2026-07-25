@@ -121,6 +121,22 @@ const COMPONENT_LAYERS = new Set([
   "pages",
 ]);
 
+/**
+ * Every source file except the stories.
+ *
+ * **Stories are deliberately exempt from the graph**, and the exemption is
+ * worth stating because it is load-bearing rather than incidental. A story is a
+ * review surface, not shipped code — nothing under `.storybook/` reaches the
+ * bundle `pkg/webui` embeds — and its job is to compose whatever demonstrates
+ * the component, which routinely means reaching across layers. `pbui`'s own
+ * playground story imports a molecule so that the channel row it demonstrates
+ * is the *real* one rather than a second copy, which is exactly the outcome
+ * DATADROP-6 wanted and which the graph would otherwise forbid.
+ *
+ * The cost is that a story can hide a dependency someone later copies into
+ * production code. That copy would then be checked, and would fail here, which
+ * is the property that makes the exemption safe.
+ */
 function walk(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir)) {
     const path = join(dir, entry);

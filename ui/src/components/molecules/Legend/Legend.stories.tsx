@@ -53,6 +53,17 @@ export const Overflowing: Story = {
 };
 
 /**
+ * Entries with no title.
+ *
+ * `buildPlot` produces `legendTitle: null` when there is no colour channel to
+ * name. The label is omitted rather than rendered empty — a heading above
+ * content it does not name is worse than no heading.
+ */
+export const NoTitle: Story = {
+  render: () => <Legend title={null} entries={entries(3)} />,
+};
+
+/**
  * Empty renders nothing at all.
  *
  * A chart with no colour channel has no legend, and reserving space for an

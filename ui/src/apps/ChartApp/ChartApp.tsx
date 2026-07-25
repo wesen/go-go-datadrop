@@ -6,8 +6,7 @@ import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPlot } from "../useTable";
 import { AppBody } from "../../components/layout";
 import { Text } from "../../components/foundation";
-import { DocBar } from "../../components/molecules";
-import { TruncationNotice } from "../../components/molecules";
+import { DocBar, Legend, TruncationNotice } from "../../components/molecules";
 
 /**
  * The composed plot, fully live.
@@ -179,46 +178,25 @@ function PlotSvg({
         )}
       </svg>
 
-      {plot.legend.length > 0 && (
-        <div style={{ minWidth: 96 }}>
-          <div style={{ fontSize: "var(--pbui-fs-tiny)", color: "var(--pbui-faint)", fontWeight: 700 }}>
-            {plot.legendTitle}
-          </div>
-          {plot.legend.map((entry) => (
+      <div style={{ minWidth: 96 }}>
+        <Legend
+          title={plot.legendTitle}
+          entries={plot.legend}
+          overflow={plot.legendOverflow}
+          // The DR-38 seam: the molecule draws a swatch and a label, and the
+          // application makes each entry a live <cat> presentation — so
+          // "filter to this category" is a right-click on the legend.
+          renderEntry={(entry, body) => (
             <Presentation
-              key={entry.label}
               ptype="cat"
               value={{ docId, field: colorField, value: entry.value ?? entry.label }}
               doc={`<cat> ${plot.legendTitle}=${entry.label}`}
             >
-              <span
-                style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  gap: "var(--pbui-space-2)",
-                  fontSize: "var(--pbui-fs-small)",
-                }}
-              >
-                <span
-                  style={{
-                    width: 11,
-                    height: 11,
-                    background: entry.color,
-                    border: "var(--pbui-border-hair)",
-                    flexShrink: 0,
-                  }}
-                />
-                {entry.label}
-              </span>
+              {body}
             </Presentation>
-          ))}
-          {plot.legendOverflow > 0 && (
-            <Text size="tiny" tone="faint">
-              + {plot.legendOverflow} more, not coloured
-            </Text>
           )}
-        </div>
-      )}
+        />
+      </div>
     </div>
   );
 }

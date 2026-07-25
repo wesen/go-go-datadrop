@@ -32,7 +32,15 @@ export function Legend({
   overflow = 0,
   renderEntry,
 }: {
-  title: string;
+  /**
+   * Null when the plot has no colour channel to name.
+   *
+   * `string | null` rather than `string` because that is what `buildPlot`
+   * produces, and coercing it to `""` at the call site would render an empty
+   * section label above the entries — a heading with nothing in it, which is
+   * the defect shape this design system has now been bitten by twice.
+   */
+  title: string | null;
   entries: readonly LegendEntry[];
   overflow?: number;
   renderEntry?: (entry: LegendEntry, body: ReactNode) => ReactNode;
@@ -41,7 +49,7 @@ export function Legend({
 
   return (
     <Stack gap={1} data-part="legend">
-      <SectionLabel>{title}</SectionLabel>
+      {title && <SectionLabel>{title}</SectionLabel>}
       {entries.map((entry) => {
         const body = (
           <Stack direction="row" gap={2} align="center" as="span">
