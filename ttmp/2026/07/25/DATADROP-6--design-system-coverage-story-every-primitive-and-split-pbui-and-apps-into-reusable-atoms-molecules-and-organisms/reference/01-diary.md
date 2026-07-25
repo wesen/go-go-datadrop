@@ -1055,3 +1055,201 @@ inline style={{               80      51
 
 Both surviving buttons carry a non-default ARIA role; one of them is in `pbui/`,
 which the layer graph forbids from importing `atoms` at all.
+
+## Step 7: Phase 3 — cover the 24 that already existed, and make it a test
+
+Every component directory now has a story, and `ui/test/stories.test.ts` fails
+if that stops being true. Storybook went from **5 stories to 83**, and the
+sidebar now reads as the dependency order rather than as two lonely entries.
+
+The phase also found a piece of dead structure and corrected a claim in the
+guide about how the chips work.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 5)
+
+**Assistant interpretation:** Story the pre-existing components and turn on the
+coverage check.
+
+**Inferred user intent:** Make the covered state the enforced state, so it
+cannot quietly decay the way it did between DATADROP-4 and now.
+
+**Commit (code):** `156b210` — "DATADROP-6 phase 3: story the 24, and enforce coverage"
+
+### What I did
+
+- Wrote 24 story files: 4 foundation, 4 layout, 9 atoms, 2 molecules, 3
+  organisms, 1 page.
+- Wrote `ui/test/stories.test.ts` — six checks: a story per directory, a
+  component and barrel per directory, no empty directories, the layer's title
+  prefix, the sidebar grouping, and a guard that there are components to check
+  at all.
+- Deleted `components/organisms/StatusBar/`, an empty directory.
+- Verified: typecheck, 172 tests (was 166), `build-storybook`, and 83 stories in
+  `index.json`.
+
+### Why
+
+**The title-prefix check earns its place separately from the coverage check.**
+`.storybook/main.ts` documents a hierarchy that mirrors the layer decomposition,
+so the sidebar is a map of the architecture. A story filed under the wrong group
+breaks that quietly — nothing fails, the component is still covered, and the map
+is wrong. Parsing the title with a regex rather than importing the module is
+deliberate and the test says so: importing a story file pulls in React, the CSS
+modules and the whole component tree, which turns a 34 ms test into a bundling
+exercise.
+
+**Exactly one page-level story, and the reasoning is written into it.**
+`Applications/Workbench` renders the whole shell. It earns its place because two
+properties are visible nowhere else: the landmark structure — the a11y `region`
+rule is disabled globally because a story renders a fragment with no page shell,
+and this is the one place the shell exists, so the story switches it back on —
+and the signed-out gate. It is deliberately the only one, because page stories
+test integration rather than components and would not have caught any of the
+three DATADROP-5 defects.
+
+### What worked
+
+**Verifying the test can fail, before trusting it.** A coverage test that cannot
+fail is worse than none, because it converts an unchecked convention into a
+checked-looking one. Two deliberate breakages:
+
+```text
+$ mv src/components/atoms/Chip/Chip.stories.tsx /tmp/ && bun test test/stories.test.ts
+(fail) story coverage > every component directory has a story
+
+$ mkdir src/components/atoms/Zzz && bun test test/stories.test.ts
+(fail) story coverage > no empty component directories
+```
+
+Both failed with the offending path named, and both passed again once undone.
+
+**Writing the stories surfaced knowledge that was only in comments.** Several
+stories are now the visible form of a defect the code comments describe:
+`Chip`'s `stale` state (the EncodingEditor bug — a dead mapping reading as
+"unset"), `TruncationNotice`'s "at least N+1" (the banner that once asserted the
+sample *is* the whole source), and `RoleBadge`'s hover text, where "you are **an**
+admin" is now rendered next to the other three roles. That last one is the exact
+DATADROP-5 defect, and it is now on a page where anyone would read it.
+
+### What didn't work
+
+**`components/organisms/StatusBar/` was an empty directory.** Not a component
+missing a story — a directory containing nothing at all, left behind by a
+rename. The coverage check reported it as "organisms/StatusBar has no story",
+which is true and unhelpful. I added a separate `no empty component directories`
+check so the next one gets diagnosed as what it is, and deleted the directory.
+Since git does not track empty directories it was invisible to `git status`,
+which is why nobody had noticed.
+
+**Two type errors from writing stories against remembered types rather than read
+ones:**
+
+```text
+Object literal may only specify known properties, and 'kind' does not exist in type 'Node'
+Type '"first"' is not assignable to type '"head" | "latest"'
+```
+
+The layout tree discriminates on `type`, not `kind`, and a truncation strategy
+is `head`, not `first`. Both were caught in seconds by `tsc`, which is the
+argument for `satisfies Meta<typeof Component>` on every meta: a story is code
+that goes stale silently otherwise.
+
+### What I learned
+
+**The guide is wrong about the chips, and §20.2 needs correcting.** It claims
+the `*Chip` atoms "are the *bodies* of presentations and are correctly
+provider-free". Reading them: only `Chip` itself is. `FieldChip`, `UserChip`,
+`TokenChip`, `DocChip` and `SourceChip` all wrap themselves in `Presentation`
+and require the provider.
+
+That is not a defect — it is what makes a field chip right-clickable everywhere
+it appears — but it does mean the exception to DR-38 is one component wide, not
+nine. The rule stands for everything phase 4 builds; the existing chips are the
+named exception, and their stories rely on the global `withPbui` decorator.
+
+**A `parameters: { tile: false }` decision has to be made per story and is easy
+to get wrong.** The `withTile` decorator imposes a bounded flex column, which is
+correct for organisms and actively misleading for atoms — an atom has no
+business assuming a height. Every atom and foundation story sets `tile: false`;
+`AppBody` and `Tile` deliberately do not, because the bound is the property
+under test.
+
+### What was tricky to build
+
+**Deciding what a story for `VisuallyHidden` even is.** The component renders
+nothing visible, so a story showing it renders an empty box, which teaches
+nothing. What it should demonstrate is the property that distinguishes it from
+`display: none`: it is announced but takes no space. So the story puts two
+adjacent lines of text with a whole announced sentence between them — the point
+is that the lines are adjacent. The second story is a live region carrying the
+mouse documentation, with prose explaining that nothing rendering *is* the
+correct outcome.
+
+The general lesson, which phase 4 will need: for an invisible or structural
+component, the story has to demonstrate the *invariant*, not the appearance.
+`Toolbar`'s `DoesNotShrink` is the same shape — a 90px frame with far more than
+90px of content, so the `flex-shrink: 0` that the whole component exists for is
+visible as a behaviour.
+
+### What warrants a second pair of eyes
+
+- **The regex title parse.** It relies on `title:` being a literal in the meta.
+  That is a real constraint on how stories may be written and it needs to end up
+  in `GUIDELINES.md` in phase 6, or someone will use a computed title and get a
+  confusing failure.
+- **The `Applications/Workbench` a11y override.** It switches the `region` rule
+  back on for that one story. If the shell ever fails it, the failure will be
+  real and the temptation will be to switch the rule off again.
+- **83 stories is a lot to keep truthful.** Several assert things about the
+  system in prose ("nobody decided that", "the drift has already happened"). If
+  a later change makes one of those sentences false, no test will notice.
+
+### What should be done in the future
+
+- Phase 4: the remaining atoms, the foundation and layout additions, and the 14
+  molecules.
+- **Guide correction:** §20.2's claim that the `*Chip` atoms are provider-free
+  is wrong; only `Chip` is.
+- **Guide correction:** §15.2's `Inline` was already dropped in step 5. The
+  layout additions are `FormRow`, `ScrollRegion` and `CodeText` (foundation).
+- Phase 6 must add to `GUIDELINES.md`: story titles must be literals.
+
+### Code review instructions
+
+- Start with `ui/test/stories.test.ts`, and break it yourself before trusting
+  it — `mv` any `*.stories.tsx` aside and confirm the failure names the path.
+- Then `make storybook` and read the sidebar top to bottom. It should read as
+  the dependency order: Foundation, Layout, Atoms, PBUI, Molecules, Organisms,
+  Applications.
+- The three stories worth reading as documentation rather than as coverage:
+  `Atoms/Chip → States`, `Molecules/TruncationNotice → BothStrategies`, and
+  `Layout/Toolbar → DoesNotShrink`.
+- Validate:
+  ```bash
+  bun test --cwd ui          # 172, up from 166
+  bun run --cwd=ui build-storybook
+  ```
+
+### Technical details
+
+```text
+                     before   after
+story files               2      26
+stories (index.json)      5      83
+component directories    24      23   (organisms/StatusBar deleted — it was empty)
+bun tests               166     172
+```
+
+Stories per group:
+
+```text
+   13  Design System/Foundation
+   12  Design System/Layout
+   39  Design System/Atoms
+    4  Design System/PBUI
+    4  Component Library/Molecules
+   10  Component Library/Organisms
+    1  Applications/Workbench
+```

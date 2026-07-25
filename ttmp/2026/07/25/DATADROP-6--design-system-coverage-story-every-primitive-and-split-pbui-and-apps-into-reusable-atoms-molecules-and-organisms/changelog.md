@@ -41,3 +41,12 @@ Phase 2: substitution complete (commit 6e80eda). 42 buttons, 9 selects, 12 input
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/apps/SourceApp/SourceApp.tsx — all three interesting substitution cases in one file
 
+
+## 2026-07-25
+
+Phase 3: 24 stories written and ui/test/stories.test.ts turned on (commit 156b210). Storybook 5 to 83 stories; deleted the empty organisms/StatusBar directory; verified the coverage test fails when a story is removed
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/stories.test.ts — six checks, including the title prefix and the empty-directory guard
+
