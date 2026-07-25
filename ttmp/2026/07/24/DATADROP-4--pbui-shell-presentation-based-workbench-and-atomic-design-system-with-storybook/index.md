@@ -50,6 +50,16 @@ This ticket turns that prototype into the real UI:
 The engine (`ui/src/model/`) does not change. It is pure, React-free, and tested,
 and it is the part of the system a bad afternoon cannot silently break.
 
+## Note for anyone reading AGENT.md
+
+`AGENT.md` says *"When building web applications, use bootstrap CSS unless
+otherwise indicated."* **It has been otherwise indicated for this application.**
+The workbench uses no CSS framework: the prototype's visual language — monospace,
+hairline hard borders, zero border radius, unblurred offset shadows — is the
+design system, expressed as tokens and CSS modules over a `data-part` contract.
+The reasoning is DR-13 and the checkable rules are §10.3 of the design guide.
+This is a deliberate override, not an oversight.
+
 ## Key Links
 
 - **Design guide**: [design/01-pbui-shell-analysis-design-and-implementation-guide.md](./design/01-pbui-shell-analysis-design-and-implementation-guide.md)

@@ -148,8 +148,10 @@ and a right-click will do to it.
 ### 1.3 What it replaces
 
 `ui/src/App.tsx` — 252 lines that hard-code one source, one spec, one chart, one
-table, and a Bootstrap `row`/`col` grid. Everything it does survives; it becomes
-the default `build` workspace, assembled out of tiles rather than columns.
+table, and a Bootstrap `row`/`col` grid. Everything it *does* survives; it
+becomes the default `build` workspace, assembled out of tiles rather than
+columns. Nothing about how it *looks* survives: the workbench takes the
+prototype's visual language, and Bootstrap goes with the file (DR-13).
 
 ---
 
@@ -609,11 +611,17 @@ Every one of the prototype's ~600 style objects is inline, with colours pulled
 from the `C` object. There is no theming, no dark mode, no reuse across
 components, and nothing can be documented in isolation.
 
-`AGENT.md` mandates Bootstrap for this project, and the current UI uses it.
-Those are not in conflict, and §10.3 resolves the seam: Bootstrap keeps the grid,
-the utilities and the form controls; the PBUI vocabulary — chips, tiles,
-presentations, accept highlighting — gets tokenised CSS modules with a
-`data-part` contract.
+This is the one gap in the list where the *prototype is right about the output
+and wrong only about the mechanism.* Its look is deliberate and it is kept
+(DR-13): what changes is that ~600 inline style objects become a token layer and
+CSS modules keyed on `data-part`, so the same appearance becomes themeable,
+reusable and documentable in isolation.
+
+Note the direction of travel here, because it is the opposite of the other six
+rows. Everywhere else we are correcting an assumption the prototype could afford
+and we cannot. Here we are *preserving* a decision and only changing how it is
+expressed — and §10.3 turns "looks like the prototype" into ten rules a reviewer
+can check.
 
 ### 5.8 Summary table
 
@@ -625,7 +633,7 @@ presentations, accept highlighting — gets tokenised CSS modules with a
 | 4 | mutate + `force()` re-render | fifteen tiles over 50 000 rows | Redux world, selector subscriptions, memo by identity |
 | 5 | OPFS/localStorage CSV upload | a versioned dataset service | drop it; `dataset push` is the path |
 | 6 | no credentials | bearer token in `sessionStorage` | never serialise the token; GET only |
-| 7 | inline styles | Bootstrap + a design-system mandate | Bootstrap for layout, tokens + `data-part` for PBUI |
+| 7 | inline styles, one aesthetic | a design-system requirement | **keep the aesthetic**, no CSS framework; tokens + `data-part` + ten checkable rules |
 
 ---
 
@@ -1371,10 +1379,14 @@ ui/src/
   pbui/                        the presentation protocol (§8)
   store/                       Redux slices: world, layout, plus the RTK Query api
   apps/                        organisms bound to the tile registry
+  styles/
+    reset.css                  modern-normalize + ~15 lines. no framework (DR-13)
+    tokens.css                 the visual language of §10.3, generated in part
+    scrollbars.css             ::-webkit-scrollbar, to match
   components/
     foundation/                tokens made usable in React
-      Text/ Heading/ Caption/ Divider/ VisuallyHidden/ Kbd/
-    layout/                    structural primitives
+      Text/ Heading/ Caption/ SectionLabel/ Divider/ VisuallyHidden/ Kbd/
+    layout/                    structural primitives — what a CSS grid framework would have given
       Stack/ Split/ Surface/ Toolbar/ AppBody/
     atoms/                     smallest product controls and chips
       Chip/ FieldChip/ TypeBadge/ ProvenanceBadge/ GeomChip/ DocChip/
@@ -1383,7 +1395,7 @@ ui/src/
       MarkCircle/ MarkRect/ MarkPath/          (SVG atoms)
     molecules/
       ChannelRow/ StepRow/ SchemaStrip/ Legend/ AxisX/ AxisY/ PanelFrame/
-      DataGrid/ TruncationNotice/ GapNotice/ DocBar/ TileTitleBar/
+      DataGrid/ Notice/ TruncationNotice/ GapNotice/ DocBar/ TileTitleBar/
       SourceRow/ SnapshotCard/ StepEditors/    (five, one per step kind)
     organisms/
       Tile/ SplitView/ WorkspaceStrip/ StatusBar/
@@ -1391,6 +1403,15 @@ ui/src/
       Workbench/
   fixtures/                    committed deterministic tables for stories and tests
 ```
+
+Two entries earn their place only because there is no framework. `layout/` is
+what a grid system would otherwise have provided, expressed as five flexbox
+components instead of a hundred utility classes — and it is a better fit here,
+because the layouts this application needs are a split tree and a toolbar, not a
+twelve-column page grid. `atoms/Select`, `NumberInput`, `TextInput` and
+`Checkbox` are **thin wrappers over native elements**, roughly ten lines each:
+they attach the token styling and a `data-part`, and they change nothing about
+the element's behaviour (§10.3).
 
 The dependency direction is one-way and enforced:
 
@@ -1423,34 +1444,59 @@ Enforce it with `eslint-plugin-import`'s `no-restricted-paths`, one zone per
 layer. A convention that is only written down is a convention that has already
 been broken somewhere you have not looked yet.
 
-### 10.3 Tokens, and living with Bootstrap
+### 10.3 No CSS framework — the prototype's look *is* the design system
 
-`AGENT.md` mandates Bootstrap and the current UI uses it. The resolution is a
-division of labour, not a fight:
+There is no Bootstrap, no Tailwind, no component library (DR-13). The visual
+language is `pbui-gog.jsx`'s, extracted from its ~600 inline style objects into
+tokens and CSS modules.
 
-- **Bootstrap owns** the page grid, spacing and display utilities, form
-  controls, buttons in ordinary chrome, alerts, cards, and the reset.
-- **The design system owns** the PBUI vocabulary: chips, tiles, presentation
-  highlighting, accept pulsing, the mouse-doc bar, plot chrome. These get CSS
-  modules keyed on `data-part`.
+This is not asceticism. The prototype has a specific, coherent aesthetic —
+monospace, hairline hard borders, zero border radius, unblurred offset shadows,
+flat pale surfaces, dark ink bars top and bottom, uppercase letterspaced section
+labels. It is a Lisp-machine aesthetic and it is *load-bearing*: the density is
+what lets fifteen tiles fit on a screen, and the flatness is what keeps a chip in
+a table header reading as the same kind of object as a chip in a legend. A
+framework with rounded corners, a proportional font stack and soft shadows would
+have to be fought on every component, and the fight would be lost slowly.
 
-The prototype's palette (`pbui-gog.jsx:29-44`) becomes the token layer, defined
-once and aliased onto Bootstrap's own custom properties where they overlap so a
-theme change moves both:
+What we give up, and what replaces it:
+
+| Bootstrap gave | Replacement | Size |
+|---|---|---|
+| CSS reset | `ui/src/styles/reset.css` — `modern-normalize` plus ~15 lines | ~2 kB |
+| grid and spacing utilities | `components/layout/` — `Stack`, `Split`, `Surface`, `Toolbar`, `AppBody` | flexbox, already needed |
+| form controls | native `<select>`, `<input>`, `<textarea>` styled directly, as the prototype does (`:1258-1269`) | ~40 lines |
+| buttons, cards, alerts | `atoms/Button`, `layout/Surface`, `molecules/Notice` | already in the inventory |
+
+The form-control row is the one worth defending, because it looks like a
+regression and is not. The prototype styles *native* elements rather than
+building custom widgets. A native `<select>` gets keyboard navigation, type-ahead,
+screen-reader semantics and the platform's own touch behaviour for free — all of
+which a custom listbox has to re-implement, usually incompletely. Bootstrap also
+styles native elements; it just ships more CSS to do it. Keep the natives.
+
+#### The token layer
+
+The prototype's palette (`pbui-gog.jsx:29-44`) plus the constants that recur
+throughout its inline styles:
 
 ```css
 /* ui/src/styles/tokens.css */
 :root {
-  /* surfaces */
-  --pbui-paper: #ffffff;
-  --pbui-pane: #ffffff;
-  --pbui-pane-alt: #f1f1ee;
-  --pbui-ink: #23262b;
-  --pbui-faint: #7b8087;
-  --pbui-line: #d9d9d4;
-  --pbui-selected: #fdeec6;
+  /* ---- surfaces (pbui-gog.jsx:29-35) ---- */
+  --pbui-paper: #ffffff;        /* the page */
+  --pbui-pane: #ffffff;         /* a tile body */
+  --pbui-pane-alt: #f1f1ee;     /* zebra rows, inset toolbars, disabled fills */
+  --pbui-ink: #23262b;          /* every border, all body text, the dark bars */
+  --pbui-faint: #696e75;        /* secondary text, axis labels, hints.
+                                   darkened from the prototype's #7b8087, which
+                                   fails contrast at these sizes — see §15 */
+  --pbui-line: #d9d9d4;         /* hairlines, grid lines, dotted rules */
+  --pbui-selected: #fdeec6;     /* selection and hover fill */
+  --pbui-danger: #c2503a;
+  --pbui-ok: #3f9d6b;
 
-  /* presentation-type tones — the left border of every chip */
+  /* ---- presentation-type tones: the 4px left border of every chip ---- */
   --pbui-tone-field: #7aa6c9;
   --pbui-tone-source: #7cae9b;
   --pbui-tone-doc: #c2503a;
@@ -1458,26 +1504,40 @@ theme change moves both:
   --pbui-tone-chart: #e0b95c;
   --pbui-tone-cat: #d59a86;
 
-  /* field-type tones — quantitative, nominal, temporal */
+  /* ---- field-type tones: quantitative, nominal, temporal ---- */
   --pbui-type-q: #7aa6c9;
   --pbui-type-n: #e0b95c;
   --pbui-type-t: #7cae9b;
 
-  /* the categorical palette; must equal PALETTE in model/plot.ts */
+  /* ---- categorical palette; must equal PALETTE in model/plot.ts ---- */
   --pbui-cat-1: #3b6fb6;  --pbui-cat-2: #c0504d;
   --pbui-cat-3: #d6a419;  --pbui-cat-4: #7a9a6b;
   --pbui-cat-5: #8f7bb0;  --pbui-cat-6: #c07a94;
   --pbui-cat-7: #5fa9a0;  --pbui-cat-8: #8892a8;
 
+  /* ---- type: one family, a small scale, tight leading ---- */
+  --pbui-font: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+  --pbui-fs-micro: 8.5px;   /* type badges, facet titles */
+  --pbui-fs-tiny: 9.5px;    /* section labels, trace rows */
+  --pbui-fs-small: 10.5px;  /* chips, controls, table cells */
+  --pbui-fs-base: 11.5px;   /* prose inside a tile */
+  --pbui-fs-title: 13px;    /* tile titles, headings */
+  --pbui-lh-tight: 1.35;
+  --pbui-track-label: 0.08em;   /* uppercase section labels */
+  --pbui-track-banner: 0.28em;  /* the top title bar only */
+
+  /* ---- structure: hard edges, no radius, unblurred shadow ---- */
+  --pbui-border-hair: 1px solid var(--pbui-ink);
+  --pbui-border-firm: 2px solid var(--pbui-ink);
+  --pbui-border-rule: 1px dashed var(--pbui-line);
+  --pbui-tone-edge: 4px;                             /* chip left border width */
+  --pbui-radius: 0;                                  /* everywhere. see below */
+  --pbui-shadow-hard: 2px 2px 0 var(--pbui-ink);     /* buttons */
+  --pbui-shadow-menu: 4px 4px 0 var(--pbui-ink);     /* menus, floating panels */
+
+  /* ---- spacing: the prototype's actual values, not a doubling scale ---- */
   --pbui-space-1: 2px;  --pbui-space-2: 4px;  --pbui-space-3: 6px;
   --pbui-space-4: 10px; --pbui-space-5: 16px; --pbui-space-6: 24px;
-  --pbui-radius-0: 0;   --pbui-shadow-hard: 2px 2px 0 var(--pbui-ink);
-  --pbui-font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-
-  /* bridge to Bootstrap so one theme moves both */
-  --bs-body-color: var(--pbui-ink);
-  --bs-body-bg: var(--pbui-paper);
-  --bs-border-color: var(--pbui-line);
 }
 ```
 
@@ -1488,6 +1548,67 @@ mark and it is a pure function with no access to the DOM. Keep `model/plot.ts`
 authoritative, generate the token block from it, and add a unit test asserting
 the two agree. A legend whose swatches disagree with its marks is a bug that
 survives review because both halves look right in isolation.
+
+#### The visual language, as checkable rules
+
+"Stay close to the prototype" has to be checkable or it decays into taste. These
+are the rules; a component that breaks one is wrong, and a reviewer can say so
+without arguing:
+
+1. **No `border-radius`, anywhere.** `--pbui-radius: 0` exists so that a
+   deliberate exception has to name itself.
+2. **Every border is `1px` or `2px`, `solid`, in `--pbui-ink`.** Hairlines in
+   `--pbui-line` are for grid lines and internal rules only. Structure is
+   `2px` — tile edges, buttons, menus. Detail is `1px` — chips, table headers.
+3. **Shadows are offset, never blurred.** `2px 2px 0` for buttons, `4px 4px 0`
+   for menus. No `rgba`, no blur radius.
+4. **One font family: monospace.** Including prose, headings and axis labels.
+   Sizes come from the six-step scale and nothing is above 13px inside a tile.
+5. **Chips carry a `4px` tone left-border** and nothing else distinguishes their
+   type. Same shape, same padding, different tone — that visual identity is what
+   makes a chip in a legend read as the same kind of thing as a chip in a table
+   header.
+6. **Section labels are uppercase, `--pbui-fs-tiny`, letterspaced, in
+   `--pbui-faint`.** `SOURCE`, `DOC`, `GEOM`, `OUT →`.
+7. **The shell's top and bottom bars are inverted** — `--pbui-ink` background,
+   `--pbui-paper` text. They frame the workspace; nothing else in the interface
+   is inverted.
+8. **Selection and hover are the same pale fill**, `--pbui-selected`. There is no
+   second highlight colour.
+9. **Dividers between step rows and panel sections are dotted or dashed**, in
+   `--pbui-line`. Solid rules are borders; dashed rules are separations.
+10. **Scrollbars are styled** to match (`pbui-gog.jsx:2702-2704`): 12px, thumb in
+    `--pbui-line` with a 3px pane-coloured border. A default scrollbar in the
+    middle of this is jarring, and there are a lot of them.
+
+The interaction affordances are part of the language and go in
+`pbui/pbui.module.css`, ported near-verbatim from `pbui-gog.jsx:2694-2707`:
+
+```css
+[data-part="presentation"]                     { cursor: pointer; }
+[data-part="presentation"]:hover               { outline: 1px dotted var(--pbui-ink);
+                                                 background: var(--pbui-selected); }
+[data-part="presentation"][data-state="acceptable"] {
+  outline: 2px solid var(--pbui-danger);
+  background: var(--pbui-selected);
+  animation: pbui-pulse 0.9s infinite;
+}
+@keyframes pbui-pulse { 50% { outline-color: var(--pbui-cat-3); } }
+
+/* SVG presentations cannot take an outline; they take a drop-shadow. */
+[data-part="presentation-svg"]:hover           { filter: drop-shadow(0 0 1.5px var(--pbui-ink)); }
+[data-part="presentation-svg"][data-state="acceptable"] {
+                                                 filter: drop-shadow(0 0 2.5px var(--pbui-danger)); }
+
+/* The pulse is decoration; the outline carries the meaning. See §15. */
+@media (prefers-reduced-motion: reduce) {
+  [data-part="presentation"][data-state="acceptable"] { animation: none; }
+}
+```
+
+The last rule is the one to get right. Under reduced motion the pulse vanishes,
+so the solid red outline has to be sufficient on its own — which it is, and which
+is why acceptability is never signalled by animation alone.
 
 ### 10.4 The part and state contract
 
@@ -1604,7 +1725,7 @@ export default config;
 
 ```tsx
 // ui/.storybook/preview.tsx
-import "bootstrap/dist/css/bootstrap.min.css";
+import "../src/styles/reset.css";
 import "../src/styles/tokens.css";
 import { withPbui, withStore, withTile } from "./decorators";
 
@@ -2125,6 +2246,39 @@ something we ship, and the fixes are cheap if they are done in the first phase.
   coloured by data.station, 4 series, 720 rows". `PlotSvg.tsx` already has the
   `role="img"`; the label is currently the word "chart".
 
+Two of these become *our* responsibility rather than a framework's, because
+DR-13 removes the framework. Both are in phase 0, both are small, and both are
+the kind of thing that is never retrofitted once a hundred components exist:
+
+- **Focus rings are ours to define.** `reset.css` must not remove the default
+  outline without replacing it, which is the single most common way an
+  application becomes keyboard-hostile. Use `:focus-visible` with a 2px solid
+  ring in `--pbui-ink` offset by 1px — visible against both `--pbui-pane` and
+  `--pbui-selected`, and distinct from the red accept outline so the two states
+  are never confused.
+- **Contrast is ours to verify, and one token already fails.** The prototype's
+  palette was chosen by eye. Measured:
+
+  | Pair | Ratio | |
+  |---|---|---|
+  | `--pbui-ink` on `--pbui-pane` | 15.18:1 | fine |
+  | `--pbui-paper` on the ink bars | 15.18:1 | fine |
+  | `--pbui-ink` on `--pbui-selected` | 13.17:1 | fine |
+  | `--pbui-danger` on `--pbui-pane` | 4.66:1 | just passes |
+  | **`--pbui-faint` on `--pbui-pane`** | **3.98:1** | **fails** |
+  | **`--pbui-faint` on `--pbui-pane-alt`** | **3.51:1** | **fails** |
+
+  `--pbui-faint` is the colour of hints, axis labels, trace metadata and the
+  secondary half of every chip — rendered at 8.5–10.5px, which is exactly where
+  contrast matters most. **Change `#7b8087` to `#696e75`** in phase 0: the
+  lightest value on the same hue line that clears 4.5:1 on both surfaces (4.54:1
+  and 5.14:1), so it satisfies the threshold while staying visibly secondary.
+
+  Do it in phase 0, while there is one place to change it and no screenshots to
+  re-take. This is the first thing the a11y addon will report, and it is the
+  clearest argument for turning the addon on before the components exist rather
+  than after.
+
 `@storybook/addon-a11y` with `test: "error"` (§11.6) keeps all of this from
 regressing.
 
@@ -2230,14 +2384,21 @@ check the binary again.
 ### Phase 0 — Demolition and foundations
 
 `git rm ui/src/App.tsx ui/src/components/*`, having first walked §4.4 and
-recorded every salvaged behaviour in the diary. Then: `tokens.css` generated
-from `model/plot.ts`'s palette, the layer directories, the import-boundary lint
-rule, Storybook with the three decorators, the fixture generator and its
-committed JSON, and a minimal `main.tsx` that mounts a store `Provider` around
-nothing.
+recorded every salvaged behaviour in the diary. `bun remove bootstrap` (DR-13).
+Then the visual foundation: `reset.css`, `tokens.css` with its palette block
+generated from `model/plot.ts`, `scrollbars.css`, the `foundation/` and
+`layout/` primitives, the ten rules of §10.3 written into the token sheet story.
+Then the machinery: the layer directories, the import-boundary lint rule,
+Storybook with the three decorators, the fixture generator and its committed
+JSON, and a minimal `main.tsx` that mounts a store `Provider` around nothing.
+
+Two things to settle here rather than later, because both are one-line changes
+now and hundred-file changes in month three: the `:focus-visible` ring, and
+darkening `--pbui-faint` to `#696e75` (§15).
 
 *Done when:* `bun run storybook` opens on the token sheet, `bun test` is green,
-`go test ./...` is green, and the a11y addon passes on every story that exists.
+`go test ./...` is green, the a11y addon passes on every story that exists, and
+`grep -r bootstrap ui/` finds nothing.
 
 ### Phase 1 — The PBUI core, proven in Storybook
 
@@ -2401,29 +2562,42 @@ across tabs and exported layouts. The failure the prototype guards against — a
 duplicate React key plus a hit-test returning the wrong tile — is memorably hard
 to diagnose.
 
-### DR-13 — Bootstrap for chrome, tokens plus `data-part` for the PBUI vocabulary
+### DR-13 — No CSS framework; the prototype's visual language is the design system
 
-**Decision.** Bootstrap keeps the grid, utilities, form controls and alerts. The
-presentation vocabulary gets CSS modules over a token layer, with a `data-part`
-contract. Bootstrap's custom properties are aliased onto the tokens.
+**Decision.** No Bootstrap, no Tailwind, no component library. A ~2 kB reset, the
+token layer of §10.3, CSS modules keyed on `data-part`, and natively-styled form
+controls. The ten rules in §10.3 define the look and are enforceable in review.
 
-**Why.** `AGENT.md` mandates Bootstrap. Bootstrap has no vocabulary for a typed,
-acceptable, hoverable presentation, and expressing one in utility classes would
-scatter it across every call site.
+**This overrides a project convention, deliberately and on instruction.**
+`AGENT.md` says *"When building web applications, use bootstrap CSS unless
+otherwise indicated."* It has been otherwise indicated for this application.
+Anyone reading `AGENT.md` and wondering why the workbench has no Bootstrap should
+be sent here rather than "fixing" it.
 
-**Revisited under DR-17.** This decision originally had a second leg — *the
-existing UI is built on Bootstrap and rewriting that buys nothing* — and
-demolishing the React shell removes it. So the question is now open on its
-merits, and the honest answer is that this workbench uses very little Bootstrap:
-tiles, split trees, chips, menus and a mouse-doc bar are all bespoke, and the
-prototype uses none at all. What remains is the reset, the form controls, and a
-handful of utilities — perhaps 15 % of what a conventional application uses.
+**Why.** The earlier version of this record kept Bootstrap on two legs. DR-17
+removed the first (*the existing UI is built on it*). The second — *the reset and
+the form controls are worth the download* — turns out to be weak once the target
+aesthetic is stated: Bootstrap also styles native form elements, it just ships
+more CSS to do it, and the reset is `modern-normalize` plus fifteen lines.
 
-**Decision stands**, on two grounds: `AGENT.md` is explicit, and the reset plus
-form controls are genuinely worth the ~30 kB gzipped rather than hand-rolling
-accessible selects and checkboxes. But this is now a cheap decision to reverse,
-and if the token layer ends up fighting Bootstrap's specificity in phase 1, drop
-it rather than working around it — flag it in the diary and ask.
+The positive argument is stronger than the absence of a negative one. The
+prototype's look is not decoration, it is a working constraint. Monospace at
+9–13px with hairline borders and zero radius is what lets fifteen tiles fit on a
+screen and still be readable; identical chip geometry across six contexts is what
+makes a legend swatch and a table header read as the same *kind of object*, which
+is the entire premise of a presentation-based interface. A framework whose
+defaults are rounded corners, a proportional stack and soft shadows would be
+fought on every component, and slowly lost.
+
+**Cost.** We own the reset, the focus rings, the form-control styling and the
+scrollbars. That is a bounded, one-time ~200 lines, all of it in phase 0, and it
+is less than the specificity overrides the alternative would have accumulated.
+
+**What this does not license.** Not a licence to hand-roll widgets. Selects,
+checkboxes, number inputs and text areas stay native elements with CSS on them,
+exactly as the prototype does (`pbui-gog.jsx:1258-1269`) — a custom listbox
+re-implements keyboard navigation, type-ahead and screen-reader semantics, and
+usually gets one of them wrong.
 
 **Watch item.** The categorical palette exists in both CSS and
 `model/plot.ts:15-18`. Generate the tokens from the module and assert agreement
@@ -2717,8 +2891,11 @@ Phase 0   DELETE  ui/src/App.tsx
                                      TruncationBanner,LiveToggle}.tsx
           KEEP    ui/src/model/  ui/src/api/  ui/src/export/  ui/test/
           EDIT    ui/src/main.tsx   (mount a store Provider)
+          REMOVE  the bootstrap dependency from ui/package.json   (DR-13)
 
-          ADD     ui/src/styles/tokens.css        (generated from model/plot.ts)
+          ADD     ui/src/styles/reset.css         (modern-normalize + focus ring)
+                  ui/src/styles/tokens.css        (palette generated from model/plot.ts)
+                  ui/src/styles/scrollbars.css
                   ui/src/components/{foundation,layout,atoms,molecules,organisms,pages}/
                   ui/.storybook/{main.ts,preview.tsx,decorators.tsx}
                   ui/src/fixtures/*.json  +  ui/scripts/make-fixtures.ts
