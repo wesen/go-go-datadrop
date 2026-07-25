@@ -53,6 +53,28 @@ Use capture-pane to read the output.
 - Always serve static files under /static/ URL paths, never directly under functional paths like /admin/
 </webGuidelines>
 
+<diaryGuidelines>
+ALWAYS keep a detailed diary while working on a ticket, and ALWAYS commit at
+appropriate intervals. This is not optional and it is not something to be
+remembered only when asked. Do it from the first step, not retroactively at the
+end — a backfilled diary loses exactly the thing it exists to capture, which is
+what was tried and did not work.
+
+- Load the `diary` skill for the required step format. Every step needs the
+  prose paragraphs, the `Prompt Context` block with the user's prompt verbatim,
+  and the `What didn't work` / `What was tricky to build` /
+  `What warrants a second pair of eyes` sections.
+- The diary lives in the ticket: `docmgr doc add --ticket TICKET --doc-type reference --title "Diary"`.
+- The working loop per step: implement, format, test, commit the code, check the
+  task with `docmgr task check`, write the diary step with the commit hash,
+  update the changelog with `docmgr changelog update`, commit the docs.
+- Record failures with the exact error text, the command and the version. A step
+  that only records what worked is a step that will be repeated by the next
+  person hitting the same wall.
+- Commit at intervals that make `git diff` reviewable: one commit per phase or
+  per coherent change, never one commit at the end of a day's work.
+</diaryGuidelines>
+
 <debuggingGuidelines>
 If me or you the LLM agent seem to go down too deep in a debugging/fixing rabbit hole in our conversations, remind me to take a breath and think about the bigger picture instead of hacking away. Say: "I think I'm stuck, let's TOUCH GRASS".  IMPORTANT: Don't try to fix errors by yourself more than twice in a row. Then STOP. Don't do anything else.
 
