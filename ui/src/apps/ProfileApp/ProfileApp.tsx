@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   useListDropsQuery,
   useListSessionsQuery,
@@ -8,6 +9,7 @@ import { registerApp, type AppProps } from "../registry";
 import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
 import { Divider, SectionLabel, Text } from "../../components/foundation";
 import { RoleBadge, SourceChip, UserChip, type Role } from "../../components/atoms";
+import { MemberList } from "./MemberList";
 
 /**
  * Who you are, what you can see, and where you are signed in.
@@ -24,6 +26,9 @@ function ProfileApp(_props: AppProps) {
     skip: me?.kind !== "session",
   });
   const [signOut] = useSignOutMutation();
+  // One drop's access list at a time: showing every list at once means a
+  // request per drop on a page that is mostly not about membership.
+  const [expanded, setExpanded] = useState<string | null>(null);
 
   if (!me?.authenticated) {
     return (
@@ -83,23 +88,39 @@ function ProfileApp(_props: AppProps) {
           {drops?.drops.length ? (
             <Stack gap={1}>
               {drops.drops.map((drop) => (
-                <Toolbar key={drop.name} tight>
-                  <SourceChip source={{ drop: drop.name, kind: "stream", stream: "events" }} />
-                  {/* your_role is computed by the server so the UI can grey out
-                      an action it knows will 403, rather than offering it and
-                      failing. */}
-                  <RoleBadge role={(drop.your_role ?? "") as Role} />
-                  {drop.public_read && (
-                    <Text size="tiny" tone="faint">
-                      public
-                    </Text>
+                <Stack key={drop.name} gap={1}>
+                  <Toolbar tight>
+                    <SourceChip source={{ drop: drop.name, kind: "stream", stream: "events" }} />
+                    {/* your_role is computed by the server so the UI can grey
+                        out an action it knows will 403, rather than offering it
+                        and failing. */}
+                    <RoleBadge role={(drop.your_role ?? "") as Role} />
+                    {drop.public_read && (
+                      <Text size="tiny" tone="faint">
+                        public
+                      </Text>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setExpanded((current) => (current === drop.name ? null : drop.name))
+                      }
+                    >
+                      <Text size="tiny">
+                        {expanded === drop.name ? "hide access" : "access"}
+                      </Text>
+                    </button>
+                  </Toolbar>
+                  {expanded === drop.name && (
+                    <div style={{ paddingLeft: "var(--pbui-space-4)" }}>
+                      <MemberList
+                        drop={drop.name}
+                        yourRole={drop.your_role ?? ""}
+                        unowned={!drop.owner_id}
+                      />
+                    </div>
                   )}
-                  {!drop.owner_id && (
-                    <Text size="tiny" tone="faint">
-                      unowned — claimable
-                    </Text>
-                  )}
-                </Toolbar>
+                </Stack>
               ))}
             </Stack>
           ) : (

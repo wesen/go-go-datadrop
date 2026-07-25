@@ -9,4 +9,4 @@
 - [x] Phase 4: deploy/compose — postgres, zitadel-api, zitadel-login, traefik, provision.sh, Dockerfile, make targets; idempotent on second run <!-- t:p7ml -->
 - [x] Phase 5: account tiles — session slice, four presentation types + descriptors, new atoms, signin/profile/tokens/upload tiles, two pinned workspaces, signed-out gate <!-- t:9kx8 -->
 - [x] Phase 6: uploader — batch state machine, browser hashing, mount fast path, resume, and the draft listing endpoint <!-- t:rwtx -->
-- [ ] Phase 7: sharing and docs — membership endpoints, members UI, datadrop whoami, README, residual-risk diary entry <!-- t:oqg0 -->
+- [x] Phase 7: sharing and docs — membership endpoints, members UI, datadrop whoami, README, residual-risk diary entry <!-- t:oqg0 -->

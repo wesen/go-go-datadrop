@@ -36,9 +36,21 @@ function mutationNames(): string[] {
 
 describe("the API surface", () => {
   test("the set of mutating endpoints is exactly the reviewed set", () => {
+    // Every entry is an ACCOUNT or MEMBERSHIP operation. None touches a
+    // source, a table, a chart, a pipeline or a snapshot, which is the
+    // property the second test below states directly.
+    //
+    // Note what is absent: the dataset upload triad. The uploader uses `fetch`
+    // rather than RTK Query, because its payload is a File, its response is
+    // discarded, and caching a 400 MB upload would be actively harmful. The
+    // guide predicted six mutations here; there are five, and the difference
+    // is that decision.
     expect(mutationNames()).toEqual([
+      "claimDrop",
       "createToken",
+      "removeMember",
       "revokeToken",
+      "setMember",
       "signOut",
     ]);
   });

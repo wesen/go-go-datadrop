@@ -8,12 +8,13 @@ events over SSE, and exports open formats.
 Inspired by Wolfram Data Drop; designed to be ordinary enough to work with
 `curl`, pipes, and SQL, and open enough to self-host and export.
 
-> **Status: v0.3.** v0.1 (event streams), v0.2 (bulk datasets) and v0.3 (the web
-> visualization workbench) are complete and covered by tests, including
-> end-to-end CLI smoke tests. See the
+> **Status: v0.4.** v0.1 (event streams), v0.2 (bulk datasets), v0.3 (the web
+> visualization workbench) and v0.4 (user accounts) are complete and covered by
+> tests, including end-to-end CLI smoke tests. See the
 > [v0.1 guide](ttmp/2026/07/24/DATADROP-1--go-go-datadrop-mvp-research-data-storage-server/design/02-intern-implementation-guide.md),
 > the [v0.2 guide](ttmp/2026/07/24/DATADROP-2--dataset-upload-and-retrieval-bulk-datasets-with-manifests-and-schemas/design/01-intern-implementation-guide.md)
 > and the [v0.3 guide](ttmp/2026/07/24/DATADROP-3--web-ui-grammar-of-graphics-visualization-workbench-for-datasets-and-streams/design/01-web-ui-visualization-workbench-intern-implementation-guide.md)
+> and the [v0.4 guide](ttmp/2026/07/25/DATADROP-5--user-accounts-zitadel-signup-sessions-api-tokens-and-the-account-workspace/design/01-user-accounts-with-zitadel-analysis-design-and-implementation-guide.md)
 > for the full design and API references.
 
 The server holds two kinds of data, and the distinction is the main thing to
@@ -87,10 +88,57 @@ Exit codes are stable, so scripts can branch on them without parsing stderr:
 `0` success, `1` generic error, `2` usage, `3` auth, `4` not found,
 `5` validation.
 
+## Users and access
+
+There are three ways to run the server, and the difference is who a request is.
+
+```bash
+datadrop serve --db ./lab.db                       # --auth=none: open. Local only.
+datadrop serve --db ./lab.db --token secret        # --auth=token: one shared credential.
+datadrop serve --db ./lab.db --auth=oidc \        # --auth=oidc: real accounts.
+    --external-url http://localhost:7070 \
+    --oidc-issuer http://zitadel.test:17070 \
+    --oidc-client-id … --oidc-client-secret-file …
+```
+
+`--auth=oidc` adds sign-in and self-service signup against any OpenID Connect
+provider. datadrop never sees a password: it performs the redirect dance, keeps
+the tokens server-side, and gives the browser an HttpOnly session cookie.
+Everything about *authorization* stays local, so an outage at the identity
+provider affects only new sign-ins — existing sessions and every API token keep
+working.
+
+**Drops get owners.** The creator owns a drop; an owner is an admin on it and
+can add collaborators as `reader`, `writer` or `admin`. Drops created before
+v0.4 are unowned and can be claimed. `public_read` still means what it meant.
+
+**API tokens** are for the CLI and for CI:
+
+```bash
+# Mint one in the workbench's "tokens" tile, then:
+export DATADROP_TOKEN=ddp_7f3k9m2qx4vb3_8h2n6p4r9tzw3xk5mcqf7bdy1sav0jne
+datadrop whoami
+# server     http://localhost:7070
+# auth mode  oidc
+# kind       token
+# user       usr_3kf9m2qx4vb8h2n6p4r9tz  (Ada Lovelace)
+# token      7f3k9m2qx4vb3
+# scopes     drops:write
+```
+
+A token carries a subset of its owner's rights and never more: remove someone
+from a drop and every token they hold loses that drop immediately. Tokens are
+shown once, stored hashed, and revocable individually. `datadrop whoami` is the
+first thing to run when a credential does not work — a 403 cannot distinguish
+"wrong token" from "missing scope" from "not a member", and this can.
+
+To try it end to end, `make compose-up` brings up datadrop with a self-hosted
+Zitadel; see [deploy/compose/README.md](deploy/compose/README.md).
+
 ## HTTP API
 
-All paths are under `/v1`; mutating endpoints require
-`Authorization: Bearer <token>`.
+All paths are under `/v1`. Mutating endpoints require a credential:
+`Authorization: Bearer <token>`, or a session cookie from the web UI.
 
 | Method | Path | Purpose |
 |---|---|---|
@@ -106,6 +154,16 @@ All paths are under `/v1`; mutating endpoints require
 | `PUT` | `/v1/drops/{name}/schemas/{stream}` | Register a schema version |
 | `GET` | `/v1/drops/{name}/schemas/{stream}` | Read the active schema |
 | `GET` | `/healthz` | Liveness |
+| `GET` | `/v1/me` | Who the current credential is (never 401s) |
+| `GET`/`POST` | `/v1/me/tokens` | List / mint API tokens |
+| `DELETE` | `/v1/me/tokens/{id}` | Revoke a token |
+| `GET`/`DELETE` | `/v1/me/sessions[/{id}]` | List / revoke browser sessions |
+| `GET` | `/v1/auth/login` | Start sign-in (`?intent=signup` to register) |
+| `GET` | `/v1/auth/callback` | OIDC redirect target |
+| `POST` | `/v1/auth/logout` | End the session (`?global=1` at the provider too) |
+| `GET`/`PUT`/`DELETE` | `/v1/drops/{name}/members[/{userId}]` | Manage access |
+| `POST` | `/v1/drops/{name}/claim` | Take ownership of an unowned drop |
+| `GET` | `/v1/drops/{name}/datasets/{d}/drafts` | Resumable uploads (writer only) |
 
 Ingestion accepts either a bare JSON payload or a full CloudEvents envelope
 (discriminated by `Content-Type: application/cloudevents+json`, a top-level
@@ -229,6 +287,11 @@ over a small pipeline of filter, derive, summarize, sort and limit steps.
 datadrop serve --db ./lab.db
 # 15:04:05 INF datadrop ready  ui=http://localhost:8080/ui/
 ```
+
+With `--auth=oidc` it also carries two hardwired workspaces: **welcome**, shown
+to a visitor who is not signed in, and **account** — profile, API tokens, and a
+dataset uploader that hashes files in the browser so bytes the server already
+holds are never sent twice.
 
 The design rests on one decision: **the server projects a source into a typed
 table, and the browser never guesses.** A dataset version can carry a JSON

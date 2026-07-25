@@ -1334,3 +1334,173 @@ uploaded, committed, and then read back through the table projection —
 fields: [('station','n'), ('temp_c','q'), ('ok','n')]
 rows:   [{'station':'roof','temp_c':21.5,'ok':True}, …]
 ```
+
+## Step 10: Phase 7 — sharing, whoami, and the documentation
+
+The member editor, `datadrop whoami`, the README, and the sharing story written
+down as a test rather than as a shell transcript. This closes the ticket.
+
+Two things pushed back during this phase, and both were boundaries I had put in
+place earlier doing their job on me.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Mid-turn instruction (verbatim):** "also don't forget to fill your diary (see skill for the format), it's been a minute, so backfill it conscientiously"
+
+**Assistant interpretation:** Keep the diary current and in the prescribed format, catching up anything not yet recorded.
+
+**Inferred user intent:** The diary is the reviewable trail; a phase that lands without one is a phase nobody can audit later. (The diary has in fact carried a step per phase since Step 1; this step and Step 9 complete it through the end of the work.)
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 7`
+
+### What I did
+
+- `pkg/cli/whoami.go` — `datadrop whoami`.
+- `ui/src/apps/ProfileApp/MemberList.tsx` — the access editor, expandable per
+  drop from the profile tile.
+- `ui/src/api/client.ts` — member listing, role setting, removal, email lookup,
+  claim.
+- `pkg/server/authz_test.go` — four more tests: the sharing sequence,
+  reader-visible member lists, the bounded email lookup, and the inertness of
+  API tokens in token mode.
+- `README.md` — a "Users and access" section, the new endpoints, and the two
+  hardwired workspaces.
+
+### What worked
+
+**The sharing story, as one test:**
+
+```
+a stranger cannot read                         403
+nor can their token write                      403
+the owner adds them as a reader                204
+now they can read                              200
+but not write                                  403
+the owner promotes them                        204
+and the same token writes                      201
+a writer cannot change membership              403
+the owner's role cannot be changed at all      409
+the owner removes them                         204
+and the same token is refused immediately      403
+```
+
+β's credential is minted once and never touched. It gains and loses access as α
+edits the member list, because rights are the intersection of membership and
+scope computed per request. An implementation that cached rights on the token
+would pass every row but the last — which is why that row exists.
+
+**`datadrop whoami` answers what a 403 cannot.** A 403 cannot distinguish
+"wrong token" from "wrong user" from "missing scope" from "not a member". This
+prints all four, and when nothing authenticates it says what to do about it
+rather than only what is wrong.
+
+### What didn't work
+
+**The api-surface test failed, exactly as designed.** Adding the member
+endpoints produced:
+
+```
++ "claimDrop",
+  "createToken",
++ "removeMember",
++ "setMember",
+```
+
+That is the change-detector doing its job on a security boundary: the correct
+response is to read the three new mutations and decide, not to update the
+literal reflexively. All three are membership operations, none touches a chart,
+and the literal now says so — including why the set is five rather than the six
+the guide predicted (the upload triad uses `fetch`, so it never enters the
+cache).
+
+**The layer test rejected where I put `MemberList`.**
+
+```
+components/molecules/MemberList/MemberList.tsx (molecules) imports
+  ../../../api/client (api) — molecules may import: foundation, layout,
+  atoms, pbui, model, store
+```
+
+Correct: a molecule is presentational and must not reach the network. The
+obvious fix — widen the rule — would have been wrong, because it would have let
+every future molecule fetch. `organisms` may import `api`, but `apps` may not
+import `organisms` (that edge is what keeps the pair acyclic), and the component
+is used by one application. So it moved to `apps/ProfileApp/MemberList.tsx`,
+which is the honest classification, and the graph needed no change at all.
+
+That is twice in this ticket the layer test has decided a placement question
+better than I did.
+
+**A harness mistake worth recording.** My first attempt at verifying sharing
+was a Python script against a locally-run server in **token** mode, and every
+call came back 401. The cause is correct behaviour — a `ddp_` token only
+resolves in oidc mode, because that is the only mode with users for it to belong
+to — but the consequence is not obvious, so it is now
+`TestAPITokensAreInertInTokenMode`. **Switching a deployment from oidc back to
+token silently invalidates every user's credential**, with a 401 that cannot
+explain itself.
+
+Rather than fight the harness, the scenario moved into Go beside the fake
+provider, which is where it belongs: durable, runs in CI, and needs no network.
+
+### What I learned
+
+The email lookup deserved a test asserting what it does *not* return. It is an
+existence oracle, and the mitigation is partly that its response is thin — an id
+and a display name, no subject, no issuer, no timestamps. That is a property
+worth pinning, because it is the kind of response someone later enriches
+"helpfully".
+
+### What was tricky to build
+
+**Adding a member takes two calls, and the first is the sensitive one.** A human
+knows an address; the API needs an id. The lookup is restricted to people who
+already administer something, audited, and returns almost nothing — but it is
+still the weakest thing in the ticket, and an invite flow keyed on the address
+would remove it entirely.
+
+**Where to show the member list.** Per-drop and collapsed, because expanding
+every list at once means a request per drop on a page that is mostly not about
+membership. A non-admin sees the list with an explanation instead of an editor,
+rather than seeing nothing — the same "show the rule" principle as the disabled
+mint form.
+
+### What warrants a second pair of eyes
+
+- `GET /v1/users/lookup?email=` — see above. Bounded, audited, and still the
+  thing I would remove first.
+- `MemberList` calls `lookupUser` then `setMember`. A failure between them
+  leaves nothing behind, but the error message conflates "no such user" with
+  "not permitted"; the server distinguishes them and the tile does not.
+- `TestSharingADrop`'s last row is load-bearing. If it is ever deleted as
+  redundant, DR-24 loses its only end-to-end guard.
+
+### What should be done in the future
+
+- An invite flow, replacing the lookup endpoint.
+- Ownership transfer. Today a drop changes hands only by claiming an unowned
+  one or by editing the database.
+- Rate limits on `HEAD /v1/blobs/{digest}` and the email lookup. Both are
+  documented oracles; both are currently bounded only by authentication.
+- Mailpit in the compose stack, so `--oidc-require-verified-email` can stay true
+  locally.
+- Per-file upload progress, and "import into a stream" after a commit.
+
+### Code review instructions
+
+```bash
+GOWORK=off go test ./... -count=1
+GOWORK=off golangci-lint run
+cd ui && bun run typecheck && bun test
+make compose-nuke && make compose-up && make compose-up   # twice: idempotency
+```
+
+Then `datadrop whoami --addr … --token …`, and the account workspace in a
+browser.
+
+### Technical details
+
+Final state: 8 commits, ~50 new tests (Go and TypeScript), and the ticket's
+seven phases each landing separately with the whole suite green.

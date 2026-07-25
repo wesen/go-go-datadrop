@@ -554,3 +554,137 @@ func TestPotentiallyTrustworthy(t *testing.T) {
 		}
 	}
 }
+
+// TestSharingASharedDrop is the collaboration story end to end: an owner adds
+// someone, promotes them, and removes them again.
+//
+// The last two rows are the point. Nothing is done to β's credential at any
+// stage — it is minted once and never touched — yet it gains and loses access
+// as α changes the member list, because rights are the intersection of
+// membership and scope computed per request (DR-24). An implementation that
+// cached rights on the token would pass every row but the last.
+func TestSharingADrop(t *testing.T) {
+	srv := newOIDCServer(t)
+	ctx := context.Background()
+
+	alpha, alphaCookie := signIn(t, srv, "sub-share-a", "ada@example.org")
+	beta, betaCookie := signIn(t, srv, "sub-share-b", "bob@example.org")
+
+	if _, err := srv.store.CreateDrop(ctx, datadrop.Drop{Name: "shared", OwnerID: alpha.ID}); err != nil {
+		t.Fatalf("create drop: %v", err)
+	}
+	betaToken := mintToken(t, srv, beta.ID, auth.ScopeDropsWrite)
+
+	step := func(name, method, path string, cred credential, body string, want int) {
+		t.Helper()
+		if rec := do(t, srv, method, path, cred, body); rec.Code != want {
+			t.Fatalf("%s: %s %s = %d, want %d\n%s", name, method, path, rec.Code, want, rec.Body.String())
+		}
+	}
+
+	step("a stranger cannot read", "GET", "/v1/drops/shared",
+		credential{cookie: betaCookie}, "", 403)
+	step("nor can their token write", "POST", "/v1/drops/shared/events",
+		credential{bearer: betaToken}, `{"t":1}`, 403)
+
+	step("the owner adds them as a reader", "PUT", "/v1/drops/shared/members/"+beta.ID,
+		credential{cookie: alphaCookie}, `{"role":"reader"}`, 204)
+	step("now they can read", "GET", "/v1/drops/shared",
+		credential{cookie: betaCookie}, "", 200)
+	step("but not write", "POST", "/v1/drops/shared/events",
+		credential{bearer: betaToken}, `{"t":1}`, 403)
+
+	step("the owner promotes them", "PUT", "/v1/drops/shared/members/"+beta.ID,
+		credential{cookie: alphaCookie}, `{"role":"writer"}`, 204)
+	// The SAME token, never reissued, now writes.
+	step("and the same token writes", "POST", "/v1/drops/shared/events",
+		credential{bearer: betaToken}, `{"t":1}`, 201)
+
+	step("a writer cannot change membership", "PUT", "/v1/drops/shared/members/"+alpha.ID,
+		credential{cookie: betaCookie}, `{"role":"reader"}`, 403)
+	step("the owner's role cannot be changed at all", "PUT", "/v1/drops/shared/members/"+alpha.ID,
+		credential{cookie: alphaCookie}, `{"role":"reader"}`, 409)
+
+	step("the owner removes them", "DELETE", "/v1/drops/shared/members/"+beta.ID,
+		credential{cookie: alphaCookie}, "", 204)
+	// Nothing was revoked. The token is still live; it simply no longer has a
+	// drop to act on. This is the row that fails if rights are ever cached.
+	step("and the same token is refused immediately", "POST", "/v1/drops/shared/events",
+		credential{bearer: betaToken}, `{"t":1}`, 403)
+	step("and can no longer read either", "GET", "/v1/drops/shared",
+		credential{bearer: betaToken}, "", 403)
+}
+
+func TestMemberListIsVisibleToReaders(t *testing.T) {
+	// Knowing who else can see a drop you can see is not a privilege, and
+	// hiding it makes "why can they read this" unanswerable without finding an
+	// administrator.
+	srv := newOIDCServer(t)
+	ctx := context.Background()
+
+	alpha, _ := signIn(t, srv, "sub-ml-a", "a@example.org")
+	beta, betaCookie := signIn(t, srv, "sub-ml-b", "b@example.org")
+	if _, err := srv.store.CreateDrop(ctx, datadrop.Drop{Name: "lab", OwnerID: alpha.ID}); err != nil {
+		t.Fatalf("create drop: %v", err)
+	}
+	if err := srv.store.SetMember(ctx, "lab", beta.ID, auth.RoleReader, alpha.ID); err != nil {
+		t.Fatalf("add member: %v", err)
+	}
+
+	rec := do(t, srv, "GET", "/v1/drops/lab/members", credential{cookie: betaCookie}, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("a reader could not list members: %d %s", rec.Code, rec.Body.String())
+	}
+	// The user is resolved server-side so the UI can render a name without a
+	// request per row.
+	if !strings.Contains(rec.Body.String(), "b@example.org") {
+		t.Errorf("the member's user was not resolved: %s", rec.Body.String())
+	}
+}
+
+func TestUserLookupRequiresAdministeringSomething(t *testing.T) {
+	// An existence oracle over email addresses, bounded three ways: the caller
+	// must already administer a drop, the response carries only an id and a
+	// display name, and every call is logged.
+	srv := newOIDCServer(t)
+	ctx := context.Background()
+
+	owner, ownerCookie := signIn(t, srv, "sub-lk-o", "owner@example.org")
+	_, strangerCookie := signIn(t, srv, "sub-lk-s", "stranger@example.org")
+	if _, err := srv.store.CreateDrop(ctx, datadrop.Drop{Name: "lab", OwnerID: owner.ID}); err != nil {
+		t.Fatalf("create drop: %v", err)
+	}
+
+	if rec := do(t, srv, "GET", "/v1/users/lookup?email=owner@example.org",
+		credential{cookie: strangerCookie}, ""); rec.Code != http.StatusForbidden {
+		t.Fatalf("a user who administers nothing could look up an address: %d", rec.Code)
+	}
+
+	rec := do(t, srv, "GET", "/v1/users/lookup?email=owner@example.org",
+		credential{cookie: ownerCookie}, "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("an admin could not look up an address: %d %s", rec.Code, rec.Body.String())
+	}
+	// Nothing beyond an id and a name — no subject, no issuer, no timestamps.
+	if strings.Contains(rec.Body.String(), "sub-lk-o") ||
+		strings.Contains(rec.Body.String(), "issuer") {
+		t.Errorf("the lookup leaked provider identity: %s", rec.Body.String())
+	}
+}
+
+func TestAPITokensAreInertInTokenMode(t *testing.T) {
+	// A ddp_ token is only resolvable in oidc mode, because that is the only
+	// mode with users for it to belong to. Stated as a test because the
+	// consequence is not obvious: switching a deployment from oidc back to
+	// token silently invalidates every user's credential, with a 401 that
+	// cannot explain why.
+	srv := newTestServer(t)
+	shaped := "ddp_aaaaaaaaaaaaa_bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+	if rec := do(t, srv, "GET", "/v1/me", credential{bearer: shaped}, ""); rec.Code != http.StatusOK {
+		t.Fatalf("/v1/me should still answer: %d", rec.Code)
+	}
+	if rec := do(t, srv, "POST", "/v1/drops", credential{bearer: shaped},
+		`{"name":"x"}`); rec.Code != http.StatusUnauthorized {
+		t.Errorf("a ddp_ token was honoured in token mode: %d", rec.Code)
+	}
+}

@@ -93,6 +93,7 @@ Then, from another shell:
 		newExportCmd(opts),
 		newSchemaCmd(opts),
 		newDatasetCmd(opts),
+		newWhoamiCmd(opts),
 		newHealthcheckCmd(),
 	)
 

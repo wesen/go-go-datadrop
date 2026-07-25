@@ -163,6 +163,14 @@ export interface CreatedToken extends ApiToken {
   token: string;
 }
 
+export interface MemberInfo {
+  drop: string;
+  user_id: string;
+  role: "reader" | "writer" | "admin";
+  added_at: string;
+  user?: { id: string; name?: string; email?: string };
+}
+
 export interface SessionInfo {
   id: string;
   current: boolean;
@@ -189,10 +197,11 @@ export const api = createApi({
       return headers;
     },
   }),
-  tagTypes: ["Me", "Tokens", "Sessions"],
+  tagTypes: ["Me", "Tokens", "Sessions", "Members", "Drops"],
   endpoints: (build) => ({
     listDrops: build.query<{ drops: DropSummary[] }, void>({
       query: () => "/drops",
+      providesTags: ["Drops"],
     }),
 
     // ── accounts (DATADROP-5) ───────────────────────────────────────────────
@@ -218,6 +227,35 @@ export const api = createApi({
     revokeToken: build.mutation<void, string>({
       query: (id) => ({ url: `/me/tokens/${encodeURIComponent(id)}`, method: "DELETE" }),
       invalidatesTags: ["Tokens"],
+    }),
+    listMembers: build.query<{ drop: string; owner: string; members: MemberInfo[] }, string>({
+      query: (drop) => `/drops/${encodeURIComponent(drop)}/members`,
+      providesTags: (_result, _error, drop) => [{ type: "Members", id: drop }],
+    }),
+    setMember: build.mutation<
+      void,
+      { drop: string; userId: string; role: "reader" | "writer" | "admin" }
+    >({
+      query: ({ drop, userId, role }) => ({
+        url: `/drops/${encodeURIComponent(drop)}/members/${encodeURIComponent(userId)}`,
+        method: "PUT",
+        body: { role },
+      }),
+      invalidatesTags: (_r, _e, { drop }) => [{ type: "Members", id: drop }],
+    }),
+    removeMember: build.mutation<void, { drop: string; userId: string }>({
+      query: ({ drop, userId }) => ({
+        url: `/drops/${encodeURIComponent(drop)}/members/${encodeURIComponent(userId)}`,
+        method: "DELETE",
+      }),
+      invalidatesTags: (_r, _e, { drop }) => [{ type: "Members", id: drop }],
+    }),
+    lookupUser: build.query<{ id: string; name: string }, string>({
+      query: (email) => `/users/lookup?email=${encodeURIComponent(email)}`,
+    }),
+    claimDrop: build.mutation<DropSummary, string>({
+      query: (drop) => ({ url: `/drops/${encodeURIComponent(drop)}/claim`, method: "POST" }),
+      invalidatesTags: ["Drops"],
     }),
     listSessions: build.query<{ sessions: SessionInfo[] }, void>({
       query: () => "/me/sessions",
@@ -264,6 +302,11 @@ export const api = createApi({
 
 export const {
   useMeQuery,
+  useListMembersQuery,
+  useSetMemberMutation,
+  useRemoveMemberMutation,
+  useLazyLookupUserQuery,
+  useClaimDropMutation,
   useListTokensQuery,
   useCreateTokenMutation,
   useRevokeTokenMutation,
