@@ -10,7 +10,7 @@ import { worldActions } from "../../store/world";
 import { AppBody, Stack } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
 import { DocBar } from "../../components/molecules";
-import { FieldChip } from "../../components/atoms";
+import { FieldChip, IconButton, Button } from "../../components/atoms";
 
 /**
  * The aesthetic mapping: slot ↦ field, plus the geom and the y scale.
@@ -113,26 +113,22 @@ function EncodingApp({ leafId, docId }: AppProps) {
                       ⚠ not in the pipeline output — a step removed it
                     </Text>
                   )}
-                  <button
-                    type="button"
-                    aria-label={`accept a field for ${channel}`}
+                  <IconButton
+                    variant="framed"
+                    glyph="⌖"
+                    label={`accept a field for ${channel}`}
                     title={`accept a <field> for ${channel} — click one anywhere`}
                     onClick={() => void acceptFor(channel)}
-                    style={btn}
-                  >
-                    ⌖
-                  </button>
-                  <button
-                    type="button"
-                    aria-label={`clear ${channel}`}
+                  />
+                  <IconButton
+                    variant="framed"
+                    glyph="×"
+                    label={`clear ${channel}`}
                     disabled={!mapped}
                     onClick={() =>
                       dispatch(worldActions.setMapping({ docId: target, channel, field: null }))
                     }
-                    style={{ ...btn, opacity: mapped ? 1 : 0.4 }}
-                  >
-                    ×
-                  </button>
+                  />
                   <Text size="tiny" tone="faint">
                     {CHANNEL_ACCEPTS[channel].map((t) => TYPE_LABEL[t]).join(" / ")}
                   </Text>
@@ -145,9 +141,10 @@ function EncodingApp({ leafId, docId }: AppProps) {
             <SectionLabel>Y scale</SectionLabel>
             <Stack direction="row" gap={2} align="center">
               {(["linear", "log"] as const).map((scale) => (
-                <button
+                <Button
                   key={scale}
-                  type="button"
+                  variant="framed"
+                  selected={doc?.spec.yScale === scale}
                   disabled={scale === "log" && logUnavailable}
                   title={
                     scale === "log" && logUnavailable
@@ -155,15 +152,9 @@ function EncodingApp({ leafId, docId }: AppProps) {
                       : undefined
                   }
                   onClick={() => dispatch(worldActions.setYScale({ docId: target, scale }))}
-                  style={{
-                    ...btn,
-                    background:
-                      doc?.spec.yScale === scale ? "var(--pbui-selected)" : "var(--pbui-pane-alt)",
-                    opacity: scale === "log" && logUnavailable ? 0.45 : 1,
-                  }}
                 >
                   {scale}
-                </button>
+                </Button>
               ))}
               {logUnavailable && (
                 <Text size="tiny" tone="faint">
@@ -177,14 +168,6 @@ function EncodingApp({ leafId, docId }: AppProps) {
     </>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane-alt)",
-  padding: "0 var(--pbui-space-3)",
-  fontSize: "var(--pbui-fs-small)",
-  fontWeight: 700,
-};
 
 registerApp({
   id: "encode",

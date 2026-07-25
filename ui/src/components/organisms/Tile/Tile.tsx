@@ -4,6 +4,7 @@ import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { layoutActions, type Node } from "../../../store/layout";
 import { Text } from "../../foundation";
+import { IconButton, SelectInput } from "../../atoms";
 import { useDrag } from "./useDrag";
 import styles from "./Tile.module.css";
 
@@ -94,25 +95,18 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
 
         <span style={{ flex: 1 }} />
 
-        <select
-          aria-label="application"
+        <SelectInput
+          label="application"
+          variant="framed"
+          size="tiny"
           value={node.app}
-          onChange={(event) =>
-            dispatch(layoutActions.setLeafApp({ nodeId: node.id, app: event.target.value }))
-          }
+          onValueChange={(app) => dispatch(layoutActions.setLeafApp({ nodeId: node.id, app }))}
           onPointerDown={(event) => event.stopPropagation()}
-          style={{
-            border: "var(--pbui-border-hair)",
-            background: "var(--pbui-pane)",
-            fontSize: "var(--pbui-fs-tiny)",
-          }}
-        >
-          {allApps().map((descriptor) => (
-            <option key={descriptor.id} value={descriptor.id}>
-              {descriptor.title}
-            </option>
-          ))}
-        </select>
+          options={allApps().map((descriptor) => ({
+            value: descriptor.id,
+            label: descriptor.title,
+          }))}
+        />
 
         <TileButton
           label="split right"
@@ -150,35 +144,32 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   );
 }
 
+/**
+ * The tile's own chrome buttons: split, swap, close.
+ *
+ * Now a thin wrapper over IconButton rather than its own `<button>`. It stays a
+ * local component only because every one of them is framed, tiny and takes a
+ * glyph — three defaults repeated six times in the title bar.
+ */
 function TileButton({
   children,
   label,
   onClick,
   disabled,
 }: {
-  children: React.ReactNode;
+  children: string;
   label: string;
   onClick: () => void;
   disabled?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
+    <IconButton
+      variant="framed"
+      size="tiny"
+      glyph={children}
+      label={label}
       disabled={disabled}
       onClick={onClick}
-      style={{
-        border: "var(--pbui-border-hair)",
-        background: "var(--pbui-pane-alt)",
-        padding: "0 var(--pbui-space-2)",
-        fontSize: "var(--pbui-fs-tiny)",
-        fontWeight: 700,
-        opacity: disabled ? 0.35 : 1,
-        cursor: disabled ? "default" : "pointer",
-      }}
-    >
-      {children}
-    </button>
+    />
   );
 }

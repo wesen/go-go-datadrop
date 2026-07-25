@@ -10,7 +10,7 @@ import { Presentation } from "../../pbui";
 import type { MemberRef } from "../../pbui";
 import { Text } from "../../components/foundation";
 import { Stack, Toolbar } from "../../components/layout";
-import { Chip } from "../../components/atoms";
+import { Button, Chip, SelectInput, TextInput } from "../../components/atoms";
 
 const ROLES = ["reader", "writer", "admin"] as const;
 
@@ -71,9 +71,9 @@ export function MemberList({
           <Text size="tiny" tone="faint">
             this drop has no owner
           </Text>
-          <button type="button" onClick={() => void claimDrop(drop)}>
-            <Text size="tiny">claim it</Text>
-          </button>
+          <Button size="tiny" onClick={() => void claimDrop(drop)}>
+            claim it
+          </Button>
         </Toolbar>
       )}
 
@@ -97,30 +97,25 @@ export function MemberList({
             </Presentation>
             {admin && (
               <>
-                <select
-                  aria-label={`role of ${value.user.name}`}
+                <SelectInput
+                  label={`role of ${value.user.name}`}
+                  size="tiny"
                   value={member.role}
-                  onChange={(event) =>
+                  options={ROLES.map((r) => ({ value: r, label: r }))}
+                  onValueChange={(role) =>
                     void setMember({
                       drop,
                       userId: member.user_id,
-                      role: event.target.value as (typeof ROLES)[number],
+                      role: role as (typeof ROLES)[number],
                     })
                   }
-                  style={{ font: "inherit", fontSize: "var(--pbui-fs-tiny)" }}
-                >
-                  {ROLES.map((r) => (
-                    <option key={r} value={r}>
-                      {r}
-                    </option>
-                  ))}
-                </select>
-                <button
-                  type="button"
+                />
+                <Button
+                  size="tiny"
                   onClick={() => void removeMember({ drop, userId: member.user_id })}
                 >
-                  <Text size="tiny">remove</Text>
-                </button>
+                  remove
+                </Button>
               </>
             )}
           </Toolbar>
@@ -130,28 +125,23 @@ export function MemberList({
       {admin ? (
         <Stack gap={1}>
           <Toolbar tight>
-            <input
-              aria-label={`add a member to ${drop}`}
+            <TextInput
+              type="email"
+              label={`add a member to ${drop}`}
               placeholder="colleague@example.org"
               value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              style={{ font: "inherit", padding: "2px 4px", border: "var(--pbui-border-hair)" }}
+              onValueChange={setEmail}
             />
-            <select
-              aria-label="role for the new member"
+            <SelectInput
+              label="role for the new member"
+              size="tiny"
               value={role}
-              onChange={(event) => setRole(event.target.value as (typeof ROLES)[number])}
-              style={{ font: "inherit", fontSize: "var(--pbui-fs-tiny)" }}
-            >
-              {ROLES.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
-            <button type="button" disabled={!email.trim()} onClick={() => void add()}>
-              <Text size="tiny">add</Text>
-            </button>
+              options={ROLES.map((r) => ({ value: r, label: r }))}
+              onValueChange={(next) => setRole(next as (typeof ROLES)[number])}
+            />
+            <Button size="tiny" disabled={!email.trim()} onClick={() => void add()}>
+              add
+            </Button>
           </Toolbar>
           {error && (
             <Text size="tiny" tone="danger">

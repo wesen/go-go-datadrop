@@ -40,6 +40,20 @@
   font-weight: 700;
 }
 
+/*
+ * The treatment tokens.css named and nothing implemented: `--pbui-shadow-hard`
+ * carries the comment "buttons". The default fill is the alt surface, so a
+ * raised button with no `fill` still reads as a control rather than as an
+ * unfilled box.
+ */
+.raised {
+  border: var(--pbui-border-firm);
+  box-shadow: var(--pbui-shadow-hard);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-4);
+  font-weight: 700;
+}
+
 .danger {
   color: var(--pbui-danger);
 }

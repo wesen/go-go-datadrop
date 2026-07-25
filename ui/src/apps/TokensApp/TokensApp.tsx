@@ -9,7 +9,13 @@ import {
 import { registerApp, type AppProps } from "../registry";
 import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
 import { Divider, SectionLabel, Text } from "../../components/foundation";
-import { TokenChip } from "../../components/atoms";
+import {
+  Button,
+  CheckboxRow,
+  SelectInput,
+  TextInput,
+  TokenChip,
+} from "../../components/atoms";
 import { usePbui } from "../../pbui";
 
 const SCOPES = ["drops:read", "drops:write", "datasets:write", "admin"] as const;
@@ -104,15 +110,10 @@ function TokensApp(_props: AppProps) {
                 {minted.token}
               </code>
               <Toolbar tight>
-                <button
-                  type="button"
-                  onClick={() => void navigator.clipboard?.writeText(minted.token)}
-                >
-                  <Text size="small">Copy</Text>
-                </button>
-                <button type="button" onClick={() => setMinted(null)}>
-                  <Text size="small">Done</Text>
-                </button>
+                <Button onClick={() => void navigator.clipboard?.writeText(minted.token)}>
+                  Copy
+                </Button>
+                <Button onClick={() => setMinted(null)}>Done</Button>
               </Toolbar>
               <Text size="tiny" tone="faint" prose>
                 datadrop stores only a hash of this. Dismissing this panel is
@@ -132,56 +133,48 @@ function TokensApp(_props: AppProps) {
             </Text>
           )}
           <Toolbar tight>
-            <input
-              aria-label="token name"
+            <TextInput
+              label="token name"
               placeholder="ci ingest"
               value={name}
               disabled={!mintable}
-              onChange={(event) => setName(event.target.value)}
-              style={{ font: "inherit", padding: "2px 4px", border: "var(--pbui-border-hair)" }}
+              onValueChange={setName}
             />
-            <select
-              aria-label="expires in"
+            <SelectInput
+              label="expires in"
               value={expiresIn}
               disabled={!mintable}
-              onChange={(event) => setExpiresIn(event.target.value)}
-              style={{ font: "inherit" }}
-            >
-              {EXPIRIES.map((option) => (
-                <option key={option.label} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
+              onValueChange={setExpiresIn}
+              options={EXPIRIES.map((option) => ({
+                value: option.value,
+                label: option.label,
+              }))}
+            />
           </Toolbar>
           <Toolbar tight>
             {SCOPES.map((scope) => (
-              <label key={scope} style={{ fontSize: "var(--pbui-fs-small)" }}>
-                <input
-                  type="checkbox"
-                  disabled={!mintable}
-                  checked={scopes.includes(scope)}
-                  onChange={(event) =>
-                    setScopes((current) =>
-                      event.target.checked
-                        ? [...current, scope]
-                        : current.filter((s) => s !== scope),
-                    )
-                  }
-                />{" "}
-                {scope}
-              </label>
+              <CheckboxRow
+                key={scope}
+                label={scope}
+                disabled={!mintable}
+                checked={scopes.includes(scope)}
+                onCheckedChange={(next) =>
+                  setScopes((current) =>
+                    next ? [...current, scope] : current.filter((s) => s !== scope),
+                  )
+                }
+              />
             ))}
           </Toolbar>
           <Toolbar tight>
-            <button
-              type="button"
-              disabled={!mintable || minting || !name.trim() || scopes.length === 0}
+            <Button
+              disabled={!mintable || !name.trim() || scopes.length === 0}
+              busy={minting ? "minting…" : undefined}
               onClick={() => void mint()}
               data-testid="mint-token"
             >
-              <Text size="small">{minting ? "minting…" : "Mint token"}</Text>
-            </button>
+              Mint token
+            </Button>
           </Toolbar>
           {error && (
             <Text size="small" tone="danger">
@@ -200,14 +193,12 @@ function TokensApp(_props: AppProps) {
         <Stack gap={2}>
           <Toolbar tight>
             <SectionLabel>Your tokens</SectionLabel>
-            <label style={{ fontSize: "var(--pbui-fs-tiny)" }}>
-              <input
-                type="checkbox"
-                checked={showRevoked}
-                onChange={(event) => setShowRevoked(event.target.checked)}
-              />{" "}
-              show revoked
-            </label>
+            <CheckboxRow
+              size="tiny"
+              label="show revoked"
+              checked={showRevoked}
+              onCheckedChange={setShowRevoked}
+            />
           </Toolbar>
 
           {data?.tokens.length ? (
@@ -230,9 +221,9 @@ function TokensApp(_props: AppProps) {
                   {token.expires_at ? ` · expires ${token.expires_at.slice(0, 10)}` : ""}
                 </Text>
                 {!token.revoked_at && (
-                  <button type="button" onClick={() => void revokeToken(token.id)}>
-                    <Text size="tiny">revoke</Text>
-                  </button>
+                  <Button size="tiny" onClick={() => void revokeToken(token.id)}>
+                    revoke
+                  </Button>
                 )}
               </Toolbar>
             ))

@@ -34,7 +34,7 @@ export const TheFourItReplaced: Story = {
     <Stack gap={3}>
       <Live label="dataset name" placeholder="readings" />
       <Live label="token name" placeholder="ci ingest" />
-      <Live label="add a member to lab" placeholder="colleague@example.org" type="email" width="wide" />
+      <Live label="add a member to lab" placeholder="colleague@example.org" type="email" />
       <Live label="bearer token" type="password" initial="hunter2hunter2" />
       <Text size="tiny" tone="faint" prose>
         UploadApp, TokensApp, MemberList and SignInApp each wrote the same four
@@ -59,7 +59,7 @@ export const Empty: Story = {
 export const Invalid: Story = {
   render: () => (
     <Stack gap={2}>
-      <Live label="add a member" initial="not-an-address" invalid width="wide" />
+      <Live label="add a member" initial="not-an-address" invalid />
       <Text size="tiny" tone="danger">
         no datadrop account has that address yet
       </Text>
@@ -83,12 +83,26 @@ export const Disabled: Story = {
   ),
 };
 
-export const Widths: Story = {
+/**
+ * The three widths and the three sizes, each of which some call site asked for.
+ *
+ * Nothing here is a scale invented for symmetry: `narrow` is ChartsApp's
+ * document name, `fill` is SourceApp's token field taking the rest of a
+ * toolbar, and `auto` is what the four DATADROP-5 fields got.
+ */
+export const WidthsAndSizes: Story = {
   render: () => (
-    <Stack gap={2}>
-      <Live label="narrow" width="narrow" initial="90" />
-      <Live label="normal" width="normal" initial="readings" />
-      <Live label="wide" width="wide" initial="colleague@example.org" />
+    <Stack gap={3}>
+      <Stack direction="row" gap={2} align="center">
+        <Live label="narrow, small — the document name" width="narrow" size="small" initial="α" />
+        <Text size="tiny" tone="faint">
+          64px, beside a row of chips
+        </Text>
+      </Stack>
+      <Stack direction="row" gap={2} align="center">
+        <Live label="fill, tiny — the bearer token" width="fill" size="tiny" type="password" />
+      </Stack>
+      <Live label="auto, base — a dataset name" initial="readings" />
     </Stack>
   ),
 };

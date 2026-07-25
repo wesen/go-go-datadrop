@@ -4,6 +4,7 @@ import { Presentation } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { layoutActions } from "../../../store/layout";
 import { SectionLabel, Text } from "../../foundation";
+import { Button } from "../../atoms";
 import { Stack, Toolbar } from "../../layout";
 
 /**
@@ -80,20 +81,13 @@ export function WorkspaceStrip() {
             </Presentation>
           ),
         )}
-        <button
-          type="button"
+        <Button
+          variant="raised"
+          fill="var(--pbui-tone-source)"
           onClick={() => dispatch(layoutActions.addSpace())}
-          style={{
-            border: "var(--pbui-border-firm)",
-            boxShadow: "var(--pbui-shadow-hard)",
-            background: "var(--pbui-tone-source)",
-            padding: "0 var(--pbui-space-3)",
-            fontSize: "var(--pbui-fs-small)",
-            fontWeight: 700,
-          }}
         >
           + workspace
-        </button>
+        </Button>
         <Text size="tiny" tone="faint">
           L switches · double-click renames · R for duplicate / delete · ⌾ is
           defined in code

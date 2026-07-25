@@ -6,7 +6,7 @@ import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Surface } from "../../components/layout";
 import { Text } from "../../components/foundation";
-import { Chip } from "../../components/atoms";
+import { Button, Chip, IconButton } from "../../components/atoms";
 
 /**
  * Snapshots: frozen specifications.
@@ -81,24 +81,25 @@ function GalleryApp(_props: AppProps) {
               </Text>
               <Stack direction="row" gap={2} wrap>
                 {([0, 1] as const).map((slot) => (
-                  <button
+                  <Button
                     key={slot}
-                    type="button"
+                    variant="framed"
+                    size="tiny"
                     onClick={() =>
                       dispatch(worldActions.pinSnapshot({ slot, snapshotId: snapshot.id }))
                     }
-                    style={btn}
                   >
                     pin {slot === 0 ? "A" : "B"}
-                  </button>
+                  </Button>
                 ))}
-                <button
-                  type="button"
+                <IconButton
+                  variant="framed"
+                  size="tiny"
+                  tone="danger"
+                  glyph="✕"
+                  label={`delete the snapshot ${snapshot.name}`}
                   onClick={() => dispatch(worldActions.deleteSnapshot(snapshot.id))}
-                  style={{ ...btn, color: "var(--pbui-danger)" }}
-                >
-                  ✕
-                </button>
+                />
               </Stack>
             </Stack>
           </Surface>
@@ -107,14 +108,6 @@ function GalleryApp(_props: AppProps) {
     </AppBody>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane-alt)",
-  padding: "0 var(--pbui-space-3)",
-  fontSize: "var(--pbui-fs-tiny)",
-  fontWeight: 700,
-};
 
 registerApp({
   id: "gallery",

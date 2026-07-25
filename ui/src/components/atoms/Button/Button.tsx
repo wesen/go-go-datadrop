@@ -13,6 +13,10 @@ import styles from "./Button.module.css";
  *     buttons look like this.
  *   - **framed** — the six copies of `const btn: React.CSSProperties` in the
  *     chart applications: hairline border, alt background, bold.
+ *   - **raised** — a firm border, the hard shadow, and a tone fill.
+ *     LauncherApp, WatchlistApp and the tutorials. This is the treatment
+ *     `tokens.css` anticipated: `--pbui-shadow-hard` is documented there as
+ *     "buttons", and until now nothing named it.
  *
  * The six framed copies were identical except for `fontSize` — three used
  * 9.5px and three used 10.5px, which is a divergence nobody chose (guide §7.2).
@@ -20,7 +24,7 @@ import styles from "./Button.module.css";
  * now one reviewable word instead of six independent accidents.
  */
 
-export type ButtonVariant = "bare" | "framed";
+export type ButtonVariant = "bare" | "framed" | "raised";
 export type ButtonTone = "default" | "danger";
 export type ButtonSize = "tiny" | "small";
 
@@ -35,6 +39,15 @@ export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement
   selected?: boolean;
   /** Replaces the label and disables, for "minting…" and its relatives. */
   busy?: string;
+  /**
+   * The fill of a `raised` button, as a CSS variable reference.
+   *
+   * A string rather than an enum, and the same shape as `Chip`'s `tone`, for
+   * the same reason: LauncherApp fills each button with the tone of the
+   * application it launches, which is data, not a design choice made here.
+   * Ignored by the other variants.
+   */
+  fill?: string;
   /** `submit` only inside a real `<form>`. Everything here is `button`. */
   type?: "button" | "submit";
   children?: ReactNode;
@@ -46,6 +59,7 @@ export function Button({
   size = "small",
   selected = false,
   busy,
+  fill,
   type = "button",
   className,
   children,
@@ -58,6 +72,7 @@ export function Button({
       type={type}
       disabled={disabled || busy !== undefined}
       aria-pressed={selected || undefined}
+      style={variant === "raised" && fill ? { background: fill } : undefined}
       className={[
         styles.root,
         styles[variant],

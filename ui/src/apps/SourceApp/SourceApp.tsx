@@ -14,7 +14,7 @@ import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Toolbar } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
-import { SourceChip } from "../../components/atoms";
+import { Button, SelectInput, SourceChip, TextInput } from "../../components/atoms";
 
 /**
  * The source browser: drops, then their streams and dataset files.
@@ -25,6 +25,11 @@ import { SourceChip } from "../../components/atoms";
 function SourceApp(_props: AppProps) {
   const dispatch = useDispatch();
   const [drop, setDrop] = useState("");
+  // Was an uncontrolled `defaultValue={readToken()}` that wrote through on
+  // every keystroke. The write-through is kept; the state makes it controlled,
+  // which is what TextInput requires and what stops the value and the store
+  // silently diverging after a programmatic change.
+  const [token, setToken] = useState(() => readToken());
   const [dataset, setDataset] = useState("");
   const activeDocId = useSelector((s: RootState) => s.world.activeDocId);
   const limit = useSelector((s: RootState) =>
@@ -52,18 +57,16 @@ function SourceApp(_props: AppProps) {
     <>
       <Toolbar tight bordered>
         <SectionLabel>Token</SectionLabel>
-        <input
+        <TextInput
           type="password"
-          defaultValue={readToken()}
+          label="bearer token"
           placeholder="bearer token (public-read drops need none)"
-          aria-label="bearer token"
-          onChange={(event) => writeToken(event.target.value)}
-          style={{
-            border: "var(--pbui-border-hair)",
-            background: "var(--pbui-pane)",
-            fontSize: "var(--pbui-fs-tiny)",
-            flex: 1,
-            minWidth: 120,
+          value={token}
+          width="fill"
+          size="tiny"
+          onValueChange={(next) => {
+            setToken(next);
+            writeToken(next);
           }}
         />
       </Toolbar>
@@ -78,41 +81,35 @@ function SourceApp(_props: AppProps) {
 
           <Stack gap={2}>
             <SectionLabel>Drop</SectionLabel>
-            <select
+            <SelectInput
+              label="drop"
+              variant="framed"
               value={chosen}
-              aria-label="drop"
-              onChange={(event) => {
-                setDrop(event.target.value);
+              onValueChange={(next) => {
+                setDrop(next);
                 setDataset("");
               }}
-              style={input}
-            >
-              {(drops.data?.drops ?? []).map((d) => (
-                <option key={d.name} value={d.name}>
-                  {d.name}
-                  {d.public_read ? " (public)" : ""}
-                </option>
-              ))}
-            </select>
+              options={(drops.data?.drops ?? []).map((d) => ({
+                value: d.name,
+                label: d.public_read ? `${d.name} (public)` : d.name,
+              }))}
+            />
           </Stack>
 
           <Stack gap={2}>
             <SectionLabel>Row budget — how much of the source is loaded</SectionLabel>
             <Stack direction="row" gap={2} wrap align="center">
               {[500, 2000, 10000, 50000].map((option) => (
-                <button
+                <Button
                   key={option}
-                  type="button"
+                  variant="framed"
+                  selected={limit === option}
                   onClick={() =>
                     dispatch(worldActions.setDocLimit({ docId: activeDocId, limit: option }))
                   }
-                  style={{
-                    ...btn,
-                    background: limit === option ? "var(--pbui-selected)" : "var(--pbui-pane-alt)",
-                  }}
                 >
                   {option.toLocaleString()}
-                </button>
+                </Button>
               ))}
               <Text size="tiny" tone="faint">
                 the pipeline's `limit` step is a different thing
@@ -139,18 +136,16 @@ function SourceApp(_props: AppProps) {
 
           <Stack gap={2}>
             <SectionLabel>Datasets</SectionLabel>
-            <select
+            <SelectInput
+              label="dataset"
+              variant="framed"
               value={chosenDataset}
-              aria-label="dataset"
-              onChange={(event) => setDataset(event.target.value)}
-              style={input}
-            >
-              {(datasets.data?.datasets ?? []).map((d) => (
-                <option key={d.name} value={d.name}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
+              onValueChange={setDataset}
+              options={(datasets.data?.datasets ?? []).map((d) => ({
+                value: d.name,
+                label: d.name,
+              }))}
+            />
             <Stack direction="row" gap={2} wrap>
               {(versionDetail.data?.files ?? []).map((file) => (
                 <SourceChip
@@ -176,21 +171,6 @@ function SourceApp(_props: AppProps) {
     </>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane-alt)",
-  padding: "0 var(--pbui-space-3)",
-  fontSize: "var(--pbui-fs-small)",
-  fontWeight: 700,
-};
-
-const input: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane)",
-  fontSize: "var(--pbui-fs-small)",
-  padding: "0 var(--pbui-space-2)",
-};
 
 registerApp({
   id: "sources",

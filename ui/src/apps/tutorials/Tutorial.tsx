@@ -3,6 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../store";
 import { AppBody, Stack } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
+import { Button } from "../../components/atoms";
 
 /**
  * The tutorial machinery.
@@ -76,23 +77,16 @@ export function Step({
         </Text>
         {run && (
           <Stack direction="row" gap={2} align="center">
-            <button
-              type="button"
+            <Button
+              variant="raised"
+              fill={done ? "var(--pbui-pane-alt)" : "var(--pbui-tone-geom)"}
               onClick={() => {
                 run({ dispatch, state });
                 setDone(true);
               }}
-              style={{
-                border: "1.5px solid var(--pbui-ink)",
-                boxShadow: "var(--pbui-shadow-hard)",
-                background: done ? "var(--pbui-pane-alt)" : "var(--pbui-tone-geom)",
-                padding: "0 var(--pbui-space-4)",
-                fontSize: "var(--pbui-fs-small)",
-                fontWeight: 700,
-              }}
             >
               ▶ {runLabel ?? "do it for me"}
-            </button>
+            </Button>
             {done && (
               <Text size="tiny" tone="ok">
                 done — watch the other tiles, and check the trace

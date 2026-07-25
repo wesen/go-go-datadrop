@@ -39,7 +39,19 @@ export interface SelectInputProps
   options: readonly SelectOption[];
   /** Shown as the empty-valued first entry. */
   placeholder?: string;
+  /**
+   * The same pair Button has, and for the same reason: the codebase already
+   * contains both. UploadApp, TokensApp, MemberList and the shell leave the
+   * native chrome alone; SourceApp draws a hairline border and a pane
+   * background around it, matching the text fields beside it.
+   */
+  variant?: "native" | "framed";
   size?: "tiny" | "small";
+  /**
+   * `compact` is PipelineApp's step editor, which caps its selects at 60-90px
+   * so that a whole step reads as one line. Everything else takes the default.
+   */
+  width?: "auto" | "compact";
 }
 
 export function SelectInput({
@@ -48,7 +60,9 @@ export function SelectInput({
   label,
   options,
   placeholder,
+  variant = "native",
   size = "small",
+  width = "auto",
   className,
   ...rest
 }: SelectInputProps) {
@@ -57,7 +71,9 @@ export function SelectInput({
       aria-label={label}
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
-      className={[styles.root, styles[size], className ?? ""].filter(Boolean).join(" ")}
+      className={[styles.root, styles[variant], styles[size], styles[width], className ?? ""]
+        .filter(Boolean)
+        .join(" ")}
       {...rest}
     >
       {placeholder !== undefined && <option value="">{placeholder}</option>}

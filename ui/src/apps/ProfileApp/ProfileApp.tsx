@@ -8,7 +8,7 @@ import {
 import { registerApp, type AppProps } from "../registry";
 import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
 import { Divider, SectionLabel, Text } from "../../components/foundation";
-import { RoleBadge, SourceChip, UserChip, type Role } from "../../components/atoms";
+import { Button, RoleBadge, SourceChip, UserChip, type Role } from "../../components/atoms";
 import { MemberList } from "./MemberList";
 
 /**
@@ -100,16 +100,14 @@ function ProfileApp(_props: AppProps) {
                         public
                       </Text>
                     )}
-                    <button
-                      type="button"
+                    <Button
+                      size="tiny"
                       onClick={() =>
                         setExpanded((current) => (current === drop.name ? null : drop.name))
                       }
                     >
-                      <Text size="tiny">
-                        {expanded === drop.name ? "hide access" : "access"}
-                      </Text>
-                    </button>
+                      {expanded === drop.name ? "hide access" : "access"}
+                    </Button>
                   </Toolbar>
                   {expanded === drop.name && (
                     <div style={{ paddingLeft: "var(--pbui-space-4)" }}>
@@ -152,12 +150,12 @@ function ProfileApp(_props: AppProps) {
               <Surface tone="alt">
                 <Stack gap={2}>
                   <Toolbar tight>
-                    <button type="button" onClick={() => void signOut()} data-testid="sign-out">
-                      <Text size="small">Sign out</Text>
-                    </button>
-                    <button type="button" onClick={() => void signOut({ global: true })}>
-                      <Text size="small">Sign out everywhere</Text>
-                    </button>
+                    <Button onClick={() => void signOut()} data-testid="sign-out">
+                      Sign out
+                    </Button>
+                    <Button onClick={() => void signOut({ global: true })}>
+                      Sign out everywhere
+                    </Button>
                   </Toolbar>
                   {/* Said plainly because it surprises people: local sign-out
                       leaves you signed in AT THE PROVIDER, so clicking "sign

@@ -10,7 +10,14 @@ import { worldActions } from "../../store/world";
 import { AppBody, Stack, Toolbar } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
 import { DocBar } from "../../components/molecules";
-import { FieldChip } from "../../components/atoms";
+import {
+  Button,
+  CheckboxRow,
+  FieldChip,
+  IconButton,
+  SelectInput,
+  TextInput,
+} from "../../components/atoms";
 
 const KINDS: Step["kind"][] = ["filter", "derive", "summarize", "sort", "limit"];
 
@@ -75,10 +82,10 @@ function PipelineApp({ leafId, docId }: AppProps) {
       <DocBar leafId={leafId} docId={docId} />
       <Toolbar tight>
         {KINDS.map((kind) => (
-          <button key={kind} type="button" onClick={() => void add(kind)} style={btn}>
+          <Button key={kind} variant="framed" onClick={() => void add(kind)}>
             + {kind}
             {kind === "filter" || kind === "summarize" ? "…" : ""}
-          </button>
+          </Button>
         ))}
       </Toolbar>
 
@@ -98,12 +105,12 @@ function PipelineApp({ leafId, docId }: AppProps) {
             return (
               <Stack key={step.id} gap={2}>
                 <Stack direction="row" gap={2} align="center" wrap>
-                  <input
-                    type="checkbox"
+                  <CheckboxRow
                     checked={step.on}
-                    aria-label={`enable ${step.kind}`}
+                    label={`enable ${step.kind}`}
+                    hideLabel
                     title="disable this step without deleting it"
-                    onChange={() =>
+                    onCheckedChange={() =>
                       dispatch(worldActions.toggleStep({ docId: target, stepId: step.id }))
                     }
                   />
@@ -131,27 +138,24 @@ function PipelineApp({ leafId, docId }: AppProps) {
                     {stepLabel(step)}
                   </Text>
                   <span style={{ flex: 1 }} />
-                  <button
-                    type="button"
-                    aria-label="move up"
+                  <IconButton
+                    variant="framed"
+                    glyph="↑"
+                    label="move up"
                     disabled={index === 0}
                     onClick={() =>
                       dispatch(worldActions.moveStep({ docId: target, stepId: step.id, by: -1 }))
                     }
-                    style={{ ...btn, opacity: index === 0 ? 0.4 : 1 }}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    aria-label="remove step"
+                  />
+                  <IconButton
+                    variant="framed"
+                    tone="danger"
+                    glyph="✕"
+                    label="remove step"
                     onClick={() =>
                       dispatch(worldActions.removeStep({ docId: target, stepId: step.id }))
                     }
-                    style={{ ...btn, color: "var(--pbui-danger)" }}
-                  >
-                    ✕
-                  </button>
+                  />
                 </Stack>
 
                 <StepEditor step={step} fields={available.map((f) => f.name)} onChange={update} />
@@ -194,47 +198,73 @@ function StepEditor({
   fields: string[];
   onChange: (step: Step) => void;
 }) {
-  const select = (value: string, options: string[], onPick: (v: string) => void, width?: number) => (
-    <select
+  // `label` is required by SelectInput and none of these had one before: the
+  // step editor shipped six unlabelled selects, which a screen reader announces
+  // as "combo box" and nothing else. Naming them is the one behaviour change in
+  // this substitution, and it is a fix.
+  const select = (
+    label: string,
+    value: string,
+    options: string[],
+    onPick: (v: string) => void,
+    compact = false,
+  ) => (
+    <SelectInput
+      label={label}
+      variant="framed"
+      width={compact ? "compact" : "auto"}
       value={value}
-      onChange={(event) => onPick(event.target.value)}
-      style={{ ...input, maxWidth: width }}
-    >
-      {options.length === 0 && <option value="">(no field)</option>}
-      {options.map((option) => (
-        <option key={option} value={option}>
-          {option}
-        </option>
-      ))}
-    </select>
+      onValueChange={onPick}
+      options={
+        options.length === 0
+          ? [{ value: "", label: "(no field)" }]
+          : options.map((option) => ({ value: option, label: option }))
+      }
+    />
   );
 
   switch (step.kind) {
     case "filter":
       return (
         <Stack direction="row" gap={2} wrap>
-          {select(step.field, fields, (field) => onChange({ ...step, field }))}
-          {select(step.op, [...FILTER_OPS], (op) => onChange({ ...step, op: op as typeof step.op }), 60)}
-          <input
+          {select("field to filter on", step.field, fields, (field) => onChange({ ...step, field }))}
+          {select(
+            "comparison",
+            step.op,
+            [...FILTER_OPS],
+            (op) => onChange({ ...step, op: op as typeof step.op }),
+            true,
+          )}
+          <TextInput
+            label="value to compare against"
+            size="small"
             value={step.value}
             placeholder="value (blank passes everything)"
-            onChange={(event) => onChange({ ...step, value: event.target.value })}
-            style={input}
+            onValueChange={(value) => onChange({ ...step, value })}
           />
         </Stack>
       );
     case "derive":
       return (
         <Stack direction="row" gap={2} wrap align="center">
-          <input
+          <TextInput
+            label="name of the derived field"
+            size="small"
+            width="compact"
             value={step.name}
-            onChange={(event) => onChange({ ...step, name: event.target.value })}
-            style={{ ...input, maxWidth: 110 }}
+            onValueChange={(name) => onChange({ ...step, name })}
           />
           <Text size="small">=</Text>
-          {select(step.a, fields, (a) => onChange({ ...step, a }))}
-          {select(step.op, [...DERIVE_OPS], (op) => onChange({ ...step, op: op as typeof step.op }), 70)}
-          {step.op !== "log10" && select(step.b, fields, (b) => onChange({ ...step, b }))}
+          {select("left operand", step.a, fields, (a) => onChange({ ...step, a }))}
+          {select(
+            "operator",
+            step.op,
+            [...DERIVE_OPS],
+            (op) => onChange({ ...step, op: op as typeof step.op }),
+            true,
+          )}
+          {step.op !== "log10" &&
+            select("right operand", step.b, fields, (b) => onChange({ ...step, b }))}
         </Stack>
       );
     case "summarize":
@@ -243,27 +273,43 @@ function StepEditor({
           <Text size="tiny" tone="faint">
             by
           </Text>
-          {select(step.by, fields, (by) => onChange({ ...step, by }))}
-          {select(step.fn, [...AGGREGATES], (fn) => onChange({ ...step, fn: fn as typeof step.fn }), 90)}
-          {step.fn !== "count" && select(step.field, fields, (field) => onChange({ ...step, field }))}
+          {select("field to group by", step.by, fields, (by) => onChange({ ...step, by }))}
+          {select(
+            "aggregate",
+            step.fn,
+            [...AGGREGATES],
+            (fn) => onChange({ ...step, fn: fn as typeof step.fn }),
+            true,
+          )}
+          {step.fn !== "count" &&
+            select("field to aggregate", step.field, fields, (field) =>
+              onChange({ ...step, field }),
+            )}
         </Stack>
       );
     case "sort":
       return (
         <Stack direction="row" gap={2} wrap>
-          {select(step.field, fields, (field) => onChange({ ...step, field }))}
-          {select(step.dir, ["asc", "desc"], (dir) => onChange({ ...step, dir: dir as "asc" | "desc" }), 90)}
+          {select("field to sort on", step.field, fields, (field) => onChange({ ...step, field }))}
+          {select(
+            "direction",
+            step.dir,
+            ["asc", "desc"],
+            (dir) => onChange({ ...step, dir: dir as "asc" | "desc" }),
+            true,
+          )}
         </Stack>
       );
     case "limit":
       return (
         <Stack direction="row" gap={2} align="center">
-          <input
-            type="number"
-            min={1}
-            value={step.n}
-            onChange={(event) => onChange({ ...step, n: Number(event.target.value) })}
-            style={{ ...input, maxWidth: 90 }}
+          <TextInput
+            label="rows to keep"
+            size="small"
+            width="compact"
+            inputMode="numeric"
+            value={String(step.n)}
+            onValueChange={(n) => onChange({ ...step, n: Number(n) })}
           />
           {/* Never the bare word "limit": there are two, and the other one is
               the row budget on the source. */}
@@ -274,21 +320,6 @@ function StepEditor({
       );
   }
 }
-
-const btn: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane-alt)",
-  padding: "0 var(--pbui-space-3)",
-  fontSize: "var(--pbui-fs-small)",
-  fontWeight: 700,
-};
-
-const input: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane)",
-  fontSize: "var(--pbui-fs-small)",
-  padding: "0 var(--pbui-space-2)",
-};
 
 registerApp({
   id: "pipeline",

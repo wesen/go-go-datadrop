@@ -3,6 +3,7 @@ import { allApps, registerApp, type AppProps } from "../registry";
 import { layoutActions } from "../../store/layout";
 import { AppBody, Stack } from "../../components/layout";
 import { Text } from "../../components/foundation";
+import { Button } from "../../components/atoms";
 
 /** What an empty tile shows: a button per application. */
 function LauncherApp({ leafId }: AppProps) {
@@ -19,21 +20,14 @@ function LauncherApp({ leafId }: AppProps) {
           {allApps()
             .filter((app) => app.id !== "launcher")
             .map((app) => (
-              <button
+              <Button
                 key={app.id}
-                type="button"
+                variant="raised"
+                fill={app.tone}
                 onClick={() => dispatch(layoutActions.setLeafApp({ nodeId: leafId, app: app.id }))}
-                style={{
-                  border: "var(--pbui-border-firm)",
-                  boxShadow: "var(--pbui-shadow-hard)",
-                  background: app.tone,
-                  padding: "var(--pbui-space-1) var(--pbui-space-4)",
-                  fontSize: "var(--pbui-fs-small)",
-                  fontWeight: 700,
-                }}
               >
                 {app.title}
-              </button>
+              </Button>
             ))}
         </Stack>
       </Stack>

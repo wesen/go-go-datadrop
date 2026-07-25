@@ -1,5 +1,5 @@
 import { useDispatch, useSelector } from "react-redux";
-import { DocChip } from "../../atoms";
+import { DocChip, IconButton, SelectInput } from "../../atoms";
 import { SectionLabel } from "../../foundation";
 import { Toolbar } from "../../layout";
 import type { RootState } from "../../../store";
@@ -27,45 +27,36 @@ export function DocBar({ leafId, docId }: { leafId: NodeId; docId: DocId | null 
       <SectionLabel>Doc</SectionLabel>
       {shown && <DocChip docId={shown} />}
 
-      <select
-        aria-label="which document this tile shows"
+      <SelectInput
+        label="which document this tile shows"
+        variant="framed"
+        size="tiny"
         value={shown ?? ""}
-        onChange={(event) =>
-          dispatch(layoutActions.setLeafDoc({ nodeId: leafId, docId: event.target.value || null }))
+        onValueChange={(docId) =>
+          dispatch(layoutActions.setLeafDoc({ nodeId: leafId, docId: docId || null }))
         }
-        style={{
-          border: "var(--pbui-border-hair)",
-          background: "var(--pbui-pane)",
-          fontSize: "var(--pbui-fs-tiny)",
-        }}
-      >
-        {docs.length === 0 && <option value="">(no documents)</option>}
-        {docs.map((doc) => (
-          <option key={doc.id} value={doc.id}>
-            {doc.name} · {doc.spec.source.drop || "—"}
-          </option>
-        ))}
-      </select>
+        options={
+          docs.length === 0
+            ? [{ value: "", label: "(no documents)" }]
+            : docs.map((doc) => ({
+                value: doc.id,
+                label: `${doc.name} · ${doc.spec.source.drop || "—"}`,
+              }))
+        }
+      />
 
-      <button
-        type="button"
-        aria-label="new document in this tile"
+      <IconButton
+        variant="framed"
+        size="tiny"
+        glyph="＋"
+        label="new document in this tile"
         title="new chart document — this tile re-points to it"
         onClick={() => {
           const action = worldActions.newDoc(null);
           dispatch(action);
           dispatch(layoutActions.setLeafDoc({ nodeId: leafId, docId: action.payload.id }));
         }}
-        style={{
-          border: "var(--pbui-border-hair)",
-          background: "var(--pbui-pane-alt)",
-          padding: "0 var(--pbui-space-2)",
-          fontSize: "var(--pbui-fs-tiny)",
-          fontWeight: 700,
-        }}
-      >
-        ＋
-      </button>
+      />
     </Toolbar>
   );
 }

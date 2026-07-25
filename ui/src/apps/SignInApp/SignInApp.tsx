@@ -3,6 +3,7 @@ import { readToken, useMeQuery, writeToken } from "../../api/client";
 import { registerApp, type AppProps } from "../registry";
 import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
+import { Button, LinkAction, TextInput } from "../../components/atoms";
 
 /**
  * The way in.
@@ -63,20 +64,19 @@ function SignInApp(_props: AppProps) {
               {/* Plain links, not fetch(). An OIDC redirect cannot be performed
                   with XHR, and attempting it is a standard afternoon lost to
                   CORS. */}
-              <a href={`/v1/auth/login?return=${encodeURIComponent(returnPath())}`} data-testid="sign-in">
-                <Text size="small" strong>
-                  Sign in →
-                </Text>
-              </a>
+              <LinkAction
+                href={`/v1/auth/login?return=${encodeURIComponent(returnPath())}`}
+                data-testid="sign-in"
+              >
+                Sign in →
+              </LinkAction>
               {me?.signup_enabled && (
-                <a
+                <LinkAction
                   href={`/v1/auth/login?intent=signup&return=${encodeURIComponent(returnPath())}`}
                   data-testid="sign-up"
                 >
-                  <Text size="small" strong>
-                    Create an account →
-                  </Text>
-                </a>
+                  Create an account →
+                </LinkAction>
               )}
             </Toolbar>
 
@@ -97,22 +97,20 @@ function SignInApp(_props: AppProps) {
               </Text>
             </Stack>
             <Toolbar>
-              <input
+              <TextInput
                 type="password"
-                aria-label="bearer token"
+                label="bearer token"
                 value={token}
-                onChange={(event) => setToken(event.target.value)}
-                style={{ font: "inherit", padding: "2px 4px", border: "var(--pbui-border-hair)" }}
+                onValueChange={setToken}
               />
-              <button
-                type="button"
+              <Button
                 onClick={() => {
                   writeToken(token);
                   window.location.reload();
                 }}
               >
-                <Text size="small">Use this token</Text>
-              </button>
+                Use this token
+              </Button>
             </Toolbar>
           </Stack>
         )}

@@ -35,7 +35,22 @@ export interface TextInputProps
   type?: "text" | "password" | "email" | "search";
   /** Marks the field as failing validation; sets `aria-invalid`. */
   invalid?: boolean;
-  width?: "narrow" | "normal" | "wide";
+  /**
+   * Every value here is a width some call site actually asked for:
+   * `auto` (the browser default, used by the four DATADROP-5 fields),
+   * `narrow` (64px, ChartsApp's document name, which sits in a wrapping row of
+   * chips), `compact` (96px, PipelineApp's step-editor fields, which have to
+   * keep a step on one line), and `fill` (SourceApp's token field, which takes
+   * the rest of a toolbar). Inventing a small-medium-large scale nothing asks
+   * for is how a component becomes a styling API (§20.3).
+   */
+  width?: "auto" | "narrow" | "compact" | "fill";
+  /**
+   * `base` (11.5px) is `font: inherit` from the body, which is what the four
+   * DATADROP-5 fields got. ChartsApp asked for `small` and SourceApp for
+   * `tiny`, explicitly. All three sizes predate this component.
+   */
+  size?: "base" | "small" | "tiny";
 }
 
 export function TextInput({
@@ -44,7 +59,8 @@ export function TextInput({
   label,
   type = "text",
   invalid = false,
-  width = "normal",
+  width = "auto",
+  size = "base",
   className,
   ...rest
 }: TextInputProps) {
@@ -55,7 +71,13 @@ export function TextInput({
       aria-invalid={invalid || undefined}
       value={value}
       onChange={(event) => onValueChange(event.target.value)}
-      className={[styles.root, styles[width], invalid ? styles.invalid : "", className ?? ""]
+      className={[
+        styles.root,
+        styles[width],
+        styles[size],
+        invalid ? styles.invalid : "",
+        className ?? "",
+      ]
         .filter(Boolean)
         .join(" ")}
       {...rest}

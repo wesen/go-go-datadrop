@@ -5,7 +5,7 @@ import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
 import { Text } from "../../components/foundation";
-import { DocChip } from "../../components/atoms";
+import { Button, DocChip, IconButton, TextInput } from "../../components/atoms";
 
 /**
  * The document manager.
@@ -22,9 +22,9 @@ function ChartsApp(_props: AppProps) {
   return (
     <>
       <Toolbar tight>
-        <button type="button" onClick={() => dispatch(worldActions.newDoc(null))} style={btn}>
+        <Button variant="framed" size="tiny" onClick={() => dispatch(worldActions.newDoc(null))}>
           ＋ new document
-        </button>
+        </Button>
       </Toolbar>
       <AppBody>
         <Stack gap={3}>
@@ -42,18 +42,14 @@ function ChartsApp(_props: AppProps) {
               <Stack gap={2}>
                 <Stack direction="row" gap={2} align="center" wrap>
                   <DocChip docId={doc.id} />
-                  <input
+                  <TextInput
+                    label="document name"
                     value={doc.name}
-                    aria-label="document name"
-                    onChange={(event) =>
-                      dispatch(worldActions.renameDoc({ docId: doc.id, name: event.target.value }))
+                    width="narrow"
+                    size="small"
+                    onValueChange={(name) =>
+                      dispatch(worldActions.renameDoc({ docId: doc.id, name }))
                     }
-                    style={{
-                      border: "var(--pbui-border-hair)",
-                      background: "var(--pbui-pane)",
-                      fontSize: "var(--pbui-fs-small)",
-                      width: 64,
-                    }}
                   />
                 </Stack>
                 <Text size="tiny" tone="faint">
@@ -64,43 +60,44 @@ function ChartsApp(_props: AppProps) {
                 </Text>
                 <Stack direction="row" gap={2} wrap>
                   {doc.id !== activeDocId && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="framed"
+                      size="tiny"
                       onClick={() => dispatch(worldActions.setActiveDoc(doc.id))}
-                      style={btn}
                     >
                       set active
-                    </button>
+                    </Button>
                   )}
-                  <button
-                    type="button"
+                  <Button
+                    variant="framed"
+                    size="tiny"
                     onClick={() =>
                       dispatch(
                         worldActions.duplicateDoc({ docId: doc.id, id: crypto.randomUUID() }),
                       )
                     }
-                    style={btn}
                   >
                     ⧉ duplicate
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <Button
+                    variant="framed"
+                    size="tiny"
                     onClick={() =>
                       dispatch(worldActions.snapshot(doc.id, new Date().toISOString()))
                     }
-                    style={btn}
                   >
                     ⚑ snapshot
-                  </button>
-                  <button
-                    type="button"
+                  </Button>
+                  <IconButton
+                    variant="framed"
+                    size="tiny"
+                    glyph="✕"
+                    label={
+                      docs.length < 2 ? "the last document cannot be deleted" : "delete document"
+                    }
                     disabled={docs.length < 2}
-                    title={docs.length < 2 ? "the last document cannot be deleted" : undefined}
                     onClick={() => dispatch(worldActions.deleteDoc(doc.id))}
-                    style={{ ...btn, opacity: docs.length < 2 ? 0.4 : 1 }}
-                  >
-                    ✕
-                  </button>
+                  />
                 </Stack>
               </Stack>
             </Surface>
@@ -110,14 +107,6 @@ function ChartsApp(_props: AppProps) {
     </>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane-alt)",
-  padding: "0 var(--pbui-space-3)",
-  fontSize: "var(--pbui-fs-tiny)",
-  fontWeight: 700,
-};
 
 registerApp({
   id: "charts",

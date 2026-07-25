@@ -3,6 +3,7 @@ import { readToken, useListDropsQuery, useMeQuery } from "../../api/client";
 import { registerApp, type AppProps } from "../registry";
 import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
+import { Button, SelectInput, TextInput } from "../../components/atoms";
 import { Presentation, usePbui } from "../../pbui";
 import {
   canHash,
@@ -240,29 +241,22 @@ function UploadApp(_props: AppProps) {
         <Stack gap={2}>
           <SectionLabel>Publish a dataset</SectionLabel>
           <Toolbar tight>
-            <select
-              aria-label="drop"
+            <SelectInput
+              label="drop"
               value={drop}
-              onChange={(event) => {
-                setDrop(event.target.value);
-                void checkDrafts(event.target.value, dataset);
+              placeholder="choose a drop…"
+              onValueChange={(next) => {
+                setDrop(next);
+                void checkDrafts(next, dataset);
               }}
-              style={{ font: "inherit" }}
-            >
-              <option value="">choose a drop…</option>
-              {writable.map((d) => (
-                <option key={d.name} value={d.name}>
-                  {d.name}
-                </option>
-              ))}
-            </select>
-            <input
-              aria-label="dataset name"
+              options={writable.map((d) => ({ value: d.name, label: d.name }))}
+            />
+            <TextInput
+              label="dataset name"
               placeholder="readings"
               value={dataset}
-              onChange={(event) => setDataset(event.target.value)}
+              onValueChange={setDataset}
               onBlur={() => void checkDrafts(drop, dataset)}
-              style={{ font: "inherit", padding: "2px 4px", border: "var(--pbui-border-hair)" }}
             />
           </Toolbar>
           {writable.length === 0 && (
@@ -284,8 +278,8 @@ function UploadApp(_props: AppProps) {
                     version {draft.version} · {draft.file_count} files ·{" "}
                     {formatBytes(draft.total_bytes)}
                   </Text>
-                  <button
-                    type="button"
+                  <Button
+                    size="tiny"
                     disabled={!batch}
                     title={batch ? undefined : "choose the files again first"}
                     onClick={() =>
@@ -295,11 +289,11 @@ function UploadApp(_props: AppProps) {
                       )
                     }
                   >
-                    <Text size="tiny">resume</Text>
-                  </button>
-                  <button type="button" onClick={() => void discard(draft.version)}>
-                    <Text size="tiny">discard</Text>
-                  </button>
+                    resume
+                  </Button>
+                  <Button size="tiny" onClick={() => void discard(draft.version)}>
+                    discard
+                  </Button>
                 </Toolbar>
               ))}
               <Text size="tiny" tone="faint" prose>
@@ -316,14 +310,13 @@ function UploadApp(_props: AppProps) {
             that the surface is droppable at all. The button assumes none of
             those, and it is what a keyboard reaches. */}
         <Toolbar tight>
-          <button
-            type="button"
+          <Button
             disabled={!drop || !dataset}
             onClick={() => fileInput.current?.click()}
             data-testid="choose-files"
           >
-            <Text size="small">Choose CSV files…</Text>
-          </button>
+            Choose CSV files…
+          </Button>
           <Text size="tiny" tone="faint">
             or drop them below
           </Text>
@@ -388,19 +381,19 @@ function UploadApp(_props: AppProps) {
                 {batch.version !== null ? ` · version ${batch.version}` : ""}
               </SectionLabel>
               {batch.phase === "picked" && (
-                <button type="button" onClick={() => void run()} data-testid="upload">
-                  <Text size="small">Upload {batch.items.length} files</Text>
-                </button>
+                <Button onClick={() => void run()} data-testid="upload">
+                  Upload {batch.items.length} files
+                </Button>
               )}
               {batch.phase === "ready" && (
-                <button type="button" onClick={() => void commit()} data-testid="commit">
-                  <Text size="small">Commit</Text>
-                </button>
+                <Button onClick={() => void commit()} data-testid="commit">
+                  Commit
+                </Button>
               )}
               {batch.phase === "partial" && (
-                <button type="button" onClick={() => void run(batch.version ?? undefined)}>
-                  <Text size="small">Retry failed</Text>
-                </button>
+                <Button onClick={() => void run(batch.version ?? undefined)}>
+                  Retry failed
+                </Button>
               )}
             </Toolbar>
 
@@ -441,8 +434,7 @@ function UploadApp(_props: AppProps) {
                     Published — version {batch.version}
                   </Text>
                   <Toolbar tight>
-                    <button
-                      type="button"
+                    <Button
                       onClick={() =>
                         pbui.perform({
                           kind: "newDoc",
@@ -456,8 +448,8 @@ function UploadApp(_props: AppProps) {
                         })
                       }
                     >
-                      <Text size="small">Open in a chart</Text>
-                    </button>
+                      Open in a chart
+                    </Button>
                   </Toolbar>
                 </Stack>
               </Surface>

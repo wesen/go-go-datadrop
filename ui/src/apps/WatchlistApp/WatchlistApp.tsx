@@ -5,7 +5,7 @@ import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Toolbar } from "../../components/layout";
 import { Text } from "../../components/foundation";
-import { Chip } from "../../components/atoms";
+import { Button, Chip, IconButton } from "../../components/atoms";
 
 /**
  * A scratchpad of pinned objects, of any type.
@@ -23,8 +23,9 @@ function WatchlistApp(_props: AppProps) {
   return (
     <>
       <Toolbar tight>
-        <button
-          type="button"
+        <Button
+          variant="raised"
+          fill="var(--pbui-tone-chart)"
           onClick={async () => {
             // A UNION accept: anything at all. The API takes an array of types
             // for exactly this (pbui-gog.jsx:2095).
@@ -34,17 +35,9 @@ function WatchlistApp(_props: AppProps) {
             });
             if (result) dispatch(worldActions.watchAdd(result.ptype, result.value));
           }}
-          style={{
-            border: "var(--pbui-border-firm)",
-            boxShadow: "var(--pbui-shadow-hard)",
-            background: "var(--pbui-tone-chart)",
-            padding: "0 var(--pbui-space-4)",
-            fontSize: "var(--pbui-fs-small)",
-            fontWeight: 700,
-          }}
         >
           Watch… (accepts anything)
-        </button>
+        </Button>
       </Toolbar>
 
       <AppBody>
@@ -71,21 +64,14 @@ function WatchlistApp(_props: AppProps) {
                 />
               </Presentation>
               <span style={{ flex: 1 }} />
-              <button
-                type="button"
-                aria-label="remove from watchlist"
+              <IconButton
+                variant="framed"
+                size="tiny"
+                tone="danger"
+                label="remove from watchlist"
                 onClick={() => dispatch(worldActions.watchRemove(entry.id))}
-                style={{
-                  border: "var(--pbui-border-hair)",
-                  background: "var(--pbui-pane-alt)",
-                  padding: "0 var(--pbui-space-2)",
-                  fontSize: "var(--pbui-fs-tiny)",
-                  color: "var(--pbui-danger)",
-                  fontWeight: 700,
-                }}
-              >
-                ✕
-              </button>
+                glyph="✕"
+              />
             </Stack>
           ))}
         </Stack>

@@ -8,6 +8,7 @@ import type { Snapshot } from "../../store/world";
 import { worldActions } from "../../store/world";
 import { AppBody, Stack, Surface } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
+import { Button } from "../../components/atoms";
 
 /**
  * Two pinned snapshots, as an ALIGNED DIFF rather than two summaries.
@@ -65,9 +66,9 @@ function CompareApp(_props: AppProps) {
                 {slot === 0 ? "A" : "B"}
               </Text>
               <Text size="small">{(slot === 0 ? a : b)?.name ?? "empty"}</Text>
-              <button type="button" onClick={() => void pick(slot)} style={btn}>
+              <Button variant="framed" size="tiny" onClick={() => void pick(slot)}>
                 accept…
-              </button>
+              </Button>
             </Stack>
           ))}
         </Stack>
@@ -105,14 +106,6 @@ function CompareApp(_props: AppProps) {
     </AppBody>
   );
 }
-
-const btn: React.CSSProperties = {
-  border: "var(--pbui-border-hair)",
-  background: "var(--pbui-pane-alt)",
-  padding: "0 var(--pbui-space-3)",
-  fontSize: "var(--pbui-fs-tiny)",
-  fontWeight: 700,
-};
 
 registerApp({
   id: "compare",

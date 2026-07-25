@@ -1,3 +1,4 @@
+import { VisuallyHidden } from "../../foundation";
 import styles from "./CheckboxRow.module.css";
 
 /**
@@ -24,6 +25,15 @@ export interface CheckboxRowProps {
   label: string;
   size?: "tiny" | "small";
   disabled?: boolean;
+  /**
+   * Keep the label for assistive technology but do not draw it.
+   *
+   * PipelineApp's per-step enable toggle is the case: the step's own row says
+   * what it is, so a second visible "enable filter" would be noise — but the
+   * checkbox still needs a name, and its hand-written form carried one as
+   * `aria-label`. This keeps that guarantee without a second way to spell it.
+   */
+  hideLabel?: boolean;
   /** Only when the label alone does not say what checking it does. */
   title?: string;
 }
@@ -34,6 +44,7 @@ export function CheckboxRow({
   label,
   size = "small",
   disabled = false,
+  hideLabel = false,
   title,
 }: CheckboxRowProps) {
   return (
@@ -44,7 +55,7 @@ export function CheckboxRow({
         disabled={disabled}
         onChange={(event) => onCheckedChange(event.target.checked)}
       />
-      <span>{label}</span>
+      {hideLabel ? <VisuallyHidden>{label}</VisuallyHidden> : <span>{label}</span>}
     </label>
   );
 }

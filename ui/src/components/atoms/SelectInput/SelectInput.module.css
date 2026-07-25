@@ -7,11 +7,24 @@
 .root {
   font: inherit;
   color: inherit;
-  background: var(--pbui-pane);
   border-radius: var(--pbui-radius);
   min-width: 0;
-  max-width: 220px;
 }
+
+/* Nothing. The native control keeps whatever the platform gives it, which is
+ * what every call site outside SourceApp had. */
+.native {
+  background: var(--pbui-pane);
+}
+
+.framed {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+  padding: 0 var(--pbui-space-2);
+}
+
+.auto    { max-width: 220px; }
+.compact { max-width: 96px; }
 
 .tiny  { font-size: var(--pbui-fs-tiny); }
 .small { font-size: var(--pbui-fs-small); }
