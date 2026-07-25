@@ -937,3 +937,79 @@ Set-Cookie: dd_flow=…; Path=/v1/auth/; Max-Age=300; HttpOnly; SameSite=Lax
 
 `prompt=create`, S256 PKCE, a nonce, a matching redirect URI, and the flow
 cookie scoped to `/v1/auth/`.
+
+## Step 7: Phase 4, continued — the secure-context consequence
+
+Switching the stack to `.test` fixed the resolution problem and quietly created
+another, which the server's own startup warning pointed at:
+
+```
+WRN session cookies will be sent without the Secure attribute over plaintext
+    HTTP, and the browser will not expose crypto.subtle to the upload tile
+    external_url=http://datadrop.test:7070
+```
+
+That second clause is the one that matters. Browsers treat only `localhost`,
+`127.0.0.1`, `::1` and `*.localhost` as *potentially trustworthy* over plain
+HTTP. `datadrop.test` is none of those, so `crypto.subtle` is undefined — and
+the upload tile's whole reason for hashing files in the browser is to let the
+server skip bytes it already holds (DR-30). A `.test` address would have been a
+perfectly good URL attached to a silently degraded uploader.
+
+### What I did
+
+Realised that **only the issuer has to resolve identically from both sides**.
+Nothing inside the network ever calls datadrop by its public name; the browser
+is its only caller. So datadrop moved to plain `http://localhost:7070` and only
+Zitadel keeps a `.test` name.
+
+The result is better on three counts: the workbench is a secure context, so the
+uploader works locally; the `/etc/hosts` line is now needed only for the
+identity provider; and the plaintext warning stopped firing, which is the
+`PotentiallyTrustworthy` check confirming the improvement rather than me
+asserting it.
+
+I also added redirect-URI reconciliation to the provisioning script. Moving the
+address exposed the gap: the application had `datadrop.test` registered, and a
+redirect URI must match character for character or sign-in fails at the provider
+with an error page that mentions nothing about datadrop. The script now compares
+and updates — guarded, because Zitadel still rejects a no-op update with a 400.
+
+### What worked
+
+Following the flow all the way into Zitadel without a browser:
+
+```
+$ curl -so /dev/null -w '%{redirect_url}' 'http://localhost:7070/v1/auth/login?intent=signup'
+http://zitadel.test:17070/oauth/v2/authorize?client_id=…&prompt=create&…
+
+$ curl -so /dev/null -w '%{http_code} %{redirect_url}' --resolve zitadel.test:17070:127.0.0.1 "$L"
+302 http://zitadel.test:17070/ui/v2/login/login?authRequest=V2_383369312510935044
+```
+
+Zitadel issuing an `authRequest` rather than an error means it accepted both the
+client id and the redirect URI. `--resolve` is what makes this checkable on a
+machine with no `/etc/hosts` entry.
+
+### What I learned
+
+**A warning I wrote in phase 2 caught a regression I introduced in phase 4.**
+`PotentiallyTrustworthy` exists because the Secure cookie attribute and
+`crypto.subtle` are governed by the same browser rule, and putting them in one
+function meant one hostname change surfaced both consequences at once. Worth
+remembering when tempted to inline a two-line predicate.
+
+### What warrants a second pair of eyes
+
+- datadrop and Zitadel now sit on different hostname schemes, which reads as an
+  inconsistency until you know why. `.env.example` explains it where someone
+  changing the address will actually look.
+- Redirect-URI reconciliation regenerates the client secret on every re-run of
+  the provisioning job. Fine while the datadrop container is the only holder.
+
+### Code review instructions
+
+```bash
+make compose-up
+curl -s http://localhost:7070/v1/me | jq '{auth_mode, provider}'
+```

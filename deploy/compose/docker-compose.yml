@@ -165,7 +165,6 @@ services:
         ipv4_address: ${PROXY_IP}
         aliases:
           - ${ZITADEL_DOMAIN}
-          - ${DATADROP_DOMAIN}
 
   # ── One-shot provisioning ──────────────────────────────────────────────────
   provision:
@@ -191,7 +190,6 @@ services:
       # ".test" is reserved too but carries no resolution rule, so it can be
       # pointed at the proxy here and at 127.0.0.1 in your /etc/hosts.
       - "${ZITADEL_DOMAIN}:${PROXY_IP}"
-      - "${DATADROP_DOMAIN}:${PROXY_IP}"
     depends_on:
       zitadel-api: {condition: service_healthy}
       proxy: {condition: service_started}
@@ -247,7 +245,6 @@ services:
       # ".test" is reserved too but carries no resolution rule, so it can be
       # pointed at the proxy here and at 127.0.0.1 in your /etc/hosts.
       - "${ZITADEL_DOMAIN}:${PROXY_IP}"
-      - "${DATADROP_DOMAIN}:${PROXY_IP}"
     depends_on:
       # Not service_started: datadrop must not start before the client
       # credentials exist on the volume. This is what makes `up --wait`

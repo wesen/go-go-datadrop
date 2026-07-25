@@ -138,7 +138,7 @@ document, and §5.4 is where it earns its keep.
 ## 1. What you are building
 
 At the end of this ticket, a person who has never touched the system can open
-`http://datadrop.localhost:7070/ui/`, land on a sign-in screen, click **Create account**,
+`http://datadrop.test:7070/ui/`, land on a sign-in screen, click **Create account**,
 fill in a form served by Zitadel, come back to the workbench signed in as
 themselves, drag a CSV onto a tile, and get a chart of it — and then mint an API
 token and push more data to the same drop from a shell script.
@@ -1174,7 +1174,7 @@ http.SetCookie(w, &http.Cookie{
   `http://` logs a prominent startup warning unless the host is a
   potentially-trustworthy one** — `localhost`, `127.0.0.1`, `::1`, or any name
   ending in `.localhost`. That last case is not pedantry: §13.3 puts the compose
-  stack on `datadrop.localhost`, and browsers treat the whole `.localhost`
+  stack on `datadrop.test`, and browsers treat the whole `.localhost`
   suffix as a secure context — which is also what makes `crypto.subtle`
   available to the uploader (§15.2).
 - **`SameSite=Lax`** lets the top-level redirect back from Zitadel carry the
@@ -1517,7 +1517,7 @@ type Config struct {
     Token string
 
     // ExternalURL is the origin the browser reaches this server on, e.g.
-    // "http://datadrop.localhost:7070". It is NOT cosmetic: it determines the OIDC
+    // "http://datadrop.test:7070". It is NOT cosmetic: it determines the OIDC
     // redirect URI, the Secure attribute on the session cookie, and the Origin
     // value that the CSRF check compares against. Getting it wrong produces
     // three unrelated-looking failures.
@@ -1531,7 +1531,7 @@ type Config struct {
 }
 
 type OIDCConfig struct {
-    Issuer       string   // e.g. "http://zitadel.localhost:17070"
+    Issuer       string   // e.g. "http://zitadel.test:17070"
     ClientID     string
     ClientSecret string
     Scopes       []string // default: openid, profile, email
@@ -1764,7 +1764,7 @@ screen needs, not an error.
   "token_id": null,
   "signup_enabled": true,
   "provider": {
-    "account_url": "http://datadrop.localhost:7070/ui/console/users/me"
+    "account_url": "http://datadrop.test:7070/ui/console/users/me"
   }
 }
 ```
@@ -1906,8 +1906,8 @@ flowchart TB
         VOL[("bootstrap volume")]
     end
 
-    Browser -->|"zitadel.localhost:17070"| Proxy
-    Browser -->|"datadrop.localhost:7070"| Proxy
+    Browser -->|"zitadel.test:17070"| Proxy
+    Browser -->|"datadrop.test:7070"| Proxy
     Proxy --> ZAPI
     Proxy -->|"/ui/v2/login"| ZLOGIN
     Proxy --> DD
@@ -1917,7 +1917,7 @@ flowchart TB
     PROV -->|mgmt API| Proxy
     PROV -->|writes client id + secret| VOL
     DD -->|reads client secret| VOL
-    DD -->|"discovery + token, via zitadel.localhost:17070"| Proxy
+    DD -->|"discovery + token, via zitadel.test:17070"| Proxy
 ```
 
 ### 13.2 The trap that eats the afternoon
@@ -1926,12 +1926,12 @@ flowchart TB
 discovery document must match the URL the relying party used, exactly, and it
 must also be the URL the browser is redirected to. If datadrop fetches discovery
 from `http://zitadel-api:8080/.well-known/openid-configuration`, the document
-comes back saying `"issuer": "http://zitadel.localhost:17070"`, and `go-oidc`
+comes back saying `"issuer": "http://zitadel.test:17070"`, and `go-oidc`
 correctly refuses it:
 
 ```
 oidc: issuer did not match the issuer returned by provider,
-expected "http://zitadel-api:8080" got "http://zitadel.localhost:17070"
+expected "http://zitadel-api:8080" got "http://zitadel.test:17070"
 ```
 
 That is the good outcome. The bad one is that you "fix" it with the escape hatch
@@ -1942,20 +1942,43 @@ There are two ways out and you should understand both.
 
 **The fix (what this stack does): one URL that works from everywhere.**
 
-- Give the proxy the network alias `zitadel.localhost`, so containers resolve
-  that name to the proxy.
-- Have the proxy listen on **7070 and 17070 inside the network and publish
-  both 1:1**, so the
-  port is the same on both sides. `http://zitadel.localhost:17070` is then one
-  string that means the same thing to the browser and to the datadrop container.
-- Browsers resolve any `*.localhost` name to loopback; on Linux
-  `systemd-resolved` generally does too. If `curl http://zitadel.localhost:17070`
-  fails on the host, add one line to `/etc/hosts` — the `.env.example` says so.
+- Have the proxy listen on **7070 and 17070 inside the network and publish both
+  1:1**, so the port is identical on both sides.
+- Use hostnames ending in **`.test`**, pointed at 127.0.0.1 in your
+  `/etc/hosts` and at the proxy's fixed address inside the network
+  (`extra_hosts`). `http://zitadel.test:17070` is then one string that means the
+  same thing to the browser and to the datadrop container.
+
+> **Correction, from building this.** An earlier draft of this section used
+> `*.localhost` and a docker network alias, on the reasoning that browsers
+> resolve `*.localhost` to loopback for free and a network alias would redirect
+> it inside the network. **That does not work, and it cannot be made to work.**
+>
+> RFC 6761 reserves `localhost` *and every subdomain of it* for loopback, and
+> resolvers apply that rule **before** consulting `/etc/hosts`. Inside a
+> container `zitadel.test` therefore means that container. Neither a
+> network alias nor an `extra_hosts` entry overrides it:
+>
+> ```
+> $ getent hosts zitadel.test      # inside the container
+> 10.77.0.2   zitadel.test         # DNS says: the proxy
+>
+> $ curl -v http://zitadel.test:17070/debug/healthz
+> * Host zitadel.test:17070 was resolved.
+> *   Trying [::1]:17070...             # ...but curl goes to loopback
+> ```
+>
+> That discrepancy — `getent` consults NSS, libc's resolver applies the RFC 6761
+> shortcut first — is what makes the failure hard to read.
+>
+> `.test` is reserved by the same RFC but carries no resolution rule, so it can
+> be pointed anywhere. The cost is one `/etc/hosts` line, which this section
+> previously listed as a fallback and which is now a requirement.
 
 **The escape hatch (know it exists, do not reach for it first):**
 
 ```go
-ctx = oidc.InsecureIssuerURLContext(ctx, "http://zitadel.localhost:17070")
+ctx = oidc.InsecureIssuerURLContext(ctx, "http://zitadel.test:17070")
 provider, err := oidc.NewProvider(ctx, "http://zitadel-api:8080")
 ```
 
@@ -1970,29 +1993,29 @@ half.
 
 | Reached at | Serves |
 |---|---|
-| `http://datadrop.localhost:7070/ui/` | the workbench |
-| `http://datadrop.localhost:7070/v1/…` | the API |
-| `http://zitadel.localhost:17070/` | Zitadel console and OIDC endpoints |
-| `http://zitadel.localhost:17070/ui/v2/login/` | the login and registration UI |
+| `http://datadrop.test:7070/ui/` | the workbench |
+| `http://datadrop.test:7070/v1/…` | the API |
+| `http://zitadel.test:17070/` | Zitadel console and OIDC endpoints |
+| `http://zitadel.test:17070/ui/v2/login/` | the login and registration UI |
 
 **Two ports, one proxy.** Port 8080 is spoken for on the development machines
-this runs on, so the stack takes 7070 and 17070. Traefik gets one entrypoint
-per port and each router binds the entrypoint matching its host, which keeps
-§13.2's property intact: every published port is identical inside and outside
+this runs on — commonly by another Zitadel — so the stack takes 7070 and 17070.
+Traefik gets one entrypoint per port and each router binds the entrypoint
+matching its host, which keeps §13.2's property intact: every published port is identical inside and outside
 the network, so a single URL string means the same thing to the browser and to
 the datadrop container. Changing either port means changing it in exactly one
 place — `.env` — because the redirect URI, the issuer, the cookie's `Secure`
 decision and the CSRF origin are all derived from `DATADROP_BASE` and
 `ZITADEL_BASE`.
 
-So: `ZITADEL_DOMAIN=zitadel.localhost`, `ZITADEL_EXTERNALPORT=17070`,
+So: `ZITADEL_DOMAIN=zitadel.test`, `ZITADEL_EXTERNALPORT=17070`,
 `ZITADEL_EXTERNALSECURE=false`, and datadrop's
-`--external-url=http://datadrop.localhost:7070` with
-`--oidc-issuer=http://zitadel.localhost:17070`.
+`--external-url=http://datadrop.test:7070` with
+`--oidc-issuer=http://zitadel.test:17070`.
 
 The redirect URI registered on the application is therefore
-`http://datadrop.localhost:7070/v1/auth/callback`, and the post-logout URI is
-`http://datadrop.localhost:7070/ui/`. Both are registered in §13.5. A mismatch
+`http://datadrop.test:7070/v1/auth/callback`, and the post-logout URI is
+`http://datadrop.test:7070/ui/`. Both are registered in §13.5. A mismatch
 of a single character — a trailing slash, `http` versus `https`, `localhost`
 versus `127.0.0.1` — produces a provider-side error page rather than a datadrop
 error, which is why the provisioning script derives both from one variable
@@ -2027,7 +2050,7 @@ services:
     command: start-from-init --masterkey "${ZITADEL_MASTERKEY}"
     environment:
       ZITADEL_PORT: 8080
-      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN}      # zitadel.localhost
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN}      # zitadel.test
       ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNALPORT}  # 17070
       ZITADEL_EXTERNALSECURE: "false"
       ZITADEL_TLS_ENABLED: "false"
@@ -2134,7 +2157,7 @@ services:
     depends_on:
       provision: {condition: service_completed_successfully}
     networks: [datadrop]
-    labels: [...]           # Host(`datadrop.localhost`) -> this service
+    labels: [...]           # Host(`datadrop.test`) -> this service
 
 networks:
   datadrop:
@@ -2268,7 +2291,7 @@ out. Making the local stack the exception means anyone who deploys this without
 reading the compose file gets the strict behaviour. Adding Mailpit is a good
 follow-up; it is not on the critical path for signup working.
 
-### 13.7 The four things that will go wrong
+### 13.7 The things that will go wrong
 
 **`ZITADEL_FIRSTINSTANCE_*` is applied only on first init.** Change one of those
 variables and restart, and nothing happens — the instance already exists. The
@@ -2285,9 +2308,28 @@ initialises the event store and runs projections. The healthcheck's
 `start_period: 20s` and 12 retries cover it. If you see `provision` fail
 immediately, check whether you removed a `depends_on: service_healthy`.
 
-**`*.localhost` does not resolve for you.** Browsers do it; your shell may not,
-depending on the resolver. `curl http://zitadel.localhost:17070/debug/healthz`
-tells you in one second, and two `/etc/hosts` lines fix it.
+**The hostnames are not in `/etc/hosts`.** `.test` has no automatic
+resolution — that is exactly why it was chosen (§13.2) — so one line is
+required:
+
+```
+127.0.0.1 zitadel.test datadrop.test
+```
+
+`curl -sS http://zitadel.test:17070/debug/healthz` tells you in one second.
+
+**Traefik reads the whole docker socket.** Another compose project's labels are
+picked up here unless the provider is constrained, which produces
+`EntryPoint doesn't exist` errors for routers you never wrote and, worse,
+foreign routers competing for your hostnames. The stack scopes it with
+`--providers.docker.constraints=Label(`datadrop.stack`,`true`)`.
+
+**A named volume inherits its ownership from the image.** `/data` must exist in
+the image owned by the runtime user, or the volume arrives owned by root and a
+non-root container crash-loops with `unable to open database file (14)` —
+naming neither permissions nor the volume. And a distroless image has no shell,
+so a healthcheck needs `datadrop healthcheck`; without one, `up --wait` reports
+a crash-looping container as healthy.
 
 ### 13.8 Make targets
 
@@ -2295,8 +2337,8 @@ tells you in one second, and two `/etc/hosts` lines fix it.
 compose-up:
 	cd deploy/compose && cp -n .env.example .env || true
 	cd deploy/compose && docker compose up -d --build --wait
-	@echo "workbench:  http://datadrop.localhost:7070/ui/"
-	@echo "zitadel:    http://zitadel.localhost:17070/  (zitadel-admin@zitadel.localhost / Password1!)"
+	@echo "workbench:  http://datadrop.test:7070/ui/"
+	@echo "zitadel:    http://zitadel.test:17070/  (zitadel-admin@zitadel.test / Password1!)"
 
 compose-down:
 	cd deploy/compose && docker compose down
@@ -2875,7 +2917,7 @@ undo by accident.
 The acceptance walk, done in a browser, in this order — each step is a phase
 gate in §18:
 
-1. `make compose-up`. Open `http://datadrop.localhost:7070/ui/`. Expect the
+1. `make compose-up`. Open `http://datadrop.test:7070/ui/`. Expect the
    `welcome` workspace and nothing else.
 2. **Create account**, register at Zitadel, land back signed in with `?first=1`
    and the `account` workspace.

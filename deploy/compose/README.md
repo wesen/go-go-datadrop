@@ -7,12 +7,12 @@ be exercised end to end.
 make compose-up            # from the repository root
 ```
 
-Then open **http://datadrop.test:7070/ui/**.
+Then open **http://localhost:7070/ui/**.
 
 | | |
 |---|---|
-| Workbench | http://datadrop.test:7070/ui/ |
-| datadrop API | http://datadrop.test:7070/v1/ |
+| Workbench | http://localhost:7070/ui/ |
+| datadrop API | http://localhost:7070/v1/ |
 | Zitadel console | http://zitadel.test:17070/ |
 | Zitadel admin | `zitadel-admin@zitadel.zitadel.test` / `Password1!` |
 
@@ -24,7 +24,7 @@ store. `--wait` covers it.
 Add to `/etc/hosts`:
 
 ```
-127.0.0.1 zitadel.test datadrop.test
+127.0.0.1 zitadel.test
 ```
 
 Check it:
@@ -74,7 +74,7 @@ Same fix: `make compose-nuke`.
 ## Using the CLI against it
 
 ```bash
-export DATADROP_URL=http://datadrop.test:7070
+export DATADROP_URL=http://localhost:7070
 export DATADROP_TOKEN=local-root-token      # the root break-glass from .env
 
 datadrop list

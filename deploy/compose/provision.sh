@@ -136,8 +136,37 @@ else
     # the only way to recover a known value, and it is safe here because the
     # only holder is the datadrop container we are about to (re)start.
     echo "provision: reusing application $APP_ID, regenerating its secret"
-    CLIENT_ID=$(api GET "/management/v1/projects/$PROJECT_ID/apps/$APP_ID" \
-        | jq -r '.app.oidcConfig.clientId')
+    CONFIG=$(api GET "/management/v1/projects/$PROJECT_ID/apps/$APP_ID" | jq -c '.app.oidcConfig')
+    CLIENT_ID=$(echo "$CONFIG" | jq -r '.clientId')
+
+    # Reconcile the redirect URIs with DATADROP_BASE.
+    #
+    # Without this, changing the address in .env leaves the OLD one registered
+    # and sign-in fails at the provider with an error page that says nothing
+    # about datadrop — the redirect URI must match character for character.
+    # Guarded by a comparison because Zitadel rejects an update that changes
+    # nothing with a 400, the same trap as the login policy above.
+    WANT_REDIRECT="$DATADROP_BASE/v1/auth/callback"
+    WANT_LOGOUT="$DATADROP_BASE/ui/"
+    HAVE=$(echo "$CONFIG" | jq -c '{r: (.redirectUris // []), l: (.postLogoutRedirectUris // [])}')
+    WANT=$(jq -nc --arg r "$WANT_REDIRECT" --arg l "$WANT_LOGOUT" '{r: [$r], l: [$l]}')
+
+    if [ "$HAVE" != "$WANT" ]; then
+        echo "provision: updating redirect URIs to $DATADROP_BASE"
+        echo "$CONFIG" | jq --arg r "$WANT_REDIRECT" --arg l "$WANT_LOGOUT" '{
+                redirectUris: [$r],
+                postLogoutRedirectUris: [$l],
+                responseTypes,
+                grantTypes,
+                appType,
+                authMethodType,
+                accessTokenType,
+                idTokenUserinfoAssertion,
+                devMode
+            }' \
+          | api PUT "/management/v1/projects/$PROJECT_ID/apps/$APP_ID/oidc_config" -d @- >/dev/null
+    fi
+
     CLIENT_SECRET=$(api POST \
         "/management/v1/projects/$PROJECT_ID/apps/$APP_ID/oidc_config/_generate_client_secret" \
         -d '{}' | jq -r '.clientSecret')
