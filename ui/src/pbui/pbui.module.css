@@ -1,0 +1,183 @@
+/*
+ * The interaction affordances, ported near-verbatim from pbui-gog.jsx:2694-2707.
+ *
+ * These three states — hoverable, acceptable, focused — are what a
+ * presentation-based interface communicates continuously, and they have to read
+ * identically on every one of the eleven presentation types.
+ */
+
+.presentation {
+  cursor: pointer;
+  /* A presentation is a span by default and must not stretch its parent. */
+  display: inline-flex;
+  align-items: center;
+}
+
+.presentation:hover {
+  outline: 1px dotted var(--pbui-ink);
+  background: var(--pbui-selected);
+}
+
+/*
+ * Acceptable: this object can satisfy the command currently waiting.
+ *
+ * Outline AND animation, never animation alone. The reduced-motion rule at the
+ * bottom removes the pulse, so the solid outline has to carry the whole meaning
+ * on its own — which is the same principle as never encoding meaning in colour
+ * alone (§15).
+ */
+.presentation[data-state="acceptable"] {
+  outline: 2px solid var(--pbui-danger);
+  background: var(--pbui-selected);
+  animation: pbui-pulse 0.9s infinite;
+}
+
+@keyframes pbui-pulse {
+  50% {
+    outline-color: var(--pbui-cat-3);
+  }
+}
+
+/*
+ * SVG presentations cannot take an outline — SVG has no box to draw one around
+ * — so they take a drop-shadow instead. Same three states, different mechanism.
+ */
+.presentationSvg {
+  cursor: pointer;
+}
+
+.presentationSvg:hover {
+  filter: drop-shadow(0 0 1.5px var(--pbui-ink));
+}
+
+.presentationSvg[data-state="acceptable"] {
+  filter: drop-shadow(0 0 2.5px var(--pbui-danger));
+  animation: pbui-pulse-svg 0.9s infinite;
+}
+
+@keyframes pbui-pulse-svg {
+  50% {
+    filter: drop-shadow(0 0 3.5px var(--pbui-cat-3));
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .presentation[data-state="acceptable"],
+  .presentationSvg[data-state="acceptable"] {
+    animation: none;
+  }
+}
+
+/* ---- the accept banner ------------------------------------------------- */
+
+.acceptBanner {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  flex-shrink: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-danger);
+  color: var(--pbui-paper);
+  font-weight: 700;
+  font-size: var(--pbui-fs-small);
+}
+
+.acceptBanner kbd {
+  background: transparent;
+  border-color: var(--pbui-paper);
+  box-shadow: none;
+  color: var(--pbui-paper);
+}
+
+/* ---- the mouse documentation line -------------------------------------- */
+
+.mouseDoc {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-5);
+  flex-shrink: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  font-size: var(--pbui-fs-small);
+}
+
+.mouseDocMode {
+  color: var(--pbui-cat-3);
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.mouseDocText {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mouseDocAmbient {
+  color: var(--pbui-faint-inverted);
+  white-space: nowrap;
+}
+
+/* ---- the object menu ---------------------------------------------------- */
+
+.menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 260px;
+  max-height: 320px;
+  overflow: auto;
+  background: var(--pbui-pane);
+  border: var(--pbui-border-firm);
+  border-radius: var(--pbui-radius);
+  box-shadow: var(--pbui-shadow-menu);
+}
+
+.menuHeader {
+  position: sticky;
+  top: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-4);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-label);
+}
+
+.menuTarget {
+  color: var(--pbui-cat-3);
+}
+
+.menuItem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  font-size: var(--pbui-fs-small);
+  border-top: 1px dotted var(--pbui-line);
+  background: transparent;
+}
+
+.menuItem:first-of-type {
+  border-top: 0;
+}
+
+.menuItem:hover:not(:disabled),
+.menuItem:focus-visible:not(:disabled) {
+  background: var(--pbui-selected);
+}
+
+/* Disabled entries are shown, not hidden: hiding a verb hides the rule that
+ * makes it unavailable, so the user never learns why y refuses a nominal
+ * column. */
+.menuItem:disabled {
+  color: var(--pbui-faint);
+  cursor: default;
+}
+
+.menuReason {
+  color: var(--pbui-faint);
+  font-size: var(--pbui-fs-tiny);
+}

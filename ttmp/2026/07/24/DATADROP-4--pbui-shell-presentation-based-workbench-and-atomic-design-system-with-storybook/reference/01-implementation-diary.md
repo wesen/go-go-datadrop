@@ -441,3 +441,182 @@ Contrast helper used throughout (WCAG 2.x relative luminance):
 L = 0.2126 R + 0.7152 G + 0.0722 B,  channel c: c/12.92 if c<=0.04045 else ((c+0.055)/1.055)^2.4
 ratio = (Lhi + 0.05) / (Llo + 0.05)
 ```
+
+---
+
+## Step 3: Phase 1 — the PBUI core, proven against fixtures
+
+Built the presentation protocol: `Presentation`, the descriptor registry, the
+accept mechanism, the object menu, the accept banner and the mouse documentation
+line, plus the six atoms that draw them. Then drove it in a browser and turned
+every check into a play function.
+
+It works, and it works the way the prototype does. Right-clicking `data.station`
+produces a menu headed `<field> data.station → chart α` offering *Map to x*,
+*Map to color*, *Map to facet*, *Group by + count* — with *Map to y* present but
+**disabled and annotated "y accepts quantitative"**. Pressing `⌖` beside the y
+channel turns three of thirteen chips red and pulsing, leaves the other ten
+inert, and a click on `data.humidity` three sections away resolves the promise
+and remaps the channel.
+
+The design changed in two places while building it, both because the code
+pushed back.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 1 of the guide.
+
+**Inferred user intent:** A working, provable interaction protocol before any of
+it is committed to across a dozen applications.
+
+**Commit (code):** this step's commit.
+
+### What I did
+
+- `src/pbui/`: `types.ts`, `verbs.ts`, `PbuiProvider.tsx`, `Presentation.tsx`,
+  `usePbui.ts`, `registry.ts`, `parts.ts`, `conversions.ts`, `pbui.module.css`,
+  `ObjectMenu.tsx`, `AcceptBanner.tsx`, `MouseDocLine.tsx`, and descriptors for
+  `field`, `source` and `doc`.
+- `src/components/atoms/`: `Chip`, `TypeBadge`, `ProvenanceBadge`, `FieldChip`,
+  `SourceChip`, `DocChip`.
+- `.storybook/withPbui.tsx`, the `Playground` story and four variants.
+- `test/descriptors.test.ts` — 15 assertions, no DOM.
+- Drove the protocol in Chromium; converted each manual check into the
+  `AcceptFlow` play function.
+
+### Why
+
+Phase 1 is the phase that proves the design. Fifteen tiles are a bad place to
+discover that accept feels wrong.
+
+### What worked
+
+- **Accept, exactly as specified.** Verified in the browser: with y accepting,
+  the acceptable set was `data.temp_c`, `seq`, `data.humidity` — every
+  quantitative column and nothing else. `data.station` stayed inert. The banner
+  read `ACCEPTING <field> MAP Y ↦ click a FIELD anywhere`, the mouse-doc line
+  switched to `ACCEPT MODE`, and Escape aborted without changing the chart.
+- **Pure descriptors pay off immediately.** `test/descriptors.test.ts` asserts
+  that a field owned by β emits `{kind: "setMapping", docId: "d2", …}` while α is
+  active — the targeting rule that the value shape `{docId, name}` exists for,
+  and the one the prototype gets wrong (pbui-gog.jsx:2599). One assertion, no
+  store, no Provider, no DOM.
+- axe reports **zero violations** on the playground, menu open.
+
+### What didn't work
+
+**1. The registry could not hold the chip component.** The guide's
+`PresentationDescriptor` carried a `Chip: React.ComponentType`. That makes
+`pbui` import from `components/atoms`, and atoms import `pbui` — a cycle, and a
+layer violation `test/layers.test.ts` would have caught.
+
+Fixed by splitting the responsibility: descriptors hold `label`, `describe`,
+`actions` and `tone` and no React at all; the chip that draws a presentation
+lives in atoms. This is better than the guide's version rather than a compromise
+— it is what makes `registry.ts` a `.ts` file testable without a renderer.
+
+**2. `pbui` needs `foundation`.** `MouseDocLine` needs `VisuallyHidden` for its
+`aria-live` mirror, which the layer test rejected. I granted the exception
+explicitly rather than routing around it: `foundation` imports nothing, so it
+cannot create a cycle, and the alternative is pbui re-implementing the type
+scale. The rule that matters — pbui must not import atoms or above — is intact
+and still enforced.
+
+**3. Verbs as data, not closures.** The guide had `actions` return closures over
+`dispatch`. Phase 1 has no world slice to dispatch to, which forced the question
+early, and the answer is better than the original: `actions` returns
+`{label, verb, disabledBecause?}` where `verb` is a serialisable union.
+
+Two things follow. A test can assert the exact verb a menu entry produces rather
+than running a closure against a mock. And it is the seam between phases —
+phase 1's provider collects verbs and displays them, phase 2 maps the same verbs
+onto reducers, and no descriptor changes.
+
+### What I learned
+
+- **The layer test earned its keep on its first day**, twice, and both times by
+  rejecting something the design document had specified. A dependency rule that
+  only a human enforces is one that gets argued with.
+- **Building against fixtures is the right constraint, not a limitation.** The
+  entire protocol was exercised with no server and no world slice. If it had
+  needed either, that would have been evidence of a coupling worth removing.
+- The prototype's `P` component is eighty lines and I wrote about two hundred.
+  Roughly half the difference is keyboard support and ARIA, which the prototype
+  does not have; the rest is comments.
+
+### What was tricky to build
+
+**The pending resolver.** `accept()` returns a promise, so something has to hold
+`resolve` until a click arrives. It cannot go in Redux (not serialisable) and it
+cannot go in `useState` (setting state with a function value calls it as an
+updater). It lives in a `useRef` beside a `useState` flag: the ref carries the
+continuation, the flag drives the re-render that makes chips acceptable.
+
+The related decision is refusing nested accepts. If a command is already
+accepting, a second `accept()` resolves `null` immediately rather than replacing
+the first. Two pending resolvers and one click is a bug I would rather not have
+to find, and a command that silently displaced another's request would apply the
+right argument to the wrong command.
+
+**`stopPropagation` on both handlers.** Presentations nest — a datum inside a
+tile inside a workspace — and without it the outermost wins, which is exactly
+backwards: the most specific presentation is the innermost one.
+
+### What warrants a second pair of eyes
+
+- **`CONVERSIONS["doc->source"]` is a stub returning `undefined`.** The entry
+  exists to document the intended pair (§8.6) but cannot be implemented until
+  phase 2 knows what documents are. It is inert, and a reviewer should confirm
+  an inert conversion cannot make a presentation *appear* acceptable — it cannot,
+  because `matches` skips a conversion returning `undefined`, but that is worth a
+  second reading.
+- The `Presentation` keyboard handling treats `Enter` and `Space` identically to
+  a click. For a chip whose default verb is destructive that may be too eager;
+  none currently are.
+
+### What should be done in the future
+
+- Phase 2 replaces `withPbui`'s verb collector with a store dispatch. The
+  provider's `onPerform` is the only seam that changes.
+- The remaining eight descriptors (`step`, `geom`, `channel`, `datum`, `cat`,
+  `chart`, `tile`, `workspace`) land with the applications that present them.
+- `@storybook/addon-vitest` is installed but not yet wired into a CI command, so
+  play functions currently run only when a story is opened. Wire it in phase 2.
+
+### Code review instructions
+
+- Read in this order: `pbui/types.ts` (the vocabulary), `pbui/verbs.ts` (the
+  seam, and the argument for it), `pbui/Presentation.tsx` (the four click
+  behaviours), `pbui/PbuiProvider.tsx` (the resolver ref and nested-accept
+  refusal), `pbui/descriptors/field.ts` (the richest descriptor).
+- `bun test test/descriptors.test.ts` for the targeting and disabling rules.
+- `bun run storybook` → Design System / PBUI / Playground. Press `⌖` beside y
+  and watch which chips light up; right-click `data.station` and read the
+  disabled entries.
+
+### Technical details
+
+Acceptable set with y accepting, read out of the live DOM:
+
+```
+acceptable: data.temp_c (q, values), seq (q, envelope), data.humidity (q, values)
+inert:      time (t), data.station (n), id (n), drop (n), stream (n), …
+```
+
+Menu on `data.station`:
+
+```
+header:   <field> data.station → chart α
+enabled:  Map to x · Map to color · Map to facet · Filter on this field ·
+          Group by + count · Sort output by (descending) ·
+          Read as quantitative in this chart only · Inspect · Add to watchlist
+disabled: Map to y  (chart α) — y accepts quantitative
+          Map to size (chart α) — size accepts quantitative
+```
+
+```
+$ bun test
+ 106 pass  0 fail  across 9 files
+```

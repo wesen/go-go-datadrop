@@ -7,9 +7,10 @@ import "../src/styles/tokens.css";
 import "../src/styles/scrollbars.css";
 
 import { withStore, withTile } from "./decorators";
+import { withPbui } from "./withPbui";
 
 const preview: Preview = {
-  decorators: [withStore, withTile],
+  decorators: [withPbui, withStore, withTile],
   parameters: {
     controls: { expanded: true },
     // Violations fail rather than warn, from the first phase. A contrast

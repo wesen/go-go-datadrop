@@ -27,8 +27,18 @@ const ALLOWED: Record<string, string[]> = {
   // The data layer knows the wire types and nothing else.
   api: ["model"],
   export: ["model"],
-  // The presentation protocol knows the store and the engine, never a component.
-  pbui: ["model", "store", "api"],
+  // The presentation protocol knows the engine, the store, and `foundation`.
+  //
+  // `foundation` is an exception granted deliberately rather than a leak. It is
+  // the bottom of the component stack — tokens made usable in React, importing
+  // nothing itself — so depending on it cannot create a cycle, and the
+  // alternative is pbui re-implementing VisuallyHidden and the type scale.
+  //
+  // What pbui may NOT import is atoms and above, which is the rule that
+  // matters: descriptors hold no components (registry.ts explains why), so the
+  // chip that draws a presentation lives in atoms and the type-to-chip mapping
+  // lives there with it.
+  pbui: ["model", "store", "api", "foundation"],
   store: ["model", "api"],
   styles: [],
   fixtures: ["model"],

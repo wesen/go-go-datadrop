@@ -1,0 +1,1 @@
+export { DocChip } from "./DocChip";
