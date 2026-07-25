@@ -157,3 +157,133 @@ Read the guide §1–5 (analysis), §6–12 (server), §13 (stack), §14–15 (f
 | `PUT /admin/v1/policies/login`, field `allow_register` | `proto/zitadel/admin.proto:2762`, `policy.proto` |
 | `OIDC_AUTH_METHOD_TYPE_BASIC`, `OIDC_APP_TYPE_WEB` | `proto/zitadel/app.proto:198-209` |
 | Masterkey must be exactly 32 characters | upstream `.env.example` |
+
+## Step 2: Phase 0 — the pure core
+
+`pkg/auth` with no HTTP, no SQL and no network: `Principal`, `ScopeSet`, `Role`,
+the `ddp_` token format, and `EffectiveRole`/`Authorize`. The whole point of the
+phase is that the authorization rules become testable with literals, so the
+matrix in guide §17.2 can be written out exhaustively rather than sampled.
+
+Writing the tests found a real bug in my own design before a single handler
+existed, which is the argument for this phase in one sentence.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Implement the ticket, keep a detailed diary at every step, commit as you go."
+
+**Assistant interpretation:** Work through DATADROP-5's eight phases in order, recording a diary step per phase and committing each phase separately.
+
+**Inferred user intent:** A reviewable trail — code and reasoning committed together, so the implementation can be picked up or audited without re-deriving why anything is the way it is.
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 0`
+
+### What I did
+
+- `pkg/auth/principal.go` — `Kind`, `Principal`, `Label()`, context helpers.
+- `pkg/auth/scope.go` — four scopes, `ScopeSet`, parse/validate, stable ordering.
+- `pkg/auth/role.go` — three roles, `AtLeast`, `DropACL`, `EffectiveRole`,
+  `Authorize`.
+- `pkg/auth/token.go` — mint, parse, hash, verify; plus id/session/flow value
+  generation.
+- `pkg/auth/auth_test.go` — 16 tests including the full authorization matrix.
+
+### Why
+
+Guide §10.2: an authorization test that needs an HTTP server and a database is a
+test nobody writes exhaustively, and exhaustively is the only way worth writing
+them. Keeping the decision function pure is what makes the matrix cheap.
+
+### What worked
+
+- `Authorize(principal, acl, requiredRole, requiredScope)` as a single pure
+  function reads well at the call site and made every matrix row a one-liner.
+- Passing `DropACL` as an argument rather than looking it up means the tests
+  need no store at all.
+
+### What didn't work
+
+**`Allowed` denied everything to anonymous, which would have broken
+`public_read`.** My first draft had:
+
+```go
+case KindAnonymous:
+    return false
+```
+
+`EffectiveRole` correctly gives an anonymous caller `RoleReader` on a
+`public_read` drop, but `Authorize` then failed the scope half and returned
+false. Every anonymous read of a public drop would have 401'd — a straight
+regression against v0.1 behaviour, in the one code path with no test coverage
+upstream because it needs no credential.
+
+The fix is a reframing rather than a special case: a scope limits the
+*credential*, it never grants. An anonymous caller's credential permits reading;
+whether there is anything to read is `EffectiveRole`'s business. So
+`Anonymous()` carries `ScopeDropsRead` and `Allowed` has no anonymous branch at
+all. Two matrix rows pin it — "anonymous reads a public drop" and "anonymous
+cannot write a public drop".
+
+`Anonymous` also became a function rather than a package variable, because
+`ScopeSet` is a map and a shared mutable map held by every anonymous request is
+a bad thing to leave lying around.
+
+### What I learned
+
+- `RoleNone.AtLeast(RoleNone)` must be **false**. `RoleNone` is the absence of a
+  role, not a weak role, so a naive `rank >= rank` comparison makes a stranger
+  satisfy a `RoleNone` requirement — and any handler that forgot to name a role
+  would open. The `rank > 0` guard and its test row exist for that.
+- Unknown scopes must be preserved on parse, not dropped. A scope written by a
+  newer version and read by an older one that silently disappears *widens* the
+  token by forgetting what it was limited to.
+
+### What was tricky to build
+
+The interaction between the two halves of an authorization decision. It is
+tempting to fold scope into role, and the two really are different: role answers
+"what is this person to this drop", scope answers "what did they permit this
+particular credential to do". Keeping them separate is what makes DR-24
+expressible at all, and `TestRemovingAMemberNarrowsTheirTokensImmediately` is
+the property written down — it fails the moment anyone caches rights on a token.
+
+### What warrants a second pair of eyes
+
+- `ScopeSet.Has` treats `ScopeAdmin` as implying every other scope. That is a
+  deliberate UI affordance (otherwise the box labelled "admin" does the least),
+  but it does mean an admin-scoped token is unrestricted *within the holder's
+  own rights*.
+- `EffectiveRole`'s fall-through to `public_read` after the members lookup: a
+  member row is consulted first, so a `reader` row on a public drop is
+  indistinguishable from no row. That is intended and harmless today; it would
+  matter if a future "denied" role existed.
+
+### What should be done in the future
+
+- Nothing from this step. The phase is self-contained.
+
+### Code review instructions
+
+Start at `pkg/auth/role.go:EffectiveRole` and `Authorize` — they are the whole
+decision. Then `auth_test.go:TestAuthorizationMatrix`, which is the
+specification in executable form.
+
+```bash
+GOWORK=off go test ./pkg/auth/ -count=1 -v
+```
+
+`GOWORK=off` is needed throughout: a parent `go.work` requires Go 1.26.1 and the
+toolchain here is 1.25.5. The Makefile already sets it on every target.
+
+### Technical details
+
+Token format, as minted:
+
+```
+ddp_7f3k9m2qx4vb3_8h2n6p4r9tzw3xk5mcqf7bdy1sav0jne
+     ^13 chars      ^32 chars
+     8 bytes        20 bytes = 160 bits
+```
+
+Lowercase base32 (`abcdefghijklmnopqrstuvwxyz234567`), no padding, parsed
+case-insensitively.
