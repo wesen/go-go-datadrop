@@ -949,3 +949,105 @@ $ go test ./... -count=1    all packages ok
 $ curl -s localhost/ui/     index-YSOhfNeV.js   (the new bundle)
 $ curl -s localhost/v1/drop 404                 (the API is not shadowed)
 ```
+
+---
+
+## Step 6: Phases 4 and 5 — the remaining applications, documents and snapshots
+
+Six more applications — charts, snapshots, compare, inspector, watchlist, trace,
+about — plus the two remaining workspace presets. Twelve applications now, all
+reachable from the launcher, all rendering without error.
+
+Verified in a browser against the real binary rather than the dev server:
+snapshotting document α produced `α-1` holding `lab / temps ⊳ 0 steps ⊳
+geom_line · x↦time y↦data.humidity`; duplicating α produced `α′` which became
+active; the status bar read *3 tiles · 4 workspaces · 2 documents*.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Finish the applications and the multi-document
+story.
+
+### What I did
+
+- `InspectorApp`, `TraceApp`, `WatchlistApp`, `ChartsApp`, `GalleryApp`,
+  `CompareApp`, `AboutApp`.
+- Two more presets: `gallery` and `help`.
+- Rebuilt the embedded bundle and toured all four workspaces in the served
+  binary.
+
+### What worked
+
+- **The watchlist is the clearest demonstration that presentations are handles.**
+  It re-presents through the registry — `labelFor` and `toneFor` by type — so it
+  works for every presentation type without knowing any of them, and a watched
+  field is still a live field.
+- **Compare renders an aligned diff rather than two summaries.** Comparing two
+  charts is almost always asking *what is different*, and the prototype makes
+  the reader do that by eye (pbui-gog.jsx:1933-1936). Rows that disagree are
+  marked.
+- **The about page renders live chips**, so it cannot drift from what it
+  documents. Change how a field chip looks and the glossary changes with it.
+
+### What didn't work
+
+**The about page imported a fixture, and the layer rule caught it.**
+
+```
+apps/AboutApp/AboutApp.tsx (apps) imports ../../fixtures (fixtures)
+```
+
+The glossary needs *a* source to show a `SourceChip`, and reaching for
+`readings.source` was the path of least resistance. It would have shipped
+roughly 200 kB of story JSON in the production bundle for one chip's worth of
+example data. Replaced with a literal.
+
+This is the fourth boundary violation the rule has caught and the first that was
+a *size* problem rather than a structural one — which is a use I had not
+anticipated when writing it.
+
+### What I learned
+
+- A dependency rule pays for itself in ways you did not design it for. Three of
+  the four catches were latent cycles or backwards edges; this one was dead
+  weight in a bundle.
+- Rendering documentation from the real components is the same trick as the
+  tutorials' ▶ buttons: **make the documentation execute, and it cannot rot.**
+
+### What warrants a second pair of eyes
+
+- `CompareApp` diffs the *specification*, not the data. Two snapshots with
+  identical specs over sources that have since changed will read as identical,
+  which is correct but possibly surprising. A row for "taken at" is there;
+  whether that is enough is a judgement call.
+- Restoring a snapshot whose source has since been deleted has not been
+  exercised. The plot engine's refuse-and-explain path should handle it, but it
+  is untested.
+
+### What should be done in the future
+
+- Phase 6: the four tutorial workspaces, the seeded tutorial drop, and the
+  keyboard work.
+- The live tail is still not wired into `ChartApp`; DR-15's pause-during-accept
+  goes with it.
+- `useTableFor` should key on `(source, limit)` — carried forward from step 5.
+
+### Code review instructions
+
+- `apps/WatchlistApp` for the union accept and the type-agnostic re-presentation.
+- `apps/CompareApp:rows` for the diff.
+- Tour it: `/ui/`, then the four workspace chips.
+
+### Technical details
+
+```
+build     pipeline · encoding · chart · table
+explore   sources · chart · inspector
+gallery   charts · snapshots · compare a/b
+help      about/help · watchlist · trace
+
+$ bun test               141 pass  0 fail
+$ go test ./... -count=1 all ok, smoke test included
+```

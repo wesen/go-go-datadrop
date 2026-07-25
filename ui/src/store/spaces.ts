@@ -25,7 +25,17 @@ export function defaultSpaces(): LayoutState {
     {
       id: newId(),
       name: "explore",
-      tree: split("row", leaf("sources"), leaf("chart"), 0.34),
+      tree: split("row", leaf("sources"), split("col", leaf("chart"), leaf("inspector"), 0.6), 0.34),
+    },
+    {
+      id: newId(),
+      name: "gallery",
+      tree: split("row", leaf("charts"), split("col", leaf("gallery"), leaf("compare"), 0.5), 0.4),
+    },
+    {
+      id: newId(),
+      name: "help",
+      tree: split("row", leaf("about"), split("col", leaf("watch"), leaf("trace"), 0.45), 0.55),
     },
   ];
   return { spaces, currentSpaceId: spaces[0]!.id };
