@@ -79,6 +79,15 @@ func (s *Store) UpsertUser(ctx context.Context, issuer, subject, email, name str
 	return user, nil
 }
 
+// GetUserBySubject reads a user by their provider identity.
+//
+// Used by the callback handler for exactly one thing: deciding whether this
+// sign-in is the account's first, so a new user can be landed in the account
+// workspace rather than wherever they were last. Nothing authorizes on it.
+func (s *Store) GetUserBySubject(ctx context.Context, issuer, subject string) (datadrop.User, error) {
+	return s.userBy(ctx, `issuer = ? AND subject = ?`, issuer, subject)
+}
+
 // GetUser reads one user by our own identifier.
 func (s *Store) GetUser(ctx context.Context, id string) (datadrop.User, error) {
 	return s.userBy(ctx, `id = ?`, id)

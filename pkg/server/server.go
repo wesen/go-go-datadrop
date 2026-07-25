@@ -20,6 +20,7 @@ import (
 
 	"github.com/pkg/errors"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
@@ -131,7 +132,27 @@ type Server struct {
 	schemas *schema.Cache
 	hub     *stream.Hub
 	http    *http.Server
+
+	// oidc is nil unless Auth is AuthOIDC and SetOIDCProvider has been called.
+	// An interface, so the callback handler's failure paths are testable with a
+	// fake rather than only against a live identity provider.
+	oidc auth.Provider
 }
+
+// SetOIDCProvider installs the relying party.
+//
+// Separate from New because discovery is a network call and New is not allowed
+// to make one: a server that cannot be constructed without reaching the
+// identity provider is a server whose tests need one.
+func (s *Server) SetOIDCProvider(p auth.Provider) { s.oidc = p }
+
+// RedirectURI is the callback URL to register on the OIDC application.
+//
+// Derived from ExternalURL rather than configured separately, because a
+// mismatch of a single character produces a provider-side error page rather
+// than a datadrop error — and having one source for it means the provisioning
+// script and the server cannot disagree.
+func (c Config) RedirectURI() string { return c.ExternalURL + "/v1/auth/callback" }
 
 // New builds a Server. It does not bind a socket; call Serve for that.
 func New(cfg Config, st *store.Store, blobs *blob.Store) (*Server, error) {
@@ -238,6 +259,10 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /v1/drops/{name}/datasets/{dataset}/versions/{version}/files/{path...}", s.handleDownloadDatasetFile)
 
 	// Accounts (DATADROP-5).
+	mux.HandleFunc("GET /v1/auth/login", s.handleAuthLogin)
+	mux.HandleFunc("GET /v1/auth/callback", s.handleAuthCallback)
+	mux.HandleFunc("POST /v1/auth/logout", s.handleAuthLogout)
+
 	mux.HandleFunc("GET /v1/me", s.handleMe)
 	mux.HandleFunc("GET /v1/me/tokens", s.handleListTokens)
 	mux.HandleFunc("POST /v1/me/tokens", s.handleCreateToken)
@@ -291,6 +316,10 @@ func (s *Server) Serve(ctx context.Context, ready func(net.Addr)) error {
 		ready(listener.Addr())
 	}
 
+	if s.cfg.Auth == AuthOIDC {
+		go s.sweepAuth(ctx)
+	}
+
 	errCh := make(chan error, 1)
 	go func() {
 		if err := s.http.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
@@ -328,5 +357,37 @@ func writeJSON(w http.ResponseWriter, r *http.Request, status int, v any) {
 	w.WriteHeader(status)
 	if err := json.NewEncoder(w).Encode(v); err != nil {
 		log.Warn().Err(err).Str("path", r.URL.Path).Msg("failed to write JSON response")
+	}
+}
+
+// sweepAuth deletes expired sessions and abandoned sign-in flows.
+//
+// Hygiene, not enforcement: GetSession and TakeAuthFlow both check their own
+// deadlines, so a paused or crashed sweeper cannot become an authorization
+// bypass. It runs once at startup and then every five minutes.
+func (s *Server) sweepAuth(ctx context.Context) {
+	const interval = 5 * time.Minute
+
+	sweep := func() {
+		sessions, flows, err := s.store.SweepAuth(ctx, s.cfg.OIDC.FlowMaxAge)
+		if err != nil {
+			log.Warn().Err(err).Msg("auth sweep failed")
+			return
+		}
+		if sessions > 0 || flows > 0 {
+			log.Debug().Int64("sessions", sessions).Int64("flows", flows).Msg("swept auth state")
+		}
+	}
+
+	sweep()
+	ticker := time.NewTicker(interval)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			sweep()
+		}
 	}
 }

@@ -85,6 +85,26 @@ func (s *Store) GetSession(ctx context.Context, raw string, idle time.Duration) 
 	return session, nil
 }
 
+// GetSessionByID reads a session by its stored id — the hash — rather than by
+// a cookie value.
+//
+// Only for a request that has ALREADY authenticated as that session, which is
+// why it does no expiry check: the caller holds a principal that the resolver
+// produced, and re-deciding validity here would be a second opinion on a
+// question already answered.
+func (s *Store) GetSessionByID(ctx context.Context, id string) (datadrop.Session, error) {
+	row := s.db.QueryRowContext(ctx,
+		`SELECT `+sessionColumns+` FROM sessions WHERE id = ?`, id)
+	session, err := scanSession(row)
+	if err != nil {
+		if isNoRows(err) {
+			return datadrop.Session{}, errors.Wrap(ErrNotFound, "session")
+		}
+		return datadrop.Session{}, errors.Wrap(err, "store: get session")
+	}
+	return session, nil
+}
+
 // TouchSession advances the idle clock. The absolute deadline is never
 // extended: extending it on activity is how a session becomes immortal.
 func (s *Store) TouchSession(ctx context.Context, id string) error {

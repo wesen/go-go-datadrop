@@ -14,6 +14,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
+	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
 	"github.com/go-go-golems/go-go-datadrop/pkg/blob"
 	"github.com/go-go-golems/go-go-datadrop/pkg/server"
 	"github.com/go-go-golems/go-go-datadrop/pkg/store"
@@ -197,6 +198,24 @@ func runServe(ctx context.Context, opts serveOptions) error {
 	}, st, blobs)
 	if err != nil {
 		return err
+	}
+
+	// Discovery is a network call and New must not make one, so the relying
+	// party is built here and installed. Retried, because the compose stack
+	// starts datadrop as soon as provisioning exits and the provider may still
+	// be finishing its first-boot projections.
+	if authCfg.Auth == server.AuthOIDC {
+		provider, err := auth.DiscoverWithRetry(ctx,
+			authCfg.OIDC.Issuer, authCfg.OIDC.ClientID, authCfg.OIDC.ClientSecret,
+			authCfg.RedirectURI(), authCfg.OIDC.Scopes, 20, 3*time.Second)
+		if err != nil {
+			return errors.Wrapf(err,
+				"OIDC discovery at %s failed; if the message mentions a mismatched "+
+					"issuer, the URL datadrop uses must be the same one the browser "+
+					"uses (see guide 13.2)", authCfg.OIDC.Issuer)
+		}
+		srv.SetOIDCProvider(provider)
+		log.Info().Str("redirect_uri", authCfg.RedirectURI()).Msg("OIDC relying party ready")
 	}
 
 	group, groupCtx := errgroup.WithContext(ctx)

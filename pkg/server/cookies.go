@@ -14,11 +14,49 @@ import (
 // cookie on exactly that request — signing the user out at the moment they
 // signed in. Lax is not the CSRF defence; checkOrigin is (guide §8.5).
 
-// clearSessionCookie ends a browser's credential.
+// setSessionCookie installs the browser's credential.
+func (s *Server) setSessionCookie(w http.ResponseWriter, value string, maxAgeSeconds int) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     SessionCookieName,
+		Value:    value,
+		Path:     "/",
+		HttpOnly: true,
+		Secure:   s.secureCookies(),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAgeSeconds,
+	})
+}
+
+// setFlowCookie binds a browser to one pending sign-in.
 //
-// The setters that install these cookies land in phase 3 alongside the sign-in
-// handlers that use them; clearing is needed sooner, because revoking your own
-// session from the profile tile must also drop the cookie.
+// Scoped to /v1/auth/ so it is not attached to every request in the workbench,
+// and short-lived, because a sign-in that takes longer than FlowMaxAge is not
+// going to complete.
+func (s *Server) setFlowCookie(w http.ResponseWriter, value string, maxAgeSeconds int) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     FlowCookieName,
+		Value:    value,
+		Path:     "/v1/auth/",
+		HttpOnly: true,
+		Secure:   s.secureCookies(),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   maxAgeSeconds,
+	})
+}
+
+func (s *Server) clearFlowCookie(w http.ResponseWriter) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     FlowCookieName,
+		Value:    "",
+		Path:     "/v1/auth/",
+		HttpOnly: true,
+		Secure:   s.secureCookies(),
+		SameSite: http.SameSiteLaxMode,
+		MaxAge:   -1,
+	})
+}
+
+// clearSessionCookie ends a browser's credential.
 func (s *Server) clearSessionCookie(w http.ResponseWriter) {
 	http.SetCookie(w, &http.Cookie{
 		Name:     SessionCookieName,

@@ -601,3 +601,159 @@ $ curl -s localhost:7071/v1/drops          # anonymous
 
 `your_role` is what lets the UI grey out an action it knows will 403 rather than
 offering it and failing.
+
+## Step 5: Phase 3 — OIDC
+
+`pkg/auth/oidc.go` behind a three-method `Provider` interface, the three sign-in
+endpoints, just-in-time provisioning, sessions, sign-out, and the auth sweeper.
+Sixteen tests, none of which needs an identity provider running.
+
+The interface is the whole point of the phase. Every failure path in the
+callback handler is a security property — a replayed state, a callback with no
+flow cookie, a refused exchange, an unverified email, a disabled account — and
+not one of them is reachable in a test that needs a live Zitadel. Behind a fake
+provider they are each one field assignment away.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 3 — the OIDC relying party and the sign-in flow.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** see `git log` for `feat(DATADROP-5): phase 3`
+
+### What I did
+
+- `pkg/auth/oidc.go` — `Claims`, `Provider`, `DiscoverProvider`,
+  `DiscoverWithRetry`, and the real implementation over `coreos/go-oidc` and
+  `x/oauth2`.
+- `pkg/server/handlers_auth.go` — `/v1/auth/login`, `/callback`, `/logout`,
+  plus `safeReturnPath` and `clientIP`.
+- `pkg/server/cookies.go` — the setters, now that something installs them.
+- `pkg/store/{users,sessions}.go` — `GetUserBySubject`, `GetSessionByID`.
+- `pkg/server/server.go` — `SetOIDCProvider`, `Config.RedirectURI`, the routes,
+  and `sweepAuth`.
+- `pkg/cli/serve.go` — discovery with retry at startup.
+- `pkg/server/auth_flow_test.go` — 16 tests over a fake provider.
+
+### Why
+
+Guide §8.2. And DR-18: nothing here hard-codes a provider endpoint. The
+authorization, token and end-session URLs all come out of the discovery
+document, which is what makes swapping Zitadel for Keycloak a configuration
+change rather than a code change.
+
+### What worked
+
+- **Three methods was the right size for `Provider`.** `AuthCodeURL`,
+  `Exchange`, `EndSessionURL` — the fake is about thirty lines and it records
+  the state, nonce and verifier the handler sent, so the tests can assert PKCE
+  and the nonce are genuinely in play rather than merely generated.
+- Discovery-with-retry at startup rather than a restart policy. The compose
+  stack launches datadrop the moment provisioning exits, and Zitadel may still
+  be finishing first-boot projections; retrying for a minute and saying so beats
+  dying and being restarted by Docker with no explanation.
+- Every callback failure redirects to `/ui/?auth_error=<code>` rather than
+  rendering a page. Nicer, and it means provider-supplied text is never
+  reflected into an HTML response — asserted by a test that sends
+  `error_description=%3Cscript%3E`.
+
+### What didn't work
+
+- `go mod tidy` removed `go-oidc` and `x/oauth2` immediately after I added them,
+  because nothing imported them yet. Ordinary, but worth knowing before
+  concluding the module cache is broken: add the dependency in the same change
+  that uses it.
+- My first pass at trimming phase 2's not-yet-used cookie helpers took
+  `clearSessionCookie` with them, which *is* used. Caught by the build; restored
+  here alongside the setters that finally have callers.
+
+### What I learned
+
+**The flow needs a cookie as well as a database row.** My first sketch stored
+`state` in `auth_flows` and checked the callback against it. That is not enough:
+anyone who observes a callback URL — a proxy log, a referrer header, a shoulder
+— could redeem it, because the row does not know which browser it belongs to.
+Adding a short-lived `dd_flow` cookie carrying the same state means the callback
+must arrive in the browser that started the flow. `TestCallbackRequiresTheFlowCookie`
+covers both halves: no cookie, and someone else's cookie.
+
+**A first sign-in and a signup are the same code path.** The only difference on
+our side is `prompt=create` on the way out and a `first=1` on the way back. That
+is the entire payoff for putting registration at the provider, and it is why
+there is no signup handler.
+
+### What was tricky to build
+
+**`safeReturnPath`.** An unvalidated `return` parameter is an open redirect, and
+an open redirect on a login endpoint is a phishing primitive: an attacker sends
+a victim to our *real* sign-in page and receives them, authenticated, on their
+own site. The non-obvious case is `//evil.example`, which starts with `/` and is
+protocol-relative — a browser treats it as a host. The check is: must start with
+`/`, must not start with `//`, and must parse with no scheme and no host. The
+test table includes `/\evil.example` as a deliberate *pass*, because that really
+is a path.
+
+**Storing the ID token.** It is the one OIDC artefact we keep, purely as
+`id_token_hint` for RP-initiated logout, and it contains PII. It has no useful
+JSON tag on `datadrop.Session`, and `handleListSessions` builds its own wire
+struct rather than serialising the store type — so the token cannot escape later
+by someone adding a tag to it.
+
+**`clientIP` deliberately ignores `X-Forwarded-For`.** Behind an untrusted proxy
+that header is attacker-controlled, and a "your sessions" list that confidently
+shows a forged address is worse than one showing the proxy's.
+
+### What warrants a second pair of eyes
+
+- `handleAuthCallback` end to end. It is the longest security-relevant function
+  in the ticket and the order of its checks matters: state cookie, then flow
+  row (single-use), then exchange, then verified-email, then provisioning, then
+  disabled, then session.
+- `DiscoverProvider` does not use `oidc.InsecureIssuerURLContext`. That is
+  deliberate — see the doc comment and guide §13.2 — and it means the compose
+  stack must give the browser and the container the same issuer URL, which §13.3
+  arranges with a network alias and matching ports.
+- `sweepAuth` runs only in oidc mode. Harmless elsewhere, but it means a
+  deployment that switches modes without a restart keeps stale rows.
+
+### What should be done in the future
+
+- The idle timeout is enforced but never surfaced: a user whose session lapses
+  sees a 401 with no explanation. The SPA should notice and re-run the sign-in
+  redirect, which is usually invisible because the provider session is still
+  live.
+- `DiscoverWithRetry`'s 20×3s is hard-coded. Fine for compose; a flag if anyone
+  runs this where the provider takes longer.
+
+### Code review instructions
+
+`pkg/server/handlers_auth.go` first, then `auth_flow_test.go` — the fake
+provider at the top of that file is the cheapest way to understand the flow.
+
+```bash
+GOWORK=off go test ./pkg/server/ -count=1 -run 'SignIn|Signup|Callback|Logout|Return|Unverified|Disabled|AuthEndpoints' -v
+```
+
+### Technical details
+
+New dependencies, both pure Go with small trees:
+
+```
+github.com/coreos/go-oidc/v3 v3.20.0
+golang.org/x/oauth2 v0.36.0
+github.com/go-jose/go-jose/v4 v4.1.4   (indirect, JWKS)
+```
+
+PKCE, from `x/oauth2`:
+
+```go
+url := cfg.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier), oidc.Nonce(nonce))
+tok, err := cfg.Exchange(ctx, code, oauth2.VerifierOption(verifier))
+```
+
+Used on a *confidential* client, which is not redundant: RFC 9700 recommends
+PKCE for every client because it binds the code to the party that requested it
+independently of the client secret.
