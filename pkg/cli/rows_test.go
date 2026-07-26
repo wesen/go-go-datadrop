@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
 	"github.com/go-go-golems/glazed/pkg/types"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/client"
@@ -275,5 +276,46 @@ func TestOptionalTimestampsAreEmptyWhenAbsent(t *testing.T) {
 	row := RowForDropStats(datadrop.DropStats{Drop: datadrop.Drop{Name: "x"}})
 	if got, _ := row.Get("last_event"); got != "" {
 		t.Errorf("last_event = %q, want an empty cell", got)
+	}
+}
+
+// --token must be a fields.TypeSecret and not a fields.TypeString, and this is
+// the one test in the repository with a security consequence.
+//
+// Every Glazed command gets glazed's command-settings section, which adds
+// --print-parsed-fields; that flag dumps every resolved value together with the
+// source it came from. Redaction happens in fields.RedactValue, which returns
+// the value UNCHANGED unless the field's type reports IsSensitive() — and
+// IsSensitive() is true for exactly one type. Declared TypeString, a bearer
+// token is printed in full, three times: the value, the parse log, and the name
+// of the environment variable it was read from.
+//
+// The cobra flag cannot be inspected for this: glazed registers TypeString and
+// TypeSecret with the same flagSet.String call, so the distinction only exists
+// in the field definition. That is why this test lives here and not beside the
+// command-tree tests.
+func TestClientTokenIsASecret(t *testing.T) {
+	section, err := NewClientSection()
+	if err != nil {
+		t.Fatalf("NewClientSection: %v", err)
+	}
+
+	token, ok := section.GetDefinitions().Get("token")
+	if !ok {
+		t.Fatal("the client section has no token field")
+	}
+	if !token.Type.IsSensitive() {
+		t.Errorf("--token is %s, which glazed does not redact; want %s",
+			token.Type, fields.TypeSecret)
+	}
+
+	// --addr is not a secret, and should not be: "where did this address come
+	// from" is the question --print-parsed-fields exists to answer.
+	addr, ok := section.GetDefinitions().Get("addr")
+	if !ok {
+		t.Fatal("the client section has no addr field")
+	}
+	if addr.Type.IsSensitive() {
+		t.Errorf("--addr is redacted, which defeats the point of --print-parsed-fields")
 	}
 }

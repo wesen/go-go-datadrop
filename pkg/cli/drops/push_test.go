@@ -1,10 +1,8 @@
-package cli
+package drops
 
 import (
 	"encoding/json"
 	"testing"
-
-	"github.com/go-go-golems/go-go-datadrop/pkg/client"
 )
 
 // payloadFromFields is where a user's shell input becomes typed JSON, and the
@@ -194,59 +192,6 @@ func TestEnvelopeOverridesOmitsUnsetAttributes(t *testing.T) {
 		}
 	}
 }
-
-func TestParseOutput(t *testing.T) {
-	for input, want := range map[string]string{
-		"":       OutputTable,
-		"table":  OutputTable,
-		"json":   OutputJSON,
-		"ndjson": OutputNDJSON,
-		"JSON":   OutputJSON,
-		" json ": OutputJSON,
-	} {
-		got, err := parseOutput(input)
-		if err != nil {
-			t.Fatalf("parseOutput(%q) = %v", input, err)
-		}
-		if got != want {
-			t.Fatalf("parseOutput(%q) = %q, want %q", input, got, want)
-		}
-	}
-
-	for _, input := range []string{"yaml", "csv", "xml"} {
-		if _, err := parseOutput(input); err == nil {
-			t.Errorf("parseOutput(%q) accepted an unsupported format", input)
-		}
-	}
-}
-
-func TestExitCodeMapping(t *testing.T) {
-	for status, want := range map[int]int{
-		401: ExitAuth,
-		403: ExitAuth,
-		404: ExitNotFound,
-		400: ExitValidation,
-		409: ExitValidation,
-		413: ExitValidation,
-		422: ExitValidation,
-		500: ExitError,
-		502: ExitError,
-	} {
-		got := exitCodeFor(&client.APIError{Status: status, Code: "Test"})
-		if got != want {
-			t.Errorf("HTTP %d mapped to exit %d, want %d", status, got, want)
-		}
-	}
-
-	// A non-API error is a generic failure.
-	if got := exitCodeFor(errString("something broke")); got != ExitError {
-		t.Errorf("a plain error mapped to exit %d, want %d", got, ExitError)
-	}
-}
-
-type errString string
-
-func (e errString) Error() string { return string(e) }
 
 func assertPayload(t *testing.T, got, want map[string]any) {
 	t.Helper()

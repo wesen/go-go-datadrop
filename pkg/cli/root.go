@@ -24,17 +24,12 @@ import (
 // has to apply them from inside a command because glazed's cobra builder never
 // returns the error here.
 
-// globalOptions are the flags shared by every subcommand.
-//
-// Logging is deliberately absent. It used to hold a logLevel string bound to a
-// hand-rolled --log-level flag; the Glazed logging section owns that flag now
-// and reads it straight off the cobra command, so a field here would be a
-// second copy nothing writes to.
-type globalOptions struct {
-	addr   string
-	token  string
-	output string
-}
+// There are no persistent client flags on the root any more. --addr and --token
+// come from the client section, attached to the commands that actually talk to
+// a server (DR-76), and --output comes from the Glazed output section attached
+// to the commands that emit rows. `datadrop --output json list` — the flag
+// before the verb — is now an unknown-flag error rather than a silently
+// ignored one, which is an improvement on both counts.
 
 // NewRootCmd builds the full command tree.
 //
@@ -46,8 +41,6 @@ type globalOptions struct {
 // group packages import this one for the client section, the row projections
 // and the exit helper. cmd/datadrop/main.go names them; see build.go.
 func NewRootCmd(registrars ...Registrar) (*cobra.Command, error) {
-	opts := &globalOptions{}
-
 	root := &cobra.Command{
 		Use:   "datadrop",
 		Short: "A self-hostable, CLI-first research data inbox",
@@ -76,31 +69,17 @@ Then, from another shell:
 		},
 	}
 
-	flags := root.PersistentFlags()
-	flags.StringVar(&opts.addr, "addr", envOr("DATADROP_ADDR", "http://localhost:8080"),
-		"datadrop server base URL (client commands) [$DATADROP_ADDR]")
-	flags.StringVar(&opts.token, "token", os.Getenv("DATADROP_TOKEN"),
-		"bearer token [$DATADROP_TOKEN]")
-	flags.StringVar(&opts.output, "output", "table",
-		"output format: table, json, ndjson, csv")
-
-	root.AddCommand(
-		newServeCmd(opts),
-		newCreateCmd(opts),
-		newPushCmd(opts),
-		newSchemaCmd(opts),
-		newDatasetCmd(opts),
-		newHealthcheckCmd(),
-	)
-
 	// The verbs this package owns directly, because they have no group.
+	//
+	// serve and healthcheck run or probe a server rather than talking to one,
+	// so they are built without the DATADROP_* env prefix; see build.go.
 	if err := AddCommands(root, NewWhoamiCommand); err != nil {
 		return nil, err
 	}
+	if err := addOperatorCommands(root, NewServeCommand, NewHealthcheckCommand); err != nil {
+		return nil, err
+	}
 
-	// The converted verbs. Both styles coexist on one root while the conversion
-	// runs (DR-84): there is no green point in the middle of a big-bang
-	// rewrite of nineteen verbs.
 	for _, register := range registrars {
 		if err := register(root); err != nil {
 			return nil, err

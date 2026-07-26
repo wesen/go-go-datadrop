@@ -19,7 +19,9 @@ import (
 // keeps the verb files free of wiring.
 func Register(root *cobra.Command) error {
 	return ddcli.AddCommands(root,
+		NewCreateCommand,
 		NewListCommand,
 		NewInspectCommand,
+		NewPushCommand,
 	)
 }

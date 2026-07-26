@@ -6,29 +6,13 @@ import (
 	"github.com/go-go-golems/glazed/pkg/cmds/fields"
 	"github.com/pkg/errors"
 
+	ddcli "github.com/go-go-golems/go-go-datadrop/pkg/cli"
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
 )
 
-// StreamFlag names the stream within a drop.
-//
-// It is "drop-stream" and not "stream", which it was before this ticket,
-// because glazed's output section owns --stream: a bool that switches
-// row-at-a-time emission. Two sections cannot both define it. Building the
-// command with the old name fails, and fails loudly enough to take the whole
-// binary with it:
-//
-//	$ datadrop query greenhouse
-//	datadrop: building the query command: Flag 'stream' (usage: stream within
-//	the drop - <string>) already exists
-//
-// That is the tree failing to assemble, so *no* verb runs, not just this one.
-// glazed's --stream cannot be renamed or removed either: a section's fields are
-// fixed at construction and its settings struct reads them by tag.
-//
-// So the datadrop flag moved. --drop-stream says which noun the stream belongs
-// to, which is also what made the old name ambiguous the moment row-streaming
-// existed.
-const StreamFlag = "drop-stream"
+// The stream-within-a-drop flag is ddcli.DropStreamFlag, shared with the four
+// other verbs that carry it. See pkg/cli/fields.go for why it is no longer
+// spelled --stream.
 
 // rangeSettings are the query bounds shared by query, tail and export.
 type rangeSettings struct {
@@ -45,9 +29,7 @@ type rangeSettings struct {
 // 50, a tail shows the last 10, an export takes everything it is allowed.
 func rangeFields(defaultLimit int) []*fields.Definition {
 	return []*fields.Definition{
-		fields.New(StreamFlag, fields.TypeString,
-			fields.WithDefault(datadrop.DefaultStream),
-			fields.WithHelp("stream within the drop (was --stream before v0.2)")),
+		ddcli.DropStreamField(),
 		fields.New("limit", fields.TypeInteger,
 			fields.WithDefault(defaultLimit),
 			fields.WithHelp("maximum number of events (server caps at 1000)")),

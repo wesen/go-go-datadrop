@@ -103,16 +103,16 @@ func TestDatasetEndToEnd(t *testing.T) {
 		"--file", csvPath+":data/readings.csv",
 		"--file", readmePath+":README.md",
 		"--title", "Greenhouse readings, 2026 season",
-		"--license", "CC-BY-4.0")
+		"--license", "CC-BY-4.0",
+		"--output", "json")
 
 	if !strings.Contains(stderr, "uploaded 2 file(s)") {
 		t.Fatalf("first push should upload both files; stderr: %s", stderr)
 	}
 
-	var version map[string]any
-	if err := json.Unmarshal([]byte(stdout), &version); err != nil {
-		t.Fatalf("decode push output %q: %v", stdout, err)
-	}
+	// Every Glaze verb emits rows, so --output json is an array even when the
+	// verb produces exactly one thing.
+	version := decodeOneRow(t, "dataset push", stdout)
 	if version["state"] != "committed" {
 		t.Fatalf("state = %v, want committed", version["state"])
 	}
@@ -228,12 +228,10 @@ func TestDatasetImportEndToEnd(t *testing.T) {
 	dd.mustRun("dataset", "push", "greenhouse", "readings", "--file", csvPath+":readings.csv")
 
 	// --- materialize -------------------------------------------------------
-	stdout, _ := dd.mustRun("dataset", "import", "greenhouse", "readings", "--path", "readings.csv")
+	stdout, _ := dd.mustRun("dataset", "import", "greenhouse", "readings",
+		"--path", "readings.csv", "--output", "json")
 
-	var result map[string]any
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("decode import output %q: %v", stdout, err)
-	}
+	result := decodeOneRow(t, "dataset import", stdout)
 	if result["appended"] != float64(2) {
 		t.Fatalf("appended = %v, want 2", result["appended"])
 	}
@@ -270,10 +268,9 @@ func TestDatasetImportEndToEnd(t *testing.T) {
 	}
 
 	// --- re-import must resume, not duplicate ------------------------------
-	stdout, _ = dd.mustRun("dataset", "import", "greenhouse", "readings", "--path", "readings.csv")
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("decode second import: %v", err)
-	}
+	stdout, _ = dd.mustRun("dataset", "import", "greenhouse", "readings",
+		"--path", "readings.csv", "--output", "json")
+	result = decodeOneRow(t, "the second dataset import", stdout)
 	if result["appended"] != float64(0) || result["skipped"] != float64(2) {
 		t.Fatalf("second import: appended=%v skipped=%v, want 0 and 2",
 			result["appended"], result["skipped"])
@@ -340,16 +337,32 @@ func TestDatasetGCEndToEnd(t *testing.T) {
 
 	// A sweep with a one-second floor, after waiting past it.
 	time.Sleep(1100 * time.Millisecond)
-	stdout, _ := dd.mustRun("dataset", "gc", "--min-age-seconds", "1")
+	stdout, _ := dd.mustRun("dataset", "gc", "--min-age-seconds", "1", "--output", "json")
 
-	var result map[string]any
-	if err := json.Unmarshal([]byte(stdout), &result); err != nil {
-		t.Fatalf("decode gc output %q: %v", stdout, err)
-	}
+	result := decodeOneRow(t, "dataset gc", stdout)
 	if result["deleted"] != float64(1) {
 		t.Fatalf("deleted = %v, want 1", result["deleted"])
 	}
 	if blobs := countFiles(t, blobDir); blobs != 0 {
 		t.Fatalf("%d blobs after the sweep, want 0", blobs)
 	}
+}
+
+// decodeOneRow parses the --output json of a verb that emits exactly one row.
+//
+// Every Glaze command emits an array, including the ones that produce a single
+// object, and that uniformity is the point of the conversion: --output json
+// means the same thing everywhere, so a script does not have to know which verb
+// it called.
+func decodeOneRow(t *testing.T, what, stdout string) map[string]any {
+	t.Helper()
+
+	var rows []map[string]any
+	if err := json.Unmarshal([]byte(stdout), &rows); err != nil {
+		t.Fatalf("decode %s output %q: %v", what, stdout, err)
+	}
+	if len(rows) != 1 {
+		t.Fatalf("%s emitted %d rows, want 1: %s", what, len(rows), stdout)
+	}
+	return rows[0]
 }

@@ -153,8 +153,8 @@ func TestQuickStartEndToEnd(t *testing.T) {
 	}
 
 	// --- create ------------------------------------------------------------
-	stdout, _ := dd.mustRun("create", "greenhouse")
-	if !strings.Contains(stdout, `"name": "greenhouse"`) {
+	stdout, _ := dd.mustRun("create", "greenhouse", "--output", "json")
+	if created := decodeOneRow(t, "create", stdout); created["name"] != "greenhouse" {
 		t.Fatalf("create output does not name the drop: %s", stdout)
 	}
 
@@ -222,16 +222,8 @@ func TestQuickStartEndToEnd(t *testing.T) {
 	// the same thing on every verb, and a script no longer has to know which
 	// one it called.
 	stdout, _ = dd.mustRun("inspect", "greenhouse", "--output", "json")
-
-	var inspected []map[string]any
-	if err := json.Unmarshal([]byte(stdout), &inspected); err != nil {
-		t.Fatalf("decode inspect output %q: %v", stdout, err)
-	}
-	if len(inspected) != 1 {
-		t.Fatalf("inspect returned %d rows, want 1", len(inspected))
-	}
-	if inspected[0]["event_count"] != float64(4) {
-		t.Fatalf("inspect reports event_count = %v, want 4", inspected[0]["event_count"])
+	if inspected := decodeOneRow(t, "inspect", stdout); inspected["event_count"] != float64(4) {
+		t.Fatalf("inspect reports event_count = %v, want 4", inspected["event_count"])
 	}
 
 	stdout, _ = dd.mustRun("list")

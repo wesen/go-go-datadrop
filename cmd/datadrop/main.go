@@ -11,8 +11,10 @@ import (
 	"os"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/cli"
+	"github.com/go-go-golems/go-go-datadrop/pkg/cli/dataset"
 	"github.com/go-go-golems/go-go-datadrop/pkg/cli/drops"
 	"github.com/go-go-golems/go-go-datadrop/pkg/cli/events"
+	"github.com/go-go-golems/go-go-datadrop/pkg/cli/schemacmd"
 )
 
 // The group registrars are named here rather than inside pkg/cli, because the
@@ -23,5 +25,7 @@ func main() {
 	os.Exit(cli.Execute(
 		drops.Register,
 		events.Register,
+		schemacmd.Register,
+		dataset.Register,
 	))
 }

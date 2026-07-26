@@ -10,8 +10,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/cmds/fields"
+	"github.com/go-go-golems/glazed/pkg/cmds/schema"
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
 	"golang.org/x/sync/errgroup"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/auth"
@@ -21,144 +24,161 @@ import (
 	"github.com/go-go-golems/go-go-datadrop/pkg/webui"
 )
 
-func newServeCmd(opts *globalOptions) *cobra.Command {
-	var (
-		listenAddr       string
-		dbPath           string
-		blobDir          string
-		token            string
-		authMode         string
-		externalURL      string
-		oidcIssuer       string
-		oidcClientID     string
-		oidcClientIDFile string
-		oidcClientSecret string
-		oidcSecretFile   string
-		requireVerified  bool
-		sessionLifetime  time.Duration
-		sessionIdle      time.Duration
-		maxBodyBytes     int64
-		maxUploadBytes   int64
-		disableUI        bool
-		uiDir            string
-	)
+// ServeCommand runs the datadrop HTTP server.
+//
+// It is a BareCommand (DR-81): it runs until it is stopped and its output is
+// log lines, so there is nothing to emit rows about. It also does not carry the
+// client section — `serve` used to have a client --token it never read, purely
+// because the flag was persistent on the root.
+type ServeCommand struct {
+	*cmds.CommandDescription
+}
 
-	cmd := &cobra.Command{
-		Use:   "serve",
-		Short: "Run the datadrop HTTP server",
-		Long: `Run the datadrop HTTP server against a SQLite database file.
+var _ cmds.BareCommand = &ServeCommand{}
+
+// serveSettings is the flag surface of the server.
+//
+// Every OIDC field keeps its environment fallback in the field default via
+// envOr, rather than through the section machinery's env source; see
+// buildOperatorCommand in build.go for why this verb reads no DATADROP_* prefix.
+type serveSettings struct {
+	ListenAddr       string        `glazed:"addr"`
+	DBPath           string        `glazed:"db"`
+	BlobDir          string        `glazed:"blobs"`
+	Token            string        `glazed:"token"`
+	AuthMode         string        `glazed:"auth"`
+	ExternalURL      string        `glazed:"external-url"`
+	OIDCIssuer       string        `glazed:"oidc-issuer"`
+	OIDCClientID     string        `glazed:"oidc-client-id"`
+	OIDCClientIDFile string        `glazed:"oidc-client-id-file"`
+	OIDCClientSecret string        `glazed:"oidc-client-secret"`
+	OIDCSecretFile   string        `glazed:"oidc-client-secret-file"`
+	RequireVerified  bool          `glazed:"oidc-require-verified-email"`
+	SessionLifetime  string        `glazed:"session-lifetime"`
+	SessionIdle      string        `glazed:"session-idle"`
+	MaxBodyBytes     int           `glazed:"max-body-bytes"`
+	MaxUploadBytes   int           `glazed:"max-upload-bytes"`
+	DisableUI        bool          `glazed:"no-ui"`
+	UIDir            string        `glazed:"ui-dir"`
+	sessionLifetime  time.Duration `glazed:"-"`
+	sessionIdle      time.Duration `glazed:"-"`
+}
+
+// NewServeCommand builds `datadrop serve`.
+func NewServeCommand() (cmds.Command, error) {
+	return &ServeCommand{cmds.NewCommandDescription(
+		"serve",
+		cmds.WithShort("Run the datadrop HTTP server"),
+		cmds.WithLong(strings.TrimSpace(`
+Run the datadrop HTTP server against a SQLite database file.
 
 The database is created and migrated on startup if it does not exist, so this
-command is safe to re-run against the same file.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			// --token on this command overrides the persistent --token, which
-			// is otherwise the *client* credential.
-			if token == "" {
-				token = opts.token
-			}
-			return runServe(cmd.Context(), serveOptions{
-				listenAddr:       listenAddr,
-				dbPath:           dbPath,
-				blobDir:          blobDir,
-				token:            token,
-				authMode:         authMode,
-				externalURL:      externalURL,
-				oidcIssuer:       oidcIssuer,
-				oidcClientID:     oidcClientID,
-				oidcClientIDFile: oidcClientIDFile,
-				oidcClientSecret: oidcClientSecret,
-				oidcSecretFile:   oidcSecretFile,
-				requireVerified:  requireVerified,
-				sessionLifetime:  sessionLifetime,
-				sessionIdle:      sessionIdle,
-				maxBodyBytes:     maxBodyBytes,
-				maxUploadBytes:   maxUploadBytes,
-				disableUI:        disableUI,
-				uiDir:            uiDir,
-			})
-		},
+command is safe to re-run against the same file.
+
+    datadrop serve --addr :8080 --db ./datadrop.db --token secret
+
+--addr here is the socket to bind, not a server to talk to. It deliberately
+does not read $DATADROP_ADDR, which is the client's address for a running
+server and would be the wrong thing to listen on.
+`)),
+		cmds.WithFlags(
+			fields.New("addr", fields.TypeString,
+				fields.WithDefault(":8080"),
+				fields.WithHelp("listen address")),
+			fields.New("db", fields.TypeString,
+				fields.WithDefault("./datadrop.db"),
+				fields.WithHelp("path to the SQLite database file")),
+			fields.New("blobs", fields.TypeString,
+				fields.WithDefault(""),
+				fields.WithHelp("directory holding dataset file bytes (default: <db-dir>/blobs)")),
+			fields.New("token", fields.TypeSecret,
+				fields.WithDefault(os.Getenv("DATADROP_TOKEN")),
+				fields.WithHelp("static root bearer token; in oidc mode this is an operator break-glass [$DATADROP_TOKEN]")),
+			fields.New("auth", fields.TypeString,
+				fields.WithDefault(envOr("DATADROP_AUTH", "")),
+				fields.WithHelp("authentication mode: none, token or oidc (default: token when --token is set, else none) [$DATADROP_AUTH]")),
+			fields.New("external-url", fields.TypeString,
+				fields.WithDefault(envOr("DATADROP_EXTERNAL_URL", "")),
+				fields.WithHelp("the origin a browser reaches this server on, e.g. http://datadrop.localhost:7070 [$DATADROP_EXTERNAL_URL]")),
+			fields.New("oidc-issuer", fields.TypeString,
+				fields.WithDefault(envOr("DATADROP_OIDC_ISSUER", "")),
+				fields.WithHelp("OIDC issuer URL [$DATADROP_OIDC_ISSUER]")),
+			fields.New("oidc-client-id", fields.TypeString,
+				fields.WithDefault(envOr("DATADROP_OIDC_CLIENT_ID", "")),
+				fields.WithHelp("OIDC client id [$DATADROP_OIDC_CLIENT_ID]")),
+			fields.New("oidc-client-id-file", fields.TypeString,
+				fields.WithDefault(envOr("DATADROP_OIDC_CLIENT_ID_FILE", "")),
+				fields.WithHelp("read the OIDC client id from this file")),
+			fields.New("oidc-client-secret", fields.TypeSecret,
+				fields.WithDefault(envOr("DATADROP_OIDC_CLIENT_SECRET", "")),
+				fields.WithHelp("OIDC client secret [$DATADROP_OIDC_CLIENT_SECRET]")),
+			// A file, not just an environment variable: a secret passed by env
+			// is visible in `docker inspect`, is inherited by every child
+			// process, and lands in a crash dump of the process environment.
+			fields.New("oidc-client-secret-file", fields.TypeString,
+				fields.WithDefault(envOr("DATADROP_OIDC_CLIENT_SECRET_FILE", "")),
+				fields.WithHelp("read the OIDC client secret from this file (preferred over --oidc-client-secret)")),
+			fields.New("oidc-require-verified-email", fields.TypeBool,
+				fields.WithDefault(true),
+				fields.WithHelp("refuse a sign-in whose email is unverified at the provider")),
+			fields.New("session-lifetime", fields.TypeString,
+				fields.WithDefault("12h"),
+				fields.WithHelp("absolute session lifetime; never extended by activity")),
+			fields.New("session-idle", fields.TypeString,
+				fields.WithDefault("2h"),
+				fields.WithHelp("sign out a session that has been unused for this long")),
+			fields.New("max-body-bytes", fields.TypeInteger,
+				fields.WithDefault(int(server.DefaultMaxBodyBytes)),
+				fields.WithHelp("maximum accepted JSON request body size")),
+			fields.New("max-upload-bytes", fields.TypeInteger,
+				fields.WithDefault(int(server.DefaultMaxUploadBytes)),
+				fields.WithHelp("maximum accepted dataset file upload size")),
+			fields.New("no-ui", fields.TypeBool,
+				fields.WithDefault(false),
+				fields.WithHelp("do not mount the web UI at /ui")),
+			fields.New("ui-dir", fields.TypeString,
+				fields.WithDefault(""),
+				fields.WithHelp("serve the web UI from this directory instead of the embedded copy")),
+		),
+	)}, nil
+}
+
+// Run starts the server and blocks until the context is cancelled.
+func (c *ServeCommand) Run(ctx context.Context, vals *values.Values) error {
+	s := &serveSettings{}
+	if err := vals.DecodeSectionInto(schema.DefaultSlug, s); err != nil {
+		return err
 	}
 
-	flags := cmd.Flags()
-	flags.StringVar(&listenAddr, "addr", ":8080", "listen address")
-	flags.StringVar(&dbPath, "db", "./datadrop.db", "path to the SQLite database file")
-	flags.StringVar(&blobDir, "blobs", "", "directory holding dataset file bytes (default: <db-dir>/blobs)")
-	flags.StringVar(&token, "token", "",
-		"static root bearer token; in oidc mode this is an operator break-glass [$DATADROP_TOKEN]")
-	flags.StringVar(&authMode, "auth", envOr("DATADROP_AUTH", ""),
-		"authentication mode: none, token or oidc (default: token when --token is set, else none) [$DATADROP_AUTH]")
-	flags.StringVar(&externalURL, "external-url", envOr("DATADROP_EXTERNAL_URL", ""),
-		"the origin a browser reaches this server on, e.g. http://datadrop.localhost:7070 [$DATADROP_EXTERNAL_URL]")
-	flags.StringVar(&oidcIssuer, "oidc-issuer", envOr("DATADROP_OIDC_ISSUER", ""),
-		"OIDC issuer URL [$DATADROP_OIDC_ISSUER]")
-	flags.StringVar(&oidcClientID, "oidc-client-id", envOr("DATADROP_OIDC_CLIENT_ID", ""),
-		"OIDC client id [$DATADROP_OIDC_CLIENT_ID]")
-	flags.StringVar(&oidcClientIDFile, "oidc-client-id-file", envOr("DATADROP_OIDC_CLIENT_ID_FILE", ""),
-		"read the OIDC client id from this file")
-	flags.StringVar(&oidcClientSecret, "oidc-client-secret", envOr("DATADROP_OIDC_CLIENT_SECRET", ""),
-		"OIDC client secret [$DATADROP_OIDC_CLIENT_SECRET]")
-	// A file, not just an environment variable: a secret passed by env is
-	// visible in `docker inspect`, is inherited by every child process, and
-	// lands in a crash dump of the process environment.
-	flags.StringVar(&oidcSecretFile, "oidc-client-secret-file", envOr("DATADROP_OIDC_CLIENT_SECRET_FILE", ""),
-		"read the OIDC client secret from this file (preferred over --oidc-client-secret)")
-	flags.BoolVar(&requireVerified, "oidc-require-verified-email", true,
-		"refuse a sign-in whose email is unverified at the provider")
-	flags.DurationVar(&sessionLifetime, "session-lifetime", 12*time.Hour,
-		"absolute session lifetime; never extended by activity")
-	flags.DurationVar(&sessionIdle, "session-idle", 2*time.Hour,
-		"sign out a session that has been unused for this long")
-	flags.Int64Var(&maxBodyBytes, "max-body-bytes", server.DefaultMaxBodyBytes,
-		"maximum accepted JSON request body size")
-	flags.Int64Var(&maxUploadBytes, "max-upload-bytes", server.DefaultMaxUploadBytes,
-		"maximum accepted dataset file upload size")
-	flags.BoolVar(&disableUI, "no-ui", false, "do not mount the web UI at /ui")
-	flags.StringVar(&uiDir, "ui-dir", "",
-		"serve the web UI from this directory instead of the embedded copy")
+	// The two durations are strings on the flag so that the field types stay
+	// within what the section machinery renders in --print-schema; parsing them
+	// here keeps the bad-value message next to the flag name.
+	var err error
+	if s.sessionLifetime, err = time.ParseDuration(s.SessionLifetime); err != nil {
+		return errors.Wrapf(err, "invalid --session-lifetime %q", s.SessionLifetime)
+	}
+	if s.sessionIdle, err = time.ParseDuration(s.SessionIdle); err != nil {
+		return errors.Wrapf(err, "invalid --session-idle %q", s.SessionIdle)
+	}
 
-	return cmd
+	return runServe(ctx, s)
 }
-
-type serveOptions struct {
-	listenAddr       string
-	dbPath           string
-	blobDir          string
-	token            string
-	authMode         string
-	externalURL      string
-	oidcIssuer       string
-	oidcClientID     string
-	oidcClientIDFile string
-	oidcClientSecret string
-	oidcSecretFile   string
-	requireVerified  bool
-	sessionLifetime  time.Duration
-	sessionIdle      time.Duration
-	maxBodyBytes     int64
-	maxUploadBytes   int64
-	disableUI        bool
-	uiDir            string
-}
-
-// Every OIDC flag has an environment fallback (envOr, in root.go) so the
-// compose file can supply configuration without a shell wrapper.
 
 // readSecretFile loads a credential written to a file by the provisioning job.
 func readSecretFile(path string) (string, error) {
-	raw, err := os.ReadFile(path)
+	raw, err := os.ReadFile(path) //nolint:gosec // an operator-supplied path
 	if err != nil {
 		return "", errors.Wrapf(err, "read %s", path)
 	}
 	return strings.TrimSpace(string(raw)), nil
 }
 
-func runServe(ctx context.Context, opts serveOptions) error {
+func runServe(ctx context.Context, opts *serveSettings) error {
 	// Ctrl-C and SIGTERM cancel ctx, which unwinds Serve and then the store.
 	ctx, stop := signal.NotifyContext(ctx, syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	st, err := store.Open(ctx, opts.dbPath)
+	st, err := store.Open(ctx, opts.DBPath)
 	if err != nil {
 		return err
 	}
@@ -176,7 +196,7 @@ func runServe(ctx context.Context, opts serveOptions) error {
 	// Blobs default to a sibling of the database so that a single --db path is
 	// enough to run the server, and so that the two stay on one filesystem —
 	// which the blob store's atomic-rename publish depends on.
-	blobDir := opts.blobDir
+	blobDir := opts.BlobDir
 	if blobDir == "" {
 		blobDir = filepath.Join(filepath.Dir(st.Path()), "blobs")
 	}
@@ -186,15 +206,15 @@ func runServe(ctx context.Context, opts serveOptions) error {
 	}
 
 	srv, err := server.New(server.Config{
-		Addr:           opts.listenAddr,
+		Addr:           opts.ListenAddr,
 		Auth:           authCfg.Auth,
 		Token:          authCfg.Token,
 		ExternalURL:    authCfg.ExternalURL,
 		OIDC:           authCfg.OIDC,
-		MaxBodyBytes:   opts.maxBodyBytes,
-		MaxUploadBytes: opts.maxUploadBytes,
-		DisableUI:      opts.disableUI,
-		UIDir:          opts.uiDir,
+		MaxBodyBytes:   int64(opts.MaxBodyBytes),
+		MaxUploadBytes: int64(opts.MaxUploadBytes),
+		DisableUI:      opts.DisableUI,
+		UIDir:          opts.UIDir,
 	}, st, blobs)
 	if err != nil {
 		return err
@@ -225,7 +245,7 @@ func runServe(ctx context.Context, opts serveOptions) error {
 				Str("addr", addr.String()).
 				Str("db", st.Path()).
 				Str("blobs", blobs.Root())
-			if !opts.disableUI {
+			if !opts.DisableUI {
 				event = event.Str("ui", uiURL(addr, authCfg.ExternalURL))
 			}
 			event.Msg("datadrop ready")
@@ -266,17 +286,17 @@ func uiURL(addr net.Addr, externalURL string) string {
 // The asymmetry is the point: getting oidc mode wrong is FATAL, while running
 // deliberately open is a warning that names the consequence. A server that
 // degrades quietly to open is the worst outcome in this whole ticket.
-func resolveAuth(opts serveOptions) (server.Config, error) {
+func resolveAuth(opts *serveSettings) (server.Config, error) {
 	cfg := server.Config{
-		Auth:        opts.authMode,
-		Token:       opts.token,
-		ExternalURL: strings.TrimRight(opts.externalURL, "/"),
+		Auth:        opts.AuthMode,
+		Token:       opts.Token,
+		ExternalURL: strings.TrimRight(opts.ExternalURL, "/"),
 		OIDC: server.OIDCConfig{
-			Issuer:               strings.TrimRight(opts.oidcIssuer, "/"),
-			ClientID:             opts.oidcClientID,
-			ClientSecret:         opts.oidcClientSecret,
+			Issuer:               strings.TrimRight(opts.OIDCIssuer, "/"),
+			ClientID:             opts.OIDCClientID,
+			ClientSecret:         opts.OIDCClientSecret,
 			Scopes:               []string{"openid", "profile", "email"},
-			RequireVerifiedEmail: opts.requireVerified,
+			RequireVerifiedEmail: opts.RequireVerified,
 			SessionLifetime:      opts.sessionLifetime,
 			SessionIdle:          opts.sessionIdle,
 		},
@@ -289,15 +309,15 @@ func resolveAuth(opts serveOptions) (server.Config, error) {
 		}
 	}
 
-	if opts.oidcClientIDFile != "" {
-		id, err := readSecretFile(opts.oidcClientIDFile)
+	if opts.OIDCClientIDFile != "" {
+		id, err := readSecretFile(opts.OIDCClientIDFile)
 		if err != nil {
 			return cfg, err
 		}
 		cfg.OIDC.ClientID = id
 	}
-	if opts.oidcSecretFile != "" {
-		secret, err := readSecretFile(opts.oidcSecretFile)
+	if opts.OIDCSecretFile != "" {
+		secret, err := readSecretFile(opts.OIDCSecretFile)
 		if err != nil {
 			return cfg, err
 		}

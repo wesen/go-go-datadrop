@@ -107,7 +107,7 @@ func TestTableAndUIEndToEnd(t *testing.T) {
 	dd.mustRun("create", "lab")
 	for i := 0; i < 5; i++ {
 		dd.withStdin(`{"temp_c":`+strconv.Itoa(20+i)+`.5,"station":"north","ok":true}`).
-			mustRun("push", "lab", "--stdin", "--stream", "temps")
+			mustRun("push", "lab", "--stdin", "--drop-stream", "temps")
 	}
 
 	status, body := httpGet(t, base+"/v1/drops/lab/streams", token)
