@@ -27,6 +27,8 @@ RelatedFiles:
       Note: The streaming default and the two rounds it took to find it (commit 55e8b67)
     - Path: repo://pkg/cli/exit.go
       Note: ExitOn and WithExitCodes, the local workaround for glazed issue 611 (commit 62e53d4)
+    - Path: repo://pkg/cli/exit_test.go
+      Note: Pins every documented exit code, the prefix, and the two pass-through errors (commit c759e77)
     - Path: repo://pkg/cli/rows.go
       Note: One projection per response type; event payloads flattened through tabular.FromEvents (commit 62e53d4)
     - Path: repo://pkg/cli/rows_test.go
@@ -41,6 +43,7 @@ LastUpdated: 2026-07-26T18:20:14-04:00
 WhatFor: Recording what was tried, what failed, and why each decision was made while implementing DATADROP-9.
 WhenToUse: Read before continuing DATADROP-9, before touching pkg/cli/exit.go, and when the upstream glazed exit-code hook lands and the workaround can be removed.
 ---
+
 
 
 
@@ -762,4 +765,197 @@ Exit codes through the phase-1 wrapper, with no code in the verbs:
 ```
 bad token    -> 3 : datadrop: Unauthorized: a valid credential is required
 missing drop -> 4 : datadrop: NotFound: drop "nosuchdrop" does not exist
+```
+
+## Step 4: The exit-code contract, and what the workaround costs
+
+The mapping was already in place — phase 1 chose to apply it once per command
+with a wrapper rather than thread `exitOn` through every `return err` — so this
+phase is the proof rather than the fix. It adds `pkg/cli/exit_test.go`, which
+pins every documented status, the behaviour through `errors.Wrap`, the message
+prefix, and the two errors that must pass through untouched; and it verifies
+`TestExitCodes` by breaking the thing it guards.
+
+This is also the place to write down what the approach costs, because it is a
+workaround for an upstream defect and someone will eventually want to remove
+it. The short version: errors now leave a datadrop command by calling
+`os.Exit`, which means deferred cleanup in a verb body does not run on the
+error path, an in-process test cannot exercise that path without the
+`exitFunc` stub, and one class of error — a flag parse failure — is still
+reported by glazed with cobra's own prefix because nothing datadrop owns runs
+before it.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** (see Step 1) — this step is phase 4.
+
+**Inferred user intent:** (see Step 1)
+
+**Commit (code):** `c759e77` — "DATADROP-9 phase 4: pin the exit-code contract"
+
+### What I did
+
+- Added `pkg/cli/exit_test.go`: nine status cases, a doubly-wrapped 404, the
+  prefix, `context.Canceled`, `*cmds.ExitWithoutGlazeError`, nil, and a check
+  that `WithExitCodes` actually wraps rather than falling through its type
+  switch.
+- Broke `BuildCobraCommand` by removing `WithExitCodes`, ran `TestExitCodes`,
+  recorded the output, restored, re-ran.
+
+### Why
+
+`exit.go` is the file most likely to be deleted by a future reader — it exists
+only because of an upstream defect, and it looks like ceremony. A test that
+fails loudly when it goes is the only thing that makes deleting it a decision
+rather than an accident.
+
+### The approach, and its cost
+
+**Chosen:** map the error and call `os.Exit` from inside the command, applied
+by a wrapper (`WithExitCodes`) at registration so no verb can forget it. The
+design guide's DR-77 proposes the same `exitOn` helper but threads it through
+every error site; the wrapper is the same mechanism placed once instead of
+sixty times, and it closes the guide's own §19 failure mode ("any verb whose
+error path returns `err` instead of `exitOn(err)` loses the mapping for that
+verb alone, which is worse than losing it everywhere because it looks like it
+works").
+
+**Rejected: forking glazed's builder.** `NewCobraCommandFromCommandDescription`,
+`NewCobraParserFromSections`, `parser.Parse`, `SetupTableProcessor`,
+`SetupProcessorOutput` and `HandleCommandSettings` are all exported, so a local
+60-line `buildCobraCommand` using `RunE` instead of `Run` is achievable and
+would keep `Execute()` as the single place that maps errors — including for
+flag parse failures. It was rejected because it duplicates glazed internals
+that will drift, and because the ticket says not to wait on upstream, not to
+reimplement it.
+
+**Rejected: waiting for https://github.com/go-go-golems/glazed/issues/611.**
+A `WithExitCodeFunc` option on `commandBuildConfig` is the right fix and is
+about thirty lines upstream. Instructed not to send a PR.
+
+**What it costs, concretely:**
+
+1. **Deferred cleanup in a verb body does not run on the error path.** `os.Exit`
+   skips `defer`. No converted verb currently holds a resource that matters
+   (`export` defers `body.Close()` on a process that is exiting anyway), but
+   this is a real constraint on future verbs and is not obvious from reading
+   one.
+2. **In-process tests cannot call the error path** without the `exitFunc` /
+   `errSink` indirection, which exists only for the tests. That is test-only
+   machinery in production code.
+3. **Flag parse errors keep cobra's presentation.** They happen in glazed's
+   `cmd.Run` before any datadrop code, and produce the message twice with the
+   wrong prefix:
+
+   ```
+   $ datadrop query greenhouse --order sideways
+   Argument order has invalid choice sideways
+   Error: Argument order has invalid choice sideways
+   ```
+
+   The exit code is 1, which is what it was before the conversion, so the
+   documented contract is intact. Only the presentation is inconsistent, and
+   only for this class.
+4. **`ExitOn` is one call away from being bypassed.** A verb registered without
+   `BuildCobraCommand` — by calling glazed's builder directly — silently loses
+   the mapping. `AddCommands` is the only registration path today and
+   `TestExitCodes` covers two verbs, not all of them.
+
+**Prefix decision:** `datadrop: `, everywhere datadrop controls. `ErrorPrefix`
+is a constant used by both `ExitOn` and `Execute()`, so the two paths cannot
+drift. Cobra's `Error: ` survives only in case 3 above.
+
+### What worked
+
+- The break reproduced both predicted symptoms at once, which is a better guard
+  than I expected: the code collapsing to 1 *and* the prefix changing are
+  visible in the same failure output, so a reader who breaks it learns the whole
+  problem rather than half of it.
+- `errors.As` through two `errors.Wrap` layers works, which matters because
+  every API error crosses at least one wrap on its way out of `pkg/client`.
+
+### What didn't work
+
+- Nothing failed unexpectedly in this phase. The one thing worth recording as a
+  near-miss: `TestExitCodes`'s "strict schema rejection exits 5" case passed
+  during the break, because `push` is not converted until phase 5 and was still
+  on the old cobra path where `Execute()` maps the error. So the break test was
+  only a two-thirds break; the 5 case becomes load-bearing after phase 5, and I
+  re-ran the whole suite then.
+
+### What I learned
+
+- `cobra.CheckErr`'s output is `Error: <msg>` on stderr followed by
+  `os.Exit(1)`; there is no way to reach it, because glazed calls it from
+  inside the closure it assigns to `cmd.Run`. The error genuinely never exists
+  outside that function.
+- glazed *does* special-case two errors before `CheckErr`:
+  `*cmds.ExitWithoutGlazeError` (exit 0) and, in glaze mode only,
+  `errors.Is(err, context.Canceled)` (skip the check entirely). `ExitOn` has to
+  let both through unchanged or it breaks `tail --follow`.
+
+### What was tricky to build
+
+**Making `ExitOn` testable without making it lie.** A function whose job is to
+call `os.Exit` cannot be tested in-process. The indirection is two package-level
+variables (`exitFunc`, `errSink`) that production code never reassigns, and the
+test swaps and restores them under `t.Cleanup`. The alternative — splitting the
+mapping from the exiting and testing only the mapping — was rejected because the
+interesting bugs are in the *dispatch* (does a cancelled context exit? does
+`ExitWithoutGlazeError` get returned rather than swallowed?), not in the
+`switch` over status codes.
+
+### What warrants a second pair of eyes
+
+- **`exitFunc` and `errSink` are package-level mutable state.** Two tests
+  mutating them in parallel would interfere. They are not `t.Parallel()` today
+  and the `t.Cleanup` restore is correct, but it is a footgun.
+- **Cost 4 above** — the bypass — is the one I would most want a second reader
+  to think about. A `TestEveryCommandIsWrapped` walking the built cobra tree is
+  possible; phase 5 adds a related guard for the client section, and the same
+  walk could carry this.
+
+### What should be done in the future
+
+- Delete `exit.go`, `exit_test.go` and the `WithExitCodes` call when
+  glazed grows an exit-code hook (issue 611), and move the mapping back into
+  `Execute()` where it was.
+
+### Code review instructions
+
+- Read the top comment of `pkg/cli/exit.go` first; it quotes the upstream code
+  that forces the design.
+- `GOWORK=off go test ./pkg/cli/ -run 'TestExitOn|TestWithExitCodes' -count=1`
+  for the fast proof, `GOWORK=off go test ./cmd/datadrop/ -run TestExitCodes
+  -count=1` for the end-to-end one.
+- To satisfy yourself the guard is real, delete `WithExitCodes(` from
+  `pkg/cli/build.go` line 40 and run the second command.
+
+### Technical details
+
+The verbatim break, and it is worth reading for the two distinct symptoms:
+
+```
+$ GOWORK=off go test ./cmd/datadrop/ -count=1 -run TestExitCodes
+--- FAIL: TestExitCodes (5.09s)
+    --- FAIL: TestExitCodes/bad_credentials_exit_3 (0.08s)
+        smoke_test.go:321: exit code = 1, want 3
+            stdout:
+            stderr: Error: Unauthorized: a valid credential is required
+    --- FAIL: TestExitCodes/unknown_drop_exits_4 (0.10s)
+        smoke_test.go:321: exit code = 1, want 4
+            stdout:
+            stderr: Error: NotFound: drop "nosuchdrop" does not exist
+FAIL
+FAIL	github.com/go-go-golems/go-go-datadrop/cmd/datadrop	5.142s
+```
+
+The break applied was one line in `pkg/cli/build.go`:
+
+```go
+ 	cobraCmd, err := cli.BuildCobraCommandFromCommand(
+-		WithExitCodes(command),
++		command, // BREAK: WithExitCodes removed
 ```

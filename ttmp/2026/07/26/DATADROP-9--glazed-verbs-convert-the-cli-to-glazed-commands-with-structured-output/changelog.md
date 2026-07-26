@@ -40,3 +40,12 @@ Phase 3: query/tail/inspect/whoami as GlazeCommands, export as a WriterCommand; 
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/events/tail.go — Why tail defaults to --stream and --table-format markdown
 
+
+## 2026-07-26
+
+Phase 4: exit-code contract pinned by pkg/cli/exit_test.go and verified by removing WithExitCodes; prefix settled on 'datadrop: ' (commit c759e77)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/exit_test.go — The fast proof of the exit-code mapping
+
