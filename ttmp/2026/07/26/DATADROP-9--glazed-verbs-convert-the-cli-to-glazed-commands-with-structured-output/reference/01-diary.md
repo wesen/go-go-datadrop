@@ -13,6 +13,12 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://cmd/datadrop/main.go
+      Note: Names the group registrars; the inverted edge that avoids an import cycle (commit fe5523f)
+    - Path: repo://pkg/cli/build.go
+      Note: BuildCobraCommand and AddCommands; the one place the parser config is decided (commit fe5523f)
+    - Path: repo://pkg/cli/drops/list.go
+      Note: The shape every other verb file copies (commit fe5523f)
     - Path: repo://pkg/cli/exit.go
       Note: ExitOn and WithExitCodes, the local workaround for glazed issue 611 (commit 62e53d4)
     - Path: repo://pkg/cli/rows.go
@@ -29,6 +35,7 @@ LastUpdated: 2026-07-26T18:20:14-04:00
 WhatFor: Recording what was tried, what failed, and why each decision was made while implementing DATADROP-9.
 WhenToUse: Read before continuing DATADROP-9, before touching pkg/cli/exit.go, and when the upstream glazed exit-code hook lands and the workaround can be removed.
 ---
+
 
 
 # Diary
@@ -295,3 +302,228 @@ cmd.Run = func(cmd *cobra.Command, args []string) {
 `cmd.Run`, not `cmd.RunE`. `cobra.CheckErr` prints `Error: <msg>` and calls
 `os.Exit(1)`. The glaze-mode branch at line 176 is the same shape, with one
 mercy: it skips `CheckErr` when `errors.Is(err, context.Canceled)`.
+
+## Step 2: One verb end to end — `list`, and the token leak
+
+`datadrop list` is the smallest command that returns a set and it already had a
+table, so the before/after is directly comparable and every wiring question —
+section attachment, parser config, short help, `--print-schema`, env loading —
+gets answered once on a command small enough to throw away. It now renders a
+Glazed table by default and accepts `--output json|csv|yaml|markdown|excel`,
+`--fields`, `--sort-by`, `--jq`, `--select` and the rest, none of which is
+datadrop code. The other eleven verbs are untouched and both styles sit on one
+root without trouble (DR-84).
+
+The phase's real deliverable is the answer to the security question the guide's
+§19 flags: **`--print-parsed-fields` leaks a `fields.TypeString` token in full,
+and redacts a `fields.TypeSecret` one.** I built the binary both ways and ran
+it. Phase 1 had already chosen `TypeSecret` from reading `RedactValue`; this is
+the same conclusion arrived at from the outside, with the output pasted below.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** (see Step 1) — this step is phase 2 of the
+DATADROP-9 half.
+
+**Inferred user intent:** (see Step 1)
+
+**Commit (code):** `fe5523f` — "DATADROP-9 phase 2: convert 'list', and settle the wiring"
+
+### What I did
+
+- Added `pkg/cli/build.go`: `AppName`, `Builder`, `BuildCobraCommand`,
+  `AddCommands`, `Registrar`.
+- Added `pkg/cli/drops/list.go` (the `ListCommand`) and `pkg/cli/drops/root.go`
+  (`Register`).
+- Changed `NewRootCmd` and `Execute` to take `...Registrar`, removed
+  `newListCmd` from the root's command list, and named `drops.Register` in
+  `cmd/datadrop/main.go`.
+- Ran the converted verb against a real server in tmux on port 18099 and
+  exercised default/json/csv/sort-by/select/`--print-parsed-fields`/`--help`/
+  `--print-schema`/`--addr` override.
+- `GOWORK=off go test ./cmd/... ./pkg/cli/... -count=1` — green, 26s.
+
+### Why
+
+Doing `list` alone rather than all of `drops/` means the first commit that
+changes user-visible behaviour changes one verb, and the smoke test that
+asserts on it (`smoke_test.go:218`, "list does not include the drop") is a
+one-line check that a table still satisfies.
+
+`build.go` exists so that the choice of parser config is made once. The guide's
+§14.2 puts the config inline in every group's `Register`, which is four copies
+of `AppName: "datadrop"` and four chances to omit it — and omitting it silently
+disables `DATADROP_ADDR`.
+
+### What worked
+
+- Everything the guide's §11 transcript promises, verbatim, on the first run.
+  `--fields name,created_at` with `--output csv`, `--sort-by name`,
+  `--select name`, `--output json`.
+- `ShortHelpSections: []string{schema.DefaultSlug, ClientSectionSlug}` produces
+  exactly the wanted help: a "How to reach the datadrop server" block with
+  `--addr` and `--token` and nothing else, plus a pointer to `--long-help`.
+- The env source. `DATADROP_ADDR` reaches the section, and
+  `--addr http://127.0.0.1:1` on the command line beats it — visible in the
+  parse log below, which shows `defaults` then `env` then the flag.
+- Coexistence. The root still carries persistent `--addr`, `--token` and
+  `--output` for the eleven unconverted verbs; a converted verb's local flags
+  shadow them and nothing warns or breaks.
+
+### What didn't work
+
+- **The design guide's `pkg/cli/section.go` snippet is unsafe.** It declares
+  `token` as `fields.TypeString`. Built that way and run with
+  `DATADROP_TOKEN=smoke-token-abcdef`:
+
+  ```
+  $ datadrop list --print-parsed-fields
+    token:
+      log:
+        - source: defaults
+          value: ""
+        - metadata:
+            env_key: DATADROP_TOKEN
+            parsed-strings:
+              - smoke-token-abcdef
+          source: env
+          value: smoke-token-abcdef
+      value: smoke-token-abcdef
+  ```
+
+  The secret appears three times and the environment variable it came from is
+  named. With `fields.TypeSecret`, the same command, same environment:
+
+  ```
+    token:
+      log:
+        - source: defaults
+          value: '***'
+        - metadata:
+            env_key: DA***EN
+            parsed-strings:
+              - sm***ef
+          source: env
+          value: sm***ef
+      value: sm***ef
+  ```
+
+  Note that the redaction is applied to the *metadata* as well, which is why
+  `env_key` reads `DA***EN` — over-redaction, harmless, and a small hint that
+  the mechanism is blunt rather than targeted.
+
+- **`--print-schema` reports `"properties": {}`.** `list` declares no fields of
+  its own outside its sections, and `Description().ToJsonSchema()` does not walk
+  the attached sections, so the schema names the command and nothing else. Not a
+  blocker and not something this ticket can fix from the outside; recorded so
+  the next reader does not think they wired the sections wrong.
+
+- **`DATADROP_TOKEN=wrong datadrop list` exits 0**, not 3. That is the server
+  being permissive about listing rather than the exit mapping failing — an
+  unauthenticated principal sees an empty list. `query` is the verb
+  `TestExitCodes` uses for the 3 case, and it is not converted yet. Recorded so
+  it is not mistaken for evidence that the mapping works.
+
+### What I learned
+
+- The glazed cobra parser attaches the command-settings section itself, so
+  `--print-schema`, `--print-yaml` and `--print-parsed-fields` appear on every
+  converted verb whether or not the constructor asks for them. That is why the
+  token question is not optional for any verb carrying a credential: there is no
+  "just don't add the section" escape.
+- `ShortHelpSections` is an annotation (`cmd.Annotations["shortHelpSections"]`),
+  read by the help renderer that `help_cmd.SetupCobraRootCommand` installs. It
+  works only because this repository already wires glazed's help system at the
+  root.
+
+### What was tricky to build
+
+**The import cycle the guide's file layout implies.** DR-82 puts the verbs in
+`pkg/cli/drops`, `pkg/cli/events` and so on, and §14.1 has those files call
+`ddcli.NewClientSection()` and `ddcli.RowForEnvelope` — so the group packages
+import `pkg/cli`. But §13 also leaves `NewRootCmd` in `pkg/cli/root.go`
+attaching the groups, which means `pkg/cli` imports the groups. That is a cycle,
+and Go would have rejected it at the first build of phase 2.
+
+The symptom would have been `import cycle not allowed`; I saw it coming while
+reading rather than from the compiler. Three ways out were available: put the
+scaffolding in a third leaf package (renames the phase-1 files the ticket names
+explicitly), flatten the verbs back into `pkg/cli` (drops DR-82), or invert the
+edge. I inverted it: `NewRootCmd(registrars ...Registrar)` and `Execute` take
+the group registrars as arguments, and `cmd/datadrop/main.go` names them. The
+group `Register(root *cobra.Command) error` signature the guide specifies is
+unchanged; only the caller moved. `help_cmd.SetupCobraRootCommand` still runs
+after every subcommand is attached, because the registrar loop is inside
+`NewRootCmd` and before the help wiring.
+
+### What warrants a second pair of eyes
+
+- **The inverted registration.** `cmd/datadrop/main.go` now lists the groups.
+  It is one more place to forget a group when adding one, and the failure mode
+  is a verb that silently does not exist. A `TestEveryVerbIsRegistered` would
+  close it; phase 5 is the honest moment to write it, once the list is final.
+- **Three persistent root flags are live but shadowed** during the transition.
+  `datadrop --output json list` (flag before the verb) sets the *root's*
+  `--output`, which `list` no longer reads, and prints a table. It is a
+  transient wrong-looking thing that phase 6 removes with `output.go`.
+
+### What should be done in the future
+
+- Delete the root's persistent `--addr`, `--token` and `--output` when the last
+  old-style verb goes (phase 6).
+
+### Code review instructions
+
+- `pkg/cli/build.go` first: it is where the parser config is decided for all
+  nineteen verbs.
+- Then `pkg/cli/drops/list.go`, which is the shape every other verb file copies.
+- Validate: `GOWORK=off go test ./cmd/... ./pkg/cli/... -count=1`, then run a
+  server and `datadrop list --output csv --fields name,created_at`.
+- To check the token question yourself, flip `fields.TypeSecret` to
+  `fields.TypeString` in `pkg/cli/section.go`, rebuild, and run
+  `DATADROP_TOKEN=hunter2000 datadrop list --print-parsed-fields`.
+
+### Technical details
+
+The `list` before/after, from the run:
+
+```
+$ datadrop list
++------------+--------------------------+-----------+-------------+----------+-----------+
+| name       | created_at               | retention | public_read | owner_id | your_role |
++------------+--------------------------+-----------+-------------+----------+-----------+
+| greenhouse | 2026-07-26T22:30:53.183Z |           | false       |          | admin     |
+| sensors    | 2026-07-26T22:30:53.214Z | 30d       | false       |          | admin     |
++------------+--------------------------+-----------+-------------+----------+-----------+
+
+$ datadrop list --output csv --fields name,created_at
+name,created_at
+greenhouse,2026-07-26T22:30:53.183Z
+sensors,2026-07-26T22:30:53.214Z
+
+$ datadrop list --select name
+greenhouse
+sensors
+```
+
+`datadrop list --help`, showing that the short help is short:
+
+```
+  ## Flags:
+        -h, --help    help for list
+       --long-help    Show long help
+
+  ## How to reach the datadrop server:
+            --addr    datadrop server base URL [$DATADROP_ADDR] - <string>
+                      (default "http://localhost:8080")
+           --token    bearer token [$DATADROP_TOKEN] - <secret>
+
+  Use datadrop list --help --long-help for information about all flags.
+```
+
+The `<secret>` in that last line is the same `TypeSecret` declaration doing its
+other job: `fields/cobra.go:385` redacts a sensitive flag's *default* in the
+help text, so a token supplied by a config file cannot be read out of `--help`
+either.

@@ -22,3 +22,12 @@ Phase 1: client section, exit-code helper, row projections and their guard test 
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/rows.go — The row shapes DR-79 makes a public API
 
+
+## 2026-07-26
+
+Phase 2: 'list' converted to a GlazeCommand; wiring, short help and env loading settled; --print-parsed-fields token leak confirmed and closed with fields.TypeSecret (commit fe5523f)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/build.go — The parser config every converted verb shares
+
