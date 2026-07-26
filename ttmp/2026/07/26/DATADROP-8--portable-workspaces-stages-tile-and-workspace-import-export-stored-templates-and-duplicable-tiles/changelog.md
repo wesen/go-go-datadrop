@@ -31,3 +31,12 @@ Phase 2: tile identity — an optional leaf label with renameLeaf and duplicateL
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/organisms/Tile/options.ts — The three picker rules, pure and tested with literals
 
+
+## 2026-07-26
+
+Phase 3: the portable format — model/portable.ts (envelope, PortableNode indexing documents by array position, LIMITS, REASONS, parseBundle, describeBundle) and store/bundles.ts (both conversions, ids minted by the caller). findSecrets moved to model/secrets.ts and now guards durable storage plus both directions of a bundle. 46 tests; the id, sharing and credential guards were each verified by breaking them. (commit e80ec0c)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/model/portable.ts — The bundle format and its validator
+

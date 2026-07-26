@@ -18,6 +18,12 @@ RelatedFiles:
       Note: The switcher; a stage whose chrome hides the bar is not offered by the bar (commit 9dc985c)
     - Path: repo://ui/src/components/organisms/Tile/options.ts
       Note: The picker's three rules — own app always listed and never disabled, singletons already open, stage scope (commit da29ec2)
+    - Path: repo://ui/src/model/portable.ts
+      Note: One envelope, three kinds; PortableNode carries the whole of DR-64 (commit e80ec0c)
+    - Path: repo://ui/src/model/secrets.ts
+      Note: findSecrets, now guarding three doors rather than one (commit e80ec0c)
+    - Path: repo://ui/src/store/bundles.ts
+      Note: State to bundle and back; DocCollector and hydrateTree are the two halves of the round trip (commit e80ec0c)
     - Path: repo://ui/src/store/layout.ts
       Note: Stage/StageChrome/stageId, and syncSpacePointer as the only writer of the mirrored space pointer (commit 9dc985c)
     - Path: repo://ui/src/store/persist.ts
@@ -28,6 +34,8 @@ RelatedFiles:
       Note: duplicable and singleton follow docBound unless a sentence is written into EXCEPTIONS (commit da29ec2)
     - Path: repo://ui/test/fixtures/persisted-v1.json
       Note: A version-1 payload produced by running defaultSpaces() out of commit f53be15 (commit 9dc985c)
+    - Path: repo://ui/test/portable.test.ts
+      Note: Round trip, sharing, no-id-travels, every reject reason, the caps and the credential guard (commit e80ec0c)
     - Path: repo://ui/test/stages.test.ts
       Note: The space-pointer invariant across every reducer, and the v1 migration (commit 9dc985c)
 ExternalSources: []
@@ -36,6 +44,7 @@ LastUpdated: 2026-07-26T18:18:37.781026543-04:00
 WhatFor: Recording what was built, what failed, and what a reviewer should look at hardest for DATADROP-8.
 WhenToUse: Read before reviewing DATADROP-8, and before touching stages, the bundle format or the clipboard path afterwards.
 ---
+
 
 
 
@@ -520,3 +529,207 @@ and after clicking the `tokens` tile's title and typing:
 ```
 READY   <tile> my keys — L: rename it R: menu        3 tiles · 1 workspaces · 1 documents
 ```
+
+## Step 3: The portable format
+
+The largest single body of logic in the ticket and the only phase with no user
+interface at all: `model/portable.ts` is the envelope and its validator,
+`store/bundles.ts` is the two conversions either side of it. Everything is a
+pure function of plain data — the timestamp is a parameter and so are the ids to
+mint — so `portable.test.ts` is 46 tests with no store, no DOM and no clock.
+
+Two decisions carry the weight. **Ids do not travel**: a bundle carries
+documents by content and leaves reference them by array index, which is what
+makes "copy a tile and paste it back into the workspace you copied it from"
+produce a second tile rather than two nodes with one id. And **the credential
+guard runs in both directions**, which is why `findSecrets` moved out of
+`store/persist.ts` into `model/secrets.ts` — a bundle has to be audited on the
+way out and on the way in, and `model` may not import `store`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 3 — build the format and both conversions,
+with the tests, before anything can call it.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `e80ec0c` — "DATADROP-8 phase 3: the portable format"
+
+### What I did
+
+- `ui/src/model/secrets.ts` (new): `findSecrets`, moved out of `persist.ts`,
+  which now re-exports it so the import site still documents what guards
+  durable storage.
+- `ui/src/model/portable.ts` (new, ~430 lines): the envelope, `PortableNode`,
+  the three payloads, `LIMITS`, `REASONS`, `parseBundle`, `describeBundle`,
+  `measureBundle`, `unknownApps`, `sourcesOf`, `clampRatio`.
+- `ui/src/store/bundles.ts` (new, ~330 lines): `bundleForTile` /
+  `bundleForWorkspace` / `bundleForStage`, `IdPool`, `idsNeeded`, `hydrateDocs`,
+  `hydrateTree`, `applyTileBundle` / `applyWorkspaceBundle` / `applyStageBundle`.
+- `ui/test/portable.test.ts` (new, 46 tests).
+
+### Why
+
+Every later phase is a consumer of this, and it is the part where a mistake is
+invisible: a bundle that has lost its sharing looks completely normal.
+
+### What worked
+
+- Building the §7.4 worked example as a fixture and asserting the tree
+  *structurally* rather than against a JSON string. `toEqual` on the nested
+  `{ split: { … } }` literal proves the absent fields are absent — `sources` and
+  `inspector` carry no `doc` key at all — which a string comparison modulo
+  whitespace would not.
+- `IdPool` + `idsNeeded`. One test asserts that `idsNeeded(bundle)` is exactly
+  what applying it consumes, and that one fewer throws `not enough ids` rather
+  than minting an `undefined` id — which would surface much later as a duplicate
+  React key.
+
+### What didn't work
+
+**1. The 65-leaf cap test passed for the wrong reason.** My first version built
+the tree as a right-leaning chain, which is 65 leaves *and 65 levels deep*, so
+`isPortableNode`'s depth bound rejected it as damaged before the leaf count was
+ever reached:
+
+```
+error: expect(received).toEqual(expected)
+- Expected  - 1
++ Received  + 1
+(fail) parseBundle refuses with the reason … > more tiles than the cap
+```
+
+The test now builds a **balanced** 65-leaf tree, and the comment says why: a
+chain would make the test pass while proving nothing about the leaf cap. This is
+the failure mode the "break it once" rule exists to find — except here it was the
+test that was wrong rather than the code.
+
+**2. TypeScript will not let you spread a discriminated union and add a
+member.** `{ ...leaf("chart", id), label: "x" }` is an error because `leaf`
+returns `Node`, and `label` is not on the split variant:
+
+```
+test/portable.test.ts(284,55): error TS2353: Object literal may only specify known properties, and 'label' does not exist in type '{ id: string; type: "split"; … }'.
+```
+
+Cast to `Extract<Node, { type: "leaf" }>` at the fixture, which is a test's
+licence to assert what it just built.
+
+### What I learned
+
+Putting the depth check *inside* `isPortableNode` rather than in a separate pass
+is not a tidiness choice. A hand-made bundle nested 10 000 deep would overflow
+the stack in the structural walker before any later depth check could report a
+limit, and a validator that crashes on hostile input is not a validator. The
+consequence is that a too-deep bundle is reported as `damaged` rather than with
+a bespoke depth message, and the test says so rather than asserting a string it
+does not produce.
+
+### What was tricky to build
+
+**Preserving document sharing at two levels.** A workspace bundle has its own
+`docs` array; a stage bundle hoists documents above its workspaces, so a nested
+workspace payload has an empty `docs` and its leaves index into the stage's
+array. Getting that right is one `DocCollector` shared across the whole stage
+export, and getting it *wrong* produces a bundle that looks perfect. The test
+that catches it compares two leaves' `docId` for **identity** after a round trip
+— `expect(a.docId).toBe(b.docId)` — not for equality of the documents they name.
+
+**`PortableChrome` duplicates `StageChrome`.** `model` may not import `store`,
+so the shape is restated. Rather than a cast, `applyStageBundle` *assigns* one to
+the other at the single place they meet, so if the two ever diverge that line
+stops compiling.
+
+### What warrants a second pair of eyes
+
+- `auditted()` **throws** on the export side where `parseBundle` **returns a
+  reason** on the import side. Deliberate — the export case is an upstream
+  design mistake with no recovery, the import case is untrusted input with a
+  human waiting — but it is an asymmetry a reviewer should agree with.
+- `describeBundle`'s exact wording is asserted in four tests. That makes them
+  change-detectors on prose. They earn it here because the strings are what a
+  user reads in the dialog, but a reviewer should say so out loud.
+- `parseBundle` runs `findSecrets` over the whole parsed value *before*
+  structural validation. That is deliberate ordering — audit first, trust later
+  — and it means a malformed bundle carrying a token reports the credential
+  rather than the damage.
+
+### What should be done in the future
+
+- `unknownApps` is written and nothing calls it yet. Phase 5's dialog is its
+  consumer, and it is the only warning in the reason table that does not abort.
+
+### Code review instructions
+
+`ui/src/model/portable.ts` from `PortableNode`'s docstring — it carries the
+whole of DR-64 — then `REASONS`, then `parseBundle`. Then `store/bundles.ts`'s
+`DocCollector` and `hydrateTree`, which are the two halves of the round trip.
+
+```bash
+bun test --cwd ui test/portable.test.ts    # 46 pass
+```
+
+### Technical details
+
+**How I established that a bundle cannot carry a secret.** Four things, in
+increasing order of strength:
+
+1. **Structural.** The exporter writes exactly `{ name, limit, spec }` per
+   document, and `spec` is a `ChartSpec`: a `SourceRef`, `Step[]`, a geom, a
+   five-channel mapping, a y scale and an optional type-override map. There is
+   no field in any of those a credential could occupy, and there is no path from
+   `TokenRef` — which has no secret field, and `pbui/types.ts` says that absence
+   is load-bearing — into any of them.
+2. **A positive test.** `a bundle produced from real state carries no
+   credential-shaped key` stringifies a real export and asserts none of the six
+   spellings appears as a key.
+3. **The export guard.** `auditted()` runs `findSecrets` over the finished
+   bundle and throws. Tested by poisoning a `ChartSpec` with `{ token: … }` and
+   asserting all three of `bundleForTile`, `bundleForWorkspace` and
+   `bundleForStage` refuse.
+4. **The import guard.** `parseBundle` runs the same `findSecrets` over the
+   parsed value before anything is trusted, and a test loops over all nine
+   forbidden spellings (`token`, `Token`, `authorization`, `auth`, `bearer`,
+   `secret`, `password`, `apikey`, `api_key`) planting each in a nested position
+   and asserting refusal.
+
+The one function, in `model/secrets.ts`, is what `save()` also calls, so the
+three doors cannot drift apart.
+
+**Breaking the three guards.**
+
+*Ids do not travel.* Break: `portableTree` writes `id: node.id` into the leaf.
+
+```
+(fail) the envelope > a workspace bundle matches the worked example, field for field
+(fail) the envelope > a stage bundle hoists documents above its workspaces
+error: expect(received).not.toContain(expected)
+Expected to not contain: "e66131c1-9f85-4927-8c68-832c1fd3240d"
+Received: "{\"format\":\"datadrop.layout\",…\"a\":{\"leaf\":{\"id\":\"e66131c1-9f85-4927-8c68-832c1fd3240d\",\"app\":\"sources\"}},…"
+(fail) ids do not travel (DR-64) > a workspace bundle contains no node id and no document id
+```
+
+*Sharing survives.* Break: `DocCollector.at` appends a document per leaf instead
+of returning the index it already has.
+
+```
+error: expect(received).toHaveLength(expected)
+Expected length: 1
+Received length: 2
+(fail) the envelope > a stage bundle hoists documents above its workspaces
+(fail) sharing survives a round trip > two leaves on one document import to two leaves on ONE document
+(fail) sharing survives a round trip > two workspaces in one stage import to one document as well
+```
+
+*The credential guard.* Break: `parseBundle` stops calling `findSecrets`.
+
+```
+(fail) the credential guard fires in both directions > the importer refuses a bundle carrying a credential
+Expected: false
+Received: true
+(fail) the credential guard fires in both directions > every forbidden spelling is caught, anywhere in the payload
+```
+
+All three restored; 324 pass across the suite.
