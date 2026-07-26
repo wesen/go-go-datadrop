@@ -110,16 +110,24 @@ const dropping = chartSpec({
 });
 
 /**
- * **A derive step that dropped rows.**
+ * **A derive step that dropped every row.**
  *
- * Dividing by a boolean column produces a non-finite result wherever the
- * divisor is false, and `evaluate` removes those rows rather than drawing
- * `Infinity`. The count is reported under the step that caused it, not as a
- * pipeline total: "something dropped 90 rows" is not actionable and "this step
- * did" is.
+ * `evaluate` removes rows whose arithmetic did not produce a finite number, and
+ * reports the count under the step that caused it — "something dropped 360
+ * rows" is not actionable and "this step did" is.
  *
- * This state needs a specific pair of columns and a specific operator. Nobody
- * had seen it.
+ * Read the numbers: **360 dropped, 0 out.** That is not a contrived example, it
+ * is what happens whenever a derive touches a boolean column. `asNumber`
+ * returns NaN for a boolean rather than coercing it to 0 or 1, so every row
+ * fails, and the user gets an empty chart plus one red line of explanation.
+ *
+ * This story is the first time anyone looked at that. Reaching it by clicking
+ * needs a specific pair of columns and a specific operator, and the fixture has
+ * no column that produces a *partial* drop — every quantitative column here is
+ * strictly positive, so division never goes non-finite and log10 never goes
+ * undefined. Whether NaN-for-booleans is right is an engine question and a
+ * separate ticket; that it is invisible until the output is empty is what a
+ * story is for.
  */
 export const DroppedRows: Story = {
   parameters: { pbui: { table: tableAfter(dropping) } },

@@ -4,6 +4,7 @@
 // for a store, a context, or the network.
 
 import type { Field, FieldType, SourceRef, Table } from "./table";
+import { stepLabel } from "./pipeline";
 import type { Step } from "./pipeline";
 
 export type Geom = "point" | "line" | "bar" | "area";
@@ -171,9 +172,22 @@ export function specFacts(spec: ChartSpec, limit?: number): Array<[string, strin
   facts.push(
     ["geom", spec.geom],
     ["y scale", spec.yScale],
-    // Disabled steps are excluded: the count answers "what is this chart doing",
-    // and a step toggled off is doing nothing.
-    ["steps", String(spec.steps.filter((s) => s.on).length)],
+    /*
+     * The steps LISTED, not counted.
+     *
+     * A count reads better in a one-line summary and is useless in a diff: two
+     * charts with one filter each and one summarize each both say "1", so a
+     * comparison of two completely different pipelines shows the steps row as
+     * matching. Caught by looking at the rendered diff, which is the reason
+     * these components have stories.
+     *
+     * The one-line summary counts them itself — it has the spec — so the
+     * informative form lives here and the lossy one lives where it fits.
+     *
+     * Disabled steps are excluded: the row answers "what is this chart doing",
+     * and a step toggled off is doing nothing.
+     */
+    ["steps", spec.steps.filter((s) => s.on).map(stepLabel).join(" ⊳ ") || "(none)"],
     ["x", spec.mapping.x ?? "—"],
     ["y", spec.mapping.y ?? "—"],
     ["colour", spec.mapping.color ?? "—"],

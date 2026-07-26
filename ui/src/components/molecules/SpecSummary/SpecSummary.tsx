@@ -28,10 +28,13 @@ export function SpecSummary({
 }) {
   const facts = new Map(specFacts(spec, limit));
   const get = (key: string) => facts.get(key) ?? "—";
+  // Counted here rather than read from the facts, because the fact carries the
+  // step LABELS — the form the diff needs, and far too long for one line.
+  const steps = spec.steps.filter((s) => s.on).length;
 
   return (
     <Text size="tiny" tone="faint">
-      {get("source")} ⊳ {get("steps")} steps ⊳ geom_{get("geom")} · x↦{get("x")} y↦{get("y")}
+      {get("source")} ⊳ {steps} steps ⊳ geom_{get("geom")} · x↦{get("x")} y↦{get("y")}
       {limit !== undefined ? ` · ${get("row budget")} row budget` : ""}
     </Text>
   );
