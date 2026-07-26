@@ -100,6 +100,7 @@ there was only ever one shell.
 | DR-54 | Lesson content is a layer (`tour/`), not a component |
 | DR-55 | The rail renders inside the instance's `PbuiProvider` |
 | DR-56 | Progress is not persisted; reset is remount |
+| DR-57 | `WorkbenchInstance` lives in `components/pages/`, not `appkit` |
 
 ## Component inventory
 
@@ -116,14 +117,27 @@ Fourteen new components, each of which needs a story —
 Five things the prototype has that we deliberately do **not** build: `Btn`,
 `Sel`, `Num`, `TBtn` (we have the atoms), and `useNarrow` (a media query).
 
-## The largest open risk
+## Progress
 
-`appkit → components` may be an illegal edge. `organisms/Tile` imports
-`appkit/registry`, and `appkit/WorkbenchInstance` would import
-`pages/WorkbenchShell`. `ui/test/layers.test.ts` is a *directory* graph, not a
-module graph, so it will probably report a cycle. **Check this in phase 1,
-before phase 2 depends on it.** The fallback costs nothing: put
-`WorkbenchInstance` in `components/pages/` beside the shell.
+**Phase 1 is done** (commit `4796da2`). The store is a factory and only a
+factory; `persistKey` is a parameter defaulting to null; `test/instances.test.ts`
+holds ten guards, two of them verified by breaking them. 187 tests pass.
+
+Phase 1 also found two defects that one store could not reveal: `layoutSlice`'s
+`initialState` is evaluated once at module load, so every unpreloaded store
+began with the same workspace id; and the fallback layout was a single launcher
+tile rather than `defaultSpaces()`, which means the shell's own Storybook story
+had been rendering an empty workbench since it was written.
+
+**The guide's largest open risk is settled** (DR-57). `appkit → components`
+would not have failed `layers.test.ts` — the test does no cycle detection, it
+checks declared edges — so the edge would have been accepted while leaving the
+table asserting `appkit → pages` and `pages → appkit` at once.
+`WorkbenchInstance` goes in `components/pages/` instead, needing no new edge.
+
+That gap in `layers.test.ts` is real and is recorded in guide §27. It is not
+fixed here: the one edge that would have needed it is gone, and adding cycle
+detection is a larger change than this ticket wants.
 
 ## Key Links
 

@@ -953,6 +953,19 @@ mean either duplicating the accept protocol or dropping the one lesson that
 teaches it — and accept is the least familiar idea in the whole system, so it is
 the lesson least worth dropping.
 
+**DR-57 — `WorkbenchInstance` lives in `components/pages/`, not in `appkit`.**
+*Settled during phase 1, replacing the open risk this guide originally recorded
+in §23 and §27.* `test/layers.test.ts` has **no cycle detection**: it is
+`ALLOWED[from].includes(to)`, a declared-edge check. So declaring `appkit →
+pages` would have *passed* while making the table self-contradictory — `appkit →
+pages` and `pages → appkit` both present, in a file whose describe block is
+called "the layer graph is one-way". A quietly meaningless invariant is worse
+than a failing test. `pages` may already import `appkit`, `store`, `pbui` and
+every component layer, so the instance needs no new edge in either direction and
+the move costs nothing. *Alternative not taken:* add cycle detection to
+`layers.test.ts` and keep the instance in `appkit`. Defensible, and a larger
+change than this ticket needs.
+
 **DR-56 — Progress is not persisted, and the reader is told so.** Completed
 lessons live in the rail's `useState` and die with the page. *Reason:* persisting
 progress means a storage key per section, a versioning story for when lessons
@@ -962,13 +975,14 @@ is a remount, exactly as in the prototype (§4).
 
 ## 18. `WorkbenchInstance` — the embeddable unit
 
-Placed in `ui/src/appkit/` because it is the composition contract, not a visual
-component and not an application. `appkit` may already import `model`, `pbui`
-and `store` (`ui/test/layers.test.ts:65`); this ticket adds `components` to that
-list — see §23.
+Placed in `ui/src/components/pages/` beside the shell (**DR-57**, settled in
+phase 1). It is conceptually a composition contract rather than a visual
+component, which argued for `appkit` — but `appkit → pages` would have been a
+declared cycle that `layers.test.ts` cannot detect, and `pages` already imports
+everything the instance needs. See DR-57 in §17 for the full reasoning.
 
 ```tsx
-// ui/src/appkit/WorkbenchInstance.tsx  — PSEUDOCODE
+// ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.tsx  — PSEUDOCODE
 
 export interface InstanceConfig {
   /** Seeds the world before first render. Runs once, inside makeStore. */
@@ -1306,7 +1320,7 @@ flowchart TD
   store --> model & api & pbui
   fixtures --> model
   appkit --> model & pbui & store
-  appkit -.NEW.-> components
+  appkit -. "NEW — WITHDRAWN, see DR-57" .-> components
   tour["tour — NEW"] --> model & store & pbui & appkit
   foundation --> nothing
   layout --> foundation
@@ -1319,18 +1333,21 @@ flowchart TD
   style tour fill:#fffdf4,stroke:#23262b,stroke-width:2px
 ```
 
-The two new edges, each with its justification:
-
-**`appkit → components`.** `WorkbenchInstance` renders `WorkbenchShell`. This is
-safe because `components` does not import `appkit`'s *instance* module — only
-`organisms/Tile` imports `appkit/registry`, and that is a leaf within `appkit`.
-If the cycle detector complains, the fix is to split `appkit/registry.ts` from
-`appkit/instance.tsx` in the graph rather than to move the instance elsewhere.
-**Check this before writing the code**, because it is the one edge in this design
-that could turn out to be illegal.
+**Only one edge is added, and the second one this section originally proposed
+was withdrawn in phase 1.**
 
 **`pages → tour`.** `LandingPage` names the four lesson tracks. Nothing in
 `tour` imports `components`, so no cycle is possible.
+
+**`appkit → components` — NOT added (DR-57).** The original design put
+`WorkbenchInstance` in `appkit`, which would have needed this edge. Phase 1
+found that `layers.test.ts` performs no cycle detection — it checks declared
+edges only — so the edge would have been *accepted* while leaving the table
+asserting `appkit → pages` and `pages → appkit` simultaneously. The instance
+moved to `components/pages/` instead, which needs no new edge at all.
+
+The diagram above shows the withdrawn edge as `-.NEW.->` from `appkit`; read it
+as struck through.
 
 `tour` may import `store` because a predicate takes `RootState` and a runner
 returns actions. It may import `model` because predicates call `evaluate` and
@@ -1523,14 +1540,17 @@ The ticket is done when all of the following are true.
 
 ## 27. Risks, in descending order of likelihood
 
-**The `appkit → components` edge may be illegal.** §23. `organisms/Tile` imports
-`appkit/registry`, and `appkit/WorkbenchInstance` would import
-`pages/WorkbenchShell`. Whether that is a cycle depends on how
-`ui/test/layers.test.ts` treats directory-level edges — it is a directory graph,
-not a module graph, so it probably *will* report a cycle. **Check this in phase
-1, before phase 2 depends on it.** The fallback is to put `WorkbenchInstance` in
-`components/pages/` beside the shell, which costs nothing except that the
-composition contract then lives among the visual components.
+**~~The `appkit → components` edge may be illegal.~~ SETTLED in phase 1 —
+DR-57.** It would not have failed the test, which is worse: `layers.test.ts`
+does no cycle detection, so the edge would have been accepted while leaving the
+table self-contradictory. `WorkbenchInstance` went to `components/pages/`, which
+needs no new edge at all.
+
+**`layers.test.ts` cannot detect a cycle.** Found while settling the above. The
+table is a set of declared edges checked with `ALLOWED[from].includes(to)`, so
+nothing stops a future contributor declaring a two-way pair and passing. Not
+fixed here — it is out of this ticket's scope and the one edge that would have
+needed it is gone — but it is a real gap in a test the whole layering rests on.
 
 **The fixture round-trip is fragile.** §20. A renamed query parameter breaks the
 landing page and nothing else. Mitigated by the round-trip test, which must be
@@ -1571,6 +1591,7 @@ shell.
 | DR-54 | Lesson content is a layer (`tour/`), not a component | §17, §23 |
 | DR-55 | The rail renders inside the instance's `PbuiProvider` | §17, §21 |
 | DR-56 | Progress is not persisted; reset is remount | §17, §4 |
+| DR-57 | `WorkbenchInstance` lives in `components/pages/`, not `appkit` | §17, §23 |
 
 ## 29. Where to start reading the code
 
