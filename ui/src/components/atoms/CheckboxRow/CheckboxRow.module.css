@@ -11,8 +11,12 @@
   min-width: 0;
 }
 
-.tiny  { font-size: var(--pbui-fs-tiny); }
-.small { font-size: var(--pbui-fs-small); }
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
 
 .root:has(input:disabled) {
   opacity: 0.55;

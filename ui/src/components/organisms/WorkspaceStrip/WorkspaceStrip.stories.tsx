@@ -37,9 +37,8 @@ export const Default: Story = {
         <WorkspaceStrip />
       </Surface>
       <Text size="tiny" tone="faint" prose>
-        Double-click a name to rename it — pinned spaces refuse, because
-        offering an edit that gets overwritten on the next load would be a lie.
-        Right-click for duplicate and delete.
+        Double-click a name to rename it — pinned spaces refuse, because offering an edit that gets
+        overwritten on the next load would be a lie. Right-click for duplicate and delete.
       </Text>
     </Stack>
   ),

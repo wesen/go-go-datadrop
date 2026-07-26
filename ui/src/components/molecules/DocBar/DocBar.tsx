@@ -18,7 +18,9 @@ import type { NodeId } from "../../../store/layout";
  */
 export function DocBar({ leafId, docId }: { leafId: NodeId; docId: DocId | null }) {
   const dispatch = useDispatch();
-  const docs = useSelector((state: RootState) => state.world.docOrder.map((id) => state.world.docs[id]!));
+  const docs = useSelector((state: RootState) =>
+    state.world.docOrder.map((id) => state.world.docs[id]!),
+  );
   const activeDocId = useSelector((state: RootState) => state.world.activeDocId);
   const shown = docId ?? activeDocId;
 

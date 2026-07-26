@@ -33,7 +33,6 @@ export function InlineRename({
 }) {
   return (
     <input
-      autoFocus
       defaultValue={initial}
       aria-label={label}
       className={styles.input}

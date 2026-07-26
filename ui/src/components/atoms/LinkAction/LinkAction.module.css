@@ -12,8 +12,12 @@
   display: inline-block;
 }
 
-.tiny  { font-size: var(--pbui-fs-tiny); }
-.small { font-size: var(--pbui-fs-small); }
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
 
 .bare {
   background: none;
@@ -29,7 +33,9 @@
   font-weight: 700;
 }
 
-.root:hover { background: var(--pbui-selected); }
+.root:hover {
+  background: var(--pbui-selected);
+}
 
 .root:focus-visible {
   outline: var(--pbui-focus-ring);

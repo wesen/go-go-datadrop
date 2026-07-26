@@ -95,9 +95,9 @@ export const ProseAndTruncation: Story = {
   render: () => (
     <Stack gap={4}>
       <Text prose>
-        Prose sets looser leading for paragraphs rather than dense chrome. This
-        sentence is long enough to wrap, which is the only way to see the
-        difference between 1.35 and 1.5 line height.
+        Prose sets looser leading for paragraphs rather than dense chrome. This sentence is long
+        enough to wrap, which is the only way to see the difference between 1.35 and 1.5 line
+        height.
       </Text>
       <Surface padding={2}>
         <div style={{ width: 180 }}>
@@ -107,8 +107,8 @@ export const ProseAndTruncation: Story = {
         </div>
       </Surface>
       <Text size="tiny" tone="faint" prose>
-        Truncated text carries the full value in `title`, or it is lost. A dotted
-        field path is exactly the case: the interesting part is usually the end.
+        Truncated text carries the full value in `title`, or it is lost. A dotted field path is
+        exactly the case: the interesting part is usually the end.
       </Text>
     </Stack>
   ),

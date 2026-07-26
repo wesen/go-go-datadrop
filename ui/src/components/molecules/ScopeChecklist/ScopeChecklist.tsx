@@ -36,17 +36,14 @@ export function ScopeChecklist({
             disabled={disabled}
             checked={selected.includes(scope)}
             onCheckedChange={(next) =>
-              onSelectedChange(
-                next ? [...selected, scope] : selected.filter((s) => s !== scope),
-              )
+              onSelectedChange(next ? [...selected, scope] : selected.filter((s) => s !== scope))
             }
           />
         ))}
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Scopes narrow what a token may do. They never grant more than you have:
-        remove yourself from a drop and every token you hold loses it
-        immediately.
+        Scopes narrow what a token may do. They never grant more than you have: remove yourself from
+        a drop and every token you hold loses it immediately.
       </Text>
     </Stack>
   );

@@ -2,12 +2,7 @@ import type { ReactNode } from "react";
 import { AppBody, Stack, Toolbar } from "../../layout";
 import { SectionLabel, Text } from "../../foundation";
 import { Button, SelectInput, TextInput } from "../../atoms";
-import {
-  Callout,
-  DraftResumeList,
-  FileDropZone,
-  UploadQueueList,
-} from "../../molecules";
+import { Callout, DraftResumeList, FileDropZone, UploadQueueList } from "../../molecules";
 import type { DraftSummary, UploadItemView } from "../../molecules";
 import { formatBytes } from "../../../model/format";
 
@@ -126,9 +121,8 @@ export function UploadPanel({
           // rather than left to fail as a TypeError deep in the uploader.
           <Callout variant="warning">
             <Text size="small" prose>
-              This page is not a secure context, so the browser cannot compute
-              digests. Files will be uploaded in full and the server will hash
-              them as it writes.
+              This page is not a secure context, so the browser cannot compute digests. Files will
+              be uploaded in full and the server will hash them as it writes.
             </Text>
           </Callout>
         )}
@@ -177,9 +171,8 @@ export function UploadPanel({
         )}
 
         <Text size="tiny" tone="faint" prose>
-          Files are hashed here first, up to {formatBytes(hashLimit)}, so bytes
-          the server already holds are never sent twice. Nothing is visible to a
-          reader until you commit.
+          Files are hashed here first, up to {formatBytes(hashLimit)}, so bytes the server already
+          holds are never sent twice. Nothing is visible to a reader until you commit.
         </Text>
       </Stack>
     </AppBody>

@@ -14,10 +14,7 @@
           "lat": 52.1,
           "lon": 4.3
         },
-        "tags": [
-          "a",
-          "b"
-        ],
+        "tags": ["a", "b"],
         "note": null,
         "extras": {},
         "ticket": 12345678901234567
@@ -177,10 +174,7 @@
       "data.note": null,
       "data.ok": true,
       "data.station": "north",
-      "data.tags": [
-        "a",
-        "b"
-      ],
+      "data.tags": ["a", "b"],
       "data.temp_c": 21.5,
       "data.ticket": 12345678901234567,
       "drop": "lab",

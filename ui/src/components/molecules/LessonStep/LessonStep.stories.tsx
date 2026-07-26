@@ -22,8 +22,7 @@ const meta = {
     state: "pending",
     open: false,
     onToggle: () => {},
-    children:
-      "Right-click the mass_g chip. The menu you get is the list of things a field can do.",
+    children: "Right-click the mass_g chip. The menu you get is the list of things a field can do.",
   },
 } satisfies Meta<typeof LessonStep>;
 
@@ -76,7 +75,11 @@ export const Manual: Story = {
     open: true,
     children:
       "Sweep the pointer across the field chips and watch the black line at the bottom of the panel.",
-    actions: <Button variant="raised" fill="var(--pbui-tone-source)">✓ got it</Button>,
+    actions: (
+      <Button variant="raised" fill="var(--pbui-tone-source)">
+        ✓ got it
+      </Button>
+    ),
   },
 };
 

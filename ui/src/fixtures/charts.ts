@@ -116,7 +116,12 @@ export function autoSpec(table: Table = readings): ChartSpec {
  * these charts are read. A story rendered at 1200px wide would hide the tick
  * culling and the label collision that the real size exercises.
  */
-export function chartPlot(spec: ChartSpec = chartSpec(), table: Table = readings, width = 560, height = 300): Plot {
+export function chartPlot(
+  spec: ChartSpec = chartSpec(),
+  table: Table = readings,
+  width = 560,
+  height = 300,
+): Plot {
   return buildPlot(table, spec, width, height);
 }
 

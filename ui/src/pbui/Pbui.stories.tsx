@@ -91,9 +91,9 @@ function Playground() {
   return (
     <Stack gap={4}>
       <Text tone="faint" prose>
-        Hover anything and read the black bar. Right-click a chip for its verbs.
-        Press <strong>⌖</strong> beside a channel to start an accept — every
-        field it can use starts pulsing, and the rest stay inert.
+        Hover anything and read the black bar. Right-click a chip for its verbs. Press{" "}
+        <strong>⌖</strong> beside a channel to start an accept — every field it can use starts
+        pulsing, and the rest stay inert.
       </Text>
 
       <Surface border="hair" padding={4}>
@@ -114,9 +114,8 @@ function Playground() {
         <Stack gap={3}>
           <SectionLabel>Schema — the same field objects, elsewhere</SectionLabel>
           <Text size="tiny" tone="faint">
-            These are the identical presentations. An accept started above is
-            satisfied by clicking one of these, which is the point: arguments are
-            indicated, not typed.
+            These are the identical presentations. An accept started above is satisfied by clicking
+            one of these, which is the point: arguments are indicated, not typed.
           </Text>
           <Stack direction="row" gap={2} wrap>
             {readings.fields.map((field) => (
@@ -172,8 +171,7 @@ export const AcceptFlow: Story = {
   parameters: { pbui: { table: readings } },
   render: () => <Playground />,
   play: async ({ canvasElement, step }) => {
-    const $ = <T extends Element>(selector: string) =>
-      canvasElement.querySelector<T>(selector);
+    const $ = <T extends Element>(selector: string) => canvasElement.querySelector<T>(selector);
     const $$ = <T extends Element>(selector: string) =>
       Array.from(canvasElement.querySelectorAll<T>(selector));
     const settle = () => new Promise((r) => setTimeout(r, 60));

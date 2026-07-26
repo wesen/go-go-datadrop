@@ -41,7 +41,10 @@ export const docDescriptor: PresentationDescriptor<DocId> = {
     actions.push({ label: "Duplicate document", verb: { kind: "duplicateDoc", docId } });
     actions.push({ label: "Delete document", verb: { kind: "deleteDoc", docId } });
     actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "doc", value: docId } });
-    actions.push({ label: "Add to watchlist", verb: { kind: "watch", ptype: "doc", value: docId } });
+    actions.push({
+      label: "Add to watchlist",
+      verb: { kind: "watch", ptype: "doc", value: docId },
+    });
     return actions;
   },
 };

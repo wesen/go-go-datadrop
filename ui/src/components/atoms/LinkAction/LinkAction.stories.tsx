@@ -24,10 +24,9 @@ export const TheSignInAffordances: Story = {
         </LinkAction>
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        These are `&lt;a href&gt;` and must be: an OIDC authorization request is a
-        top-level navigation, and the provider answers with an HTML login page
-        on another origin. Attempting it with fetch is the standard afternoon
-        lost to CORS.
+        These are `&lt;a href&gt;` and must be: an OIDC authorization request is a top-level
+        navigation, and the provider answers with an HTML login page on another origin. Attempting
+        it with fetch is the standard afternoon lost to CORS.
       </Text>
     </Stack>
   ),
@@ -53,8 +52,8 @@ export const MatchesButton: Story = {
         <Button>a Button</Button>
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Same border, same padding, same weight, same font size. Only the element
-        differs, and only because it has to.
+        Same border, same padding, same weight, same font size. Only the element differs, and only
+        because it has to.
       </Text>
     </Stack>
   ),

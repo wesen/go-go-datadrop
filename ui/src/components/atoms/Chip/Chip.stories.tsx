@@ -73,8 +73,8 @@ export const States: Story = {
         <Chip label="strong" tone="var(--pbui-tone-field)" strong />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Dashed for stale, filled for active, faded onto the alt surface for
-        disabled. Print this page in greyscale and all four are still distinct.
+        Dashed for stale, filled for active, faded onto the alt surface for disabled. Print this
+        page in greyscale and all four are still distinct.
       </Text>
     </Stack>
   ),

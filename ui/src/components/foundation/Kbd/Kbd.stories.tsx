@@ -22,9 +22,8 @@ export const InProse: Story = {
   render: () => (
     <Stack gap={3}>
       <Text size="small">
-        <Kbd>Esc</Kbd> aborts the pending accept. <Kbd>Enter</Kbd> runs the
-        highlighted verb. <Kbd>R</Kbd> opens the menu for whatever is under the
-        cursor.
+        <Kbd>Esc</Kbd> aborts the pending accept. <Kbd>Enter</Kbd> runs the highlighted verb.{" "}
+        <Kbd>R</Kbd> opens the menu for whatever is under the cursor.
       </Text>
       <Stack direction="row" gap={2}>
         <Kbd>Esc</Kbd>

@@ -119,8 +119,7 @@
    * in a Go binary and served offline, so a webfont request would either fail
    * or reach a third party. Anyone who has it installed gets it; everyone else
    * gets the platform monospace, which is what the prototype assumed too. */
-  --pbui-font: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
-    monospace;
+  --pbui-font: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   --pbui-fs-micro: 8.5px; /* type badges, facet titles */
   --pbui-fs-tiny: 9.5px; /* section labels, trace rows */
   --pbui-fs-small: 10.5px; /* chips, controls, table cells */

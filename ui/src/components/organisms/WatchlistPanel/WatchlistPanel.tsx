@@ -60,8 +60,8 @@ export function WatchlistPanel({
         <Stack gap={2}>
           {entries.length === 0 && (
             <Text size="small" tone="faint" prose>
-              Nothing watched. A watched object stays LIVE — a watched field can
-              still be mapped or filtered from here.
+              Nothing watched. A watched object stays LIVE — a watched field can still be mapped or
+              filtered from here.
             </Text>
           )}
           {entries.map((entry) => {

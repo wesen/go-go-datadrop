@@ -114,9 +114,9 @@ export const Tokens: Story = {
           The visual language
         </Text>
         <Text tone="faint" prose>
-          Extracted from pbui-gog.jsx into tokens. No CSS framework (DR-13). The
-          categorical palette below is generated from PALETTE in model/plot.ts
-          and test/tokens.test.ts fails if the two drift.
+          Extracted from pbui-gog.jsx into tokens. No CSS framework (DR-13). The categorical palette
+          below is generated from PALETTE in model/plot.ts and test/tokens.test.ts fails if the two
+          drift.
         </Text>
 
         <Group title="Surfaces and text">
@@ -164,8 +164,7 @@ export const Tokens: Story = {
                 width: 130,
                 height: 14,
                 border: "var(--pbui-border-hair)",
-                background:
-                  "linear-gradient(90deg, var(--pbui-ramp-low), var(--pbui-ramp-high))",
+                background: "linear-gradient(90deg, var(--pbui-ramp-low), var(--pbui-ramp-high))",
               }}
             />
             <Text size="small" tone="faint">
@@ -243,8 +242,8 @@ export const Tokens: Story = {
         </Group>
 
         <VisuallyHidden>
-          End of the token sheet. This text proves VisuallyHidden keeps content
-          in the accessibility tree while removing it from the screen.
+          End of the token sheet. This text proves VisuallyHidden keeps content in the accessibility
+          tree while removing it from the screen.
         </VisuallyHidden>
       </Stack>
     </div>

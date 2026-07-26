@@ -43,9 +43,8 @@ export const BothStrategies: Story = {
       <TruncationNotice table={truncated("latest", 2000)} />
       <TruncationNotice table={truncated("head", 500)} />
       <Text size="tiny" tone="faint" prose>
-        Read the numbers: 2,000 of at least 2,001. The source is presented, so
-        "raise the row budget" is reachable by right-click from where the advice
-        is read.
+        Read the numbers: 2,000 of at least 2,001. The source is presented, so "raise the row
+        budget" is reachable by right-click from where the advice is read.
       </Text>
     </Stack>
   ),

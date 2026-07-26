@@ -74,8 +74,8 @@ export function ChartPanel({
               {plot.markOverflow > 0 && (
                 <Text size="tiny" tone="danger">
                   {plot.markOverflow.toLocaleString()} rows are not drawn — a panel is capped at{" "}
-                  {MAX_MARKS.toLocaleString()} marks. Add a limit or a summarize step, or narrow
-                  the source.
+                  {MAX_MARKS.toLocaleString()} marks. Add a limit or a summarize step, or narrow the
+                  source.
                 </Text>
               )}
               {plot.facetOverflow > 0 && (
@@ -120,9 +120,23 @@ function PlotSvg({
       >
         {plot.panels.map((panel, index) => (
           <g key={index} transform={`translate(${panel.x0}, ${panel.y0})`}>
-            <rect width={panel.w} height={panel.h} fill="var(--pbui-pane)" stroke="var(--pbui-ink)" strokeWidth="1.4" />
+            <rect
+              width={panel.w}
+              height={panel.h}
+              fill="var(--pbui-pane)"
+              stroke="var(--pbui-ink)"
+              strokeWidth="1.4"
+            />
             {plot.yTicks.map((tick, i) => (
-              <line key={i} x1={0} y1={tick.pos} x2={panel.w} y2={tick.pos} stroke={GRID} strokeWidth="0.7" />
+              <line
+                key={i}
+                x1={0}
+                y1={tick.pos}
+                x2={panel.w}
+                y2={tick.pos}
+                stroke={GRID}
+                strokeWidth="0.7"
+              />
             ))}
             {panel.title !== null && (
               <text x={3} y={-3} fontSize="9" fontWeight="700" fill="var(--pbui-ink)">
@@ -193,7 +207,13 @@ function MarkView({ mark, docId }: { mark: Mark; docId: string | null }) {
   // plainly rather than presented.
   if (mark.kind === "path") {
     return (
-      <path d={mark.d} fill={mark.fill ?? "none"} fillOpacity={mark.fillOpacity} stroke={mark.stroke} strokeWidth="2" />
+      <path
+        d={mark.d}
+        fill={mark.fill ?? "none"}
+        fillOpacity={mark.fillOpacity}
+        stroke={mark.stroke}
+        strokeWidth="2"
+      />
     );
   }
 
@@ -205,12 +225,32 @@ function MarkView({ mark, docId }: { mark: Mark; docId: string | null }) {
       svg
       ptype="datum"
       value={{ docId, row: mark.row }}
-      doc={`<datum> ${Object.entries(mark.row).slice(0, 3).map(([k, v]) => `${k}=${String(v)}`).join(" · ")}`}
+      doc={`<datum> ${Object.entries(mark.row)
+        .slice(0, 3)
+        .map(([k, v]) => `${k}=${String(v)}`)
+        .join(" · ")}`}
     >
       {mark.kind === "circle" ? (
-        <circle cx={mark.x} cy={mark.y} r={mark.r} fill={mark.fill} fillOpacity="0.72" stroke="var(--pbui-ink)" strokeWidth="0.8" />
+        <circle
+          cx={mark.x}
+          cy={mark.y}
+          r={mark.r}
+          fill={mark.fill}
+          fillOpacity="0.72"
+          stroke="var(--pbui-ink)"
+          strokeWidth="0.8"
+        />
       ) : (
-        <rect x={mark.x} y={mark.y} width={mark.w} height={mark.h} fill={mark.fill} fillOpacity="0.75" stroke="var(--pbui-ink)" strokeWidth="0.8" />
+        <rect
+          x={mark.x}
+          y={mark.y}
+          width={mark.w}
+          height={mark.h}
+          fill={mark.fill}
+          fillOpacity="0.75"
+          stroke="var(--pbui-ink)"
+          strokeWidth="0.8"
+        />
       )}
     </Presentation>
   );

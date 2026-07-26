@@ -18,10 +18,19 @@
   white-space: nowrap;
 }
 
-.table tbody tr:nth-child(even) { background: var(--pbui-pane-alt); }
+.table tbody tr:nth-child(even) {
+  background: var(--pbui-pane-alt);
+}
 
-.num { text-align: right; color: var(--pbui-faint); font-weight: 400; }
-.numeric { text-align: right; font-variant-numeric: tabular-nums; }
+.num {
+  text-align: right;
+  color: var(--pbui-faint);
+  font-weight: 400;
+}
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
 
 .rowNumber {
   border-bottom: 1px dotted var(--pbui-faint);

@@ -45,8 +45,7 @@ export function DraftResumeList({
         {drafts.map((draft) => (
           <Toolbar key={draft.version} tight>
             <Text size="small">
-              version {draft.version} · {draft.file_count} files ·{" "}
-              {formatBytes(draft.total_bytes)}
+              version {draft.version} · {draft.file_count} files · {formatBytes(draft.total_bytes)}
             </Text>
             <Button
               size="tiny"
@@ -62,8 +61,8 @@ export function DraftResumeList({
           </Toolbar>
         ))}
         <Text size="tiny" tone="faint" prose>
-          A draft holds its bytes but is invisible to readers. Discarding it
-          releases them for the next garbage-collection sweep.
+          A draft holds its bytes but is invisible to readers. Discarding it releases them for the
+          next garbage-collection sweep.
         </Text>
       </Stack>
     </Callout>

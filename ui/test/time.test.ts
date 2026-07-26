@@ -174,9 +174,11 @@ describe("sub-second spans", () => {
   test("a second or more still labels without milliseconds", () => {
     // The extra precision must not leak upward: a five-minute axis reading
     // "09:00.000" would be worse than the problem it fixes.
-    const labels = timeTicks(Date.parse("2026-07-24T09:00:00Z"), Date.parse("2026-07-24T12:00:00Z"), 6).map(
-      (t) => t.label,
-    );
+    const labels = timeTicks(
+      Date.parse("2026-07-24T09:00:00Z"),
+      Date.parse("2026-07-24T12:00:00Z"),
+      6,
+    ).map((t) => t.label);
     for (const label of labels) expect(label).not.toContain(".");
   });
 });

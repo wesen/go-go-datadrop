@@ -67,13 +67,7 @@ export function StepRow({
         disabled={!canMoveUp}
         onClick={onMoveUp}
       />
-      <IconButton
-        variant="framed"
-        tone="danger"
-        glyph="✕"
-        label="remove step"
-        onClick={onRemove}
-      />
+      <IconButton variant="framed" tone="danger" glyph="✕" label="remove step" onClick={onRemove} />
     </Stack>
   );
 }

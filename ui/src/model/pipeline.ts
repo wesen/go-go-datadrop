@@ -157,7 +157,7 @@ export function schemaAfter(
 
   for (let i = 0; i < n; i++) {
     const step = steps[i];
-    if (!step || !step.on) continue;
+    if (!step?.on) continue;
     if (step.kind === "derive") {
       fields = [
         ...fields.filter((f) => f.name !== step.name),
@@ -195,8 +195,7 @@ export function evaluate(
   let err: string | null = null;
   const dropped: Record<string, number> = {};
 
-  const typeOf = (name: string): FieldType | undefined =>
-    fields.find((f) => f.name === name)?.type;
+  const typeOf = (name: string): FieldType | undefined => fields.find((f) => f.name === name)?.type;
 
   for (const step of steps) {
     if (!step.on) continue;
@@ -225,6 +224,25 @@ export function evaluate(
                 return v > bound;
               case "<":
                 return v < bound;
+              default: {
+                /*
+                 * Unreachable while FilterOp has four members, and TypeScript
+                 * proves it: `step` is narrowed to `never` here, so assigning it
+                 * to a `never` stops compiling the moment a fifth op is added
+                 * without a case.
+                 *
+                 * It needs a body regardless. Without one the callback returns
+                 * `undefined`, which `filter` reads as false — so a filter this
+                 * build did not understand would silently empty the table.
+                 * Keeping the rows is the less destructive failure: an
+                 * unfiltered table beside a step row that says otherwise is a
+                 * visible contradiction, where an empty one reads as a data
+                 * problem.
+                 */
+                const unknown: never = step;
+                void unknown;
+                return true;
+              }
             }
           });
         } else {
@@ -239,6 +257,12 @@ export function evaluate(
                 return v > step.value;
               case "<":
                 return v < step.value;
+              // Same argument as the quantitative branch above.
+              default: {
+                const unknown: never = step;
+                void unknown;
+                return true;
+              }
             }
           });
         }

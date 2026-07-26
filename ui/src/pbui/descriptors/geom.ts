@@ -18,7 +18,8 @@ export const geomDescriptor: PresentationDescriptor<Geom> = {
       geom === "bar"
         ? "a nominal or temporal x, and a quantitative y"
         : "any x, and a quantitative y",
-    baseline: geom === "bar" || geom === "area" ? "zero — otherwise magnitude is misrepresented" : "none",
+    baseline:
+      geom === "bar" || geom === "area" ? "zero — otherwise magnitude is misrepresented" : "none",
   }),
 
   actions: (geom, env): Action[] => [

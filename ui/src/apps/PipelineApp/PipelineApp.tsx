@@ -75,7 +75,9 @@ function PipelineApp({ leafId, docId }: AppProps) {
   // steps 1 and 2 produced. Computed here because it needs the table.
   const views: PipelineStepView[] = steps.map((step, index) => ({
     step,
-    available: table ? schemaAfter(table, steps, index, doc?.spec.typeOverrides).map((f) => f.name) : [],
+    available: table
+      ? schemaAfter(table, steps, index, doc?.spec.typeOverrides).map((f) => f.name)
+      : [],
     dropped: pipeline?.dropped[step.id],
   }));
 

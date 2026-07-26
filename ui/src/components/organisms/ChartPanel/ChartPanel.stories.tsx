@@ -50,7 +50,13 @@ export const WithALegend: Story = {
   args: {
     plot: chartPlot(
       chartSpec({
-        mapping: { x: READINGS.time, y: READINGS.temp, color: READINGS.station, size: null, facet: null },
+        mapping: {
+          x: READINGS.time,
+          y: READINGS.temp,
+          color: READINGS.station,
+          size: null,
+          facet: null,
+        },
       }),
     ),
     colorField: READINGS.station,
@@ -88,7 +94,13 @@ export const Filtered: Story = {
     plot: chartPlot(
       chartSpec({
         steps: [step.filter(READINGS.station, "=", "roof")],
-        mapping: { x: READINGS.time, y: READINGS.temp, color: READINGS.station, size: null, facet: null },
+        mapping: {
+          x: READINGS.time,
+          y: READINGS.temp,
+          color: READINGS.station,
+          size: null,
+          facet: null,
+        },
       }),
     ),
     colorField: READINGS.station,
@@ -100,7 +112,13 @@ export const Faceted: Story = {
   args: {
     plot: chartPlot(
       chartSpec({
-        mapping: { x: READINGS.time, y: READINGS.temp, color: null, size: null, facet: READINGS.station },
+        mapping: {
+          x: READINGS.time,
+          y: READINGS.temp,
+          color: null,
+          size: null,
+          facet: READINGS.station,
+        },
       }),
     ),
   },

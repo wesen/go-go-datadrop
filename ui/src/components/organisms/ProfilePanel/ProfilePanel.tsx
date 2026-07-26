@@ -87,9 +87,8 @@ export function ProfilePanel({
           {provider && (
             <>
               <Text size="tiny" tone="faint" prose>
-                Your name, email, password and two-factor settings live in the
-                identity provider. datadrop keeps a copy of the first two,
-                refreshed each time you sign in.
+                Your name, email, password and two-factor settings live in the identity provider.
+                datadrop keeps a copy of the first two, refreshed each time you sign in.
               </Text>
               <LinkAction href={provider.account_url} target="_blank" rel="noreferrer">
                 Manage your account →
@@ -182,9 +181,9 @@ export function ProfilePanel({
                       leaves you signed in AT THE PROVIDER, so clicking "sign
                       in" signs you straight back in with no prompt. */}
                   <Text size="tiny" tone="faint" prose>
-                    Signing out ends this session here. You stay signed in at the
-                    identity provider, so signing back in will not ask for a
-                    password — use “sign out everywhere” to end that too.
+                    Signing out ends this session here. You stay signed in at the identity provider,
+                    so signing back in will not ask for a password — use “sign out everywhere” to
+                    end that too.
                   </Text>
                 </Stack>
               </Callout>

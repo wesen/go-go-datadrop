@@ -88,8 +88,8 @@ export function TokensPanel({
             <Stack gap={2}>
               <CodeText wrapAnywhere>{minted.token}</CodeText>
               <Text size="tiny" tone="faint" prose>
-                datadrop stores only a hash of this. Dismissing this panel is
-                irreversible; if you lose it, revoke the token and mint another.
+                datadrop stores only a hash of this. Dismissing this panel is irreversible; if you
+                lose it, revoke the token and mint another.
               </Text>
             </Stack>
           </Callout>
@@ -156,9 +156,7 @@ export function TokensPanel({
               hint="Mint one above to use the CLI or CI. It works with `datadrop` unchanged."
             />
           ) : (
-            tokens.map((token) => (
-              <TokenRow key={token.id} token={token} onRevoke={onRevoke} />
-            ))
+            tokens.map((token) => <TokenRow key={token.id} token={token} onRevoke={onRevoke} />)
           )}
         </Stack>
       </Stack>

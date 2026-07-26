@@ -43,7 +43,10 @@ function SourceApp(_props: AppProps) {
   const streams = useListStreamsQuery(chosen, { skip: !chosen });
   const datasets = useListDatasetsQuery(chosen, { skip: !chosen });
   const chosenDataset = dataset || datasets.data?.datasets?.[0]?.name || "";
-  const detail = useGetDatasetQuery({ drop: chosen, dataset: chosenDataset }, { skip: !chosenDataset });
+  const detail = useGetDatasetQuery(
+    { drop: chosen, dataset: chosenDataset },
+    { skip: !chosenDataset },
+  );
   const committed = (detail.data?.versions ?? []).filter((v) => v.state === "committed");
   const version = committed[committed.length - 1];
 

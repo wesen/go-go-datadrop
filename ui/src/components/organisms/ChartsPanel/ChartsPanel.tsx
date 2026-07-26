@@ -62,9 +62,8 @@ export function ChartsPanel({
       <AppBody>
         <Stack gap={3}>
           <Text size="tiny" tone="faint" prose>
-            Every card is a live composition with its own pipeline and encoding.
-            Any chart / table / pipeline / encoding tile can be re-pointed at any
-            of them from its DOC strip.
+            Every card is a live composition with its own pipeline and encoding. Any chart / table /
+            pipeline / encoding tile can be re-pointed at any of them from its DOC strip.
           </Text>
 
           {docs.map((doc) => (

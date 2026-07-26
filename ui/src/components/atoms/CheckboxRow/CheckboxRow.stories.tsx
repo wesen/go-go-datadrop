@@ -42,9 +42,8 @@ export const TheScopePicker: Story = {
     <Stack gap={3}>
       <ScopePicker />
       <Text size="tiny" tone="faint" prose>
-        Scopes narrow what a token may do. They never grant more than the holder
-        has: remove yourself from a drop and every token you hold loses it
-        immediately.
+        Scopes narrow what a token may do. They never grant more than the holder has: remove
+        yourself from a drop and every token you hold loses it immediately.
       </Text>
     </Stack>
   ),

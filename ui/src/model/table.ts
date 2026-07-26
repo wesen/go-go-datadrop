@@ -71,10 +71,7 @@ export const EMPTY_TABLE: Table = {
  * back to the source and never changes what the server said — which is why the
  * field keeps reporting its own `inferred_from` alongside.
  */
-export function effectiveType(
-  field: Field,
-  overrides?: Record<string, FieldType>,
-): FieldType {
+export function effectiveType(field: Field, overrides?: Record<string, FieldType>): FieldType {
   return overrides?.[field.name] ?? field.type;
 }
 

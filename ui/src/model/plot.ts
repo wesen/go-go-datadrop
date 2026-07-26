@@ -13,8 +13,14 @@ import { asNumber, asText, fmt } from "./table";
 import { timeTicks, toInstant } from "./time";
 
 export const PALETTE = [
-  "#3b6fb6", "#c0504d", "#d6a419", "#7a9a6b",
-  "#8f7bb0", "#c07a94", "#5fa9a0", "#8892a8",
+  "#3b6fb6",
+  "#c0504d",
+  "#d6a419",
+  "#7a9a6b",
+  "#8f7bb0",
+  "#c07a94",
+  "#5fa9a0",
+  "#8892a8",
 ];
 export const RAMP_LOW = "#3b6fb6";
 export const RAMP_HIGH = "#c0504d";
@@ -103,7 +109,7 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export function niceTicks(lo: number, hi: number, n = 5): number[] {
   if (!(hi > lo)) return [lo];
   const raw = (hi - lo) / n;
-  const magnitude = Math.pow(10, Math.floor(Math.log10(raw)));
+  const magnitude = 10 ** Math.floor(Math.log10(raw));
   const normalized = raw / magnitude;
   const step =
     (normalized < 1.5 ? 1 : normalized < 3.5 ? 2 : normalized < 7.5 ? 5 : 10) * magnitude;
@@ -124,7 +130,11 @@ export function lerpHex(a: string, b: string, t: number): string {
   return (
     "#" +
     from
-      .map((v, i) => Math.round(v + ((to[i] as number) - v) * t).toString(16).padStart(2, "0"))
+      .map((v, i) =>
+        Math.round(v + ((to[i] as number) - v) * t)
+          .toString(16)
+          .padStart(2, "0"),
+      )
       .join("")
   );
 }
@@ -192,7 +202,9 @@ export function buildPlot(
   const yType = typeOf[yName] as FieldType;
 
   if (spec.geom === "bar" && xType === "q") {
-    problems.push("bar wants a nominal or temporal x — add a summarize step, or map x to a category");
+    problems.push(
+      "bar wants a nominal or temporal x — add a summarize step, or map x to a category",
+    );
   }
   if (yType !== "q") {
     problems.push(`y must be quantitative for geom ${spec.geom}`);
@@ -336,8 +348,7 @@ export function buildPlot(
 
   const plotW = width - legendW;
   const panelW = (plotW - padL - padR - gapX * (columns - 1)) / columns;
-  const panelH =
-    (height - padT * panelRows - padB - gapY * (panelRows - 1)) / panelRows;
+  const panelH = (height - padT * panelRows - padB - gapY * (panelRows - 1)) / panelRows;
 
   const scaleX = (value: unknown): number => {
     if (continuousX) {
@@ -357,7 +368,7 @@ export function buildPlot(
 
   const yTicks: Tick[] = log
     ? niceTicks(Math.log10(yLo), Math.log10(yHi), 4).map((exponent) => {
-        const v = Math.pow(10, exponent);
+        const v = 10 ** exponent;
         return { pos: scaleY(v), label: fmt(v) };
       })
     : niceTicks(yLo, yHi, mini ? 3 : 5).map((v) => ({ pos: scaleY(v), label: fmt(v) }));
@@ -371,14 +382,14 @@ export function buildPlot(
       : continuousX
         ? niceTicks(xLo, xHi, mini ? 3 : 5).map((v) => ({ pos: scaleX(v), label: fmt(v) }))
         : (xCategories as string[])
-          .map((c, i) => ({ pos: scaleX(c), label: c, i }))
-          .filter(({ i }) => {
-            // Stride the labels so they never overlap.
-            const max = mini ? 4 : Math.max(3, Math.floor(panelW / 44));
-            const stride = Math.ceil((xCategories as string[]).length / max);
-            return i % stride === 0;
-          })
-          .map(({ pos, label }) => ({ pos, label }));
+            .map((c, i) => ({ pos: scaleX(c), label: c, i }))
+            .filter(({ i }) => {
+              // Stride the labels so they never overlap.
+              const max = mini ? 4 : Math.max(3, Math.floor(panelW / 44));
+              const stride = Math.ceil((xCategories as string[]).length / max);
+              return i % stride === 0;
+            })
+            .map(({ pos, label }) => ({ pos, label }));
 
   // ---- marks ------------------------------------------------------------
   let markOverflow = 0;

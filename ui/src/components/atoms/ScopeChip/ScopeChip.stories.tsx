@@ -29,9 +29,8 @@ export const EveryScope: Story = {
         <ScopeChip scope="admin" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        `admin` is bolder and hairline-bordered rather than coloured: the tone
-        scale already carries presentation type, and a red scope would read as
-        an error rather than as a privilege.
+        `admin` is bolder and hairline-bordered rather than coloured: the tone scale already carries
+        presentation type, and a red scope would read as an error rather than as a privilege.
       </Text>
     </Stack>
   ),

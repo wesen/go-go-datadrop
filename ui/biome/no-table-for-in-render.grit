@@ -1,0 +1,14 @@
+language js
+
+// `env.tableFor(...)` evaluates the whole pipeline (DATADROP-6 DR-40).
+//
+// This catches the member-call shape, which is how every real call site spells
+// it. It is AST matching, not symbol resolution: an aliased binding escapes it.
+// `test/render-path.test.ts` is the guard that actually holds the line; this
+// one is here to fail in the editor, before the test runs.
+`$env.tableFor($_)` where {
+  register_diagnostic(
+    span = $env,
+    message = "tableFor evaluates the whole pipeline — use fieldsFor on a render path (DR-40)"
+  )
+}

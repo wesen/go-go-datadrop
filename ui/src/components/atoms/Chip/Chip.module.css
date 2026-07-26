@@ -22,14 +22,18 @@
   max-width: 100%;
 }
 
-.strong { font-weight: 700; }
+.strong {
+  font-weight: 700;
+}
 
 .label {
   overflow: hidden;
   text-overflow: ellipsis;
 }
 
-.active { background: var(--pbui-selected); }
+.active {
+  background: var(--pbui-selected);
+}
 
 /* A mapping whose field the pipeline no longer produces. The dashed border and
  * the warning glyph carry it, not the colour — the control must never read as

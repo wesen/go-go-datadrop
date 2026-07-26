@@ -14,9 +14,8 @@ function LauncherApp({ leafId }: AppProps) {
     <AppBody>
       <Stack gap={3}>
         <Text size="small" tone="faint" prose>
-          Empty tile — choose an application. Chart, table, pipeline and encoding
-          bind to a chart DOCUMENT and can be re-pointed; the rest are shared
-          views over the world.
+          Empty tile — choose an application. Chart, table, pipeline and encoding bind to a chart
+          DOCUMENT and can be re-pointed; the rest are shared views over the world.
         </Text>
         <Stack direction="row" gap={2} wrap>
           {apps

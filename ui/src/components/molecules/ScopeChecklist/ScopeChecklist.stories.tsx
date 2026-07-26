@@ -6,7 +6,13 @@ import { Text } from "../../foundation";
 
 const SCOPES = ["drops:read", "drops:write", "datasets:write", "admin"];
 
-function Live({ disabled = false, initial = ["drops:read"] }: { disabled?: boolean; initial?: string[] }) {
+function Live({
+  disabled = false,
+  initial = ["drops:read"],
+}: {
+  disabled?: boolean;
+  initial?: string[];
+}) {
   const [selected, setSelected] = useState(initial);
   return (
     <ScopeChecklist

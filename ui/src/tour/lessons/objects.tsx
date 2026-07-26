@@ -35,11 +35,11 @@ export const objectsLessons: Lesson[] = [
     title: "Right-click gives every verb",
     body: (
       <>
-        Right-click the <strong>{COLUMNS.temp}</strong> chip. The menu you get is the list of
-        things a <em>field</em> can do — map it to a channel, filter on it, group by it, inspect
-        it. Choose <strong>Inspect</strong> and its distribution lands in the inspector tile. Now
-        right-click the <strong>lab / temps</strong> source chip instead: a different type, so a
-        different menu. That is the entire idea of the system in two clicks.{" "}
+        Right-click the <strong>{COLUMNS.temp}</strong> chip. The menu you get is the list of things
+        a <em>field</em> can do — map it to a channel, filter on it, group by it, inspect it. Choose{" "}
+        <strong>Inspect</strong> and its distribution lands in the inspector tile. Now right-click
+        the <strong>lab / temps</strong> source chip instead: a different type, so a different menu.
+        That is the entire idea of the system in two clicks.{" "}
         <em>(Trackpad: two-finger click or ⌃-click.)</em>
       </>
     ),
@@ -72,10 +72,10 @@ export const objectsLessons: Lesson[] = [
     body: (
       <>
         In the watchlist tile press <strong>Watch…</strong>. A red banner appears, everything
-        acceptable starts pulsing, and the next object you click is consumed by the waiting
-        command. The command has paused with its hand out. Click a field chip over in the{" "}
-        <em>sources</em> tile — a different tile — and watch it get swallowed.{" "}
-        <strong>Esc</strong> aborts. Map-to-channel and compare A/B work the same way.
+        acceptable starts pulsing, and the next object you click is consumed by the waiting command.
+        The command has paused with its hand out. Click a field chip over in the <em>sources</em>{" "}
+        tile — a different tile — and watch it get swallowed. <strong>Esc</strong> aborts.
+        Map-to-channel and compare A/B work the same way.
       </>
     ),
     run: async ({ dispatch, accept }) => {

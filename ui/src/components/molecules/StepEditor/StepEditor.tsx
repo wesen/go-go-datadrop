@@ -68,7 +68,9 @@ export function StepEditor({
     case "filter":
       return (
         <Stack direction="row" gap={2} wrap>
-          {select("field to filter on", step.field, fields, (field) => onChange({ ...step, field }))}
+          {select("field to filter on", step.field, fields, (field) =>
+            onChange({ ...step, field }),
+          )}
           {select(
             "comparison",
             step.op,

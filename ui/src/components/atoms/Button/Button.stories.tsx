@@ -32,9 +32,9 @@ export const Bare: Story = {
         <Button busy="minting…">Mint token</Button>
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        reset.css strips background, border and padding from every button, so a
-        bare one renders as text with a pointer cursor. Twenty-nine of the
-        forty-two hand-written buttons looked like this.
+        reset.css strips background, border and padding from every button, so a bare one renders as
+        text with a pointer cursor. Twenty-nine of the forty-two hand-written buttons looked like
+        this.
       </Text>
     </Stack>
   ),
@@ -87,8 +87,8 @@ export const BothSizes: Story = {
         <Button size="small">small, bare</Button>
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Gallery, Compare and Charts used 9.5px. Encoding, Pipeline and Source
-        used 10.5px. Nobody decided that (guide §7.2).
+        Gallery, Compare and Charts used 9.5px. Encoding, Pipeline and Source used 10.5px. Nobody
+        decided that (guide §7.2).
       </Text>
     </Stack>
   ),
@@ -111,9 +111,9 @@ export const PressedIsAnnounced: Story = {
         <Button variant="framed">off</Button>
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        The left button reports aria-pressed=true. Both are distinguishable
-        without colour: the selected fill is accompanied by the announcement,
-        and a monochrome display still shows the fill difference.
+        The left button reports aria-pressed=true. Both are distinguishable without colour: the
+        selected fill is accompanied by the announcement, and a monochrome display still shows the
+        fill difference.
       </Text>
     </Stack>
   ),

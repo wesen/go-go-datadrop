@@ -262,7 +262,10 @@ function UploadApp(_props: AppProps) {
       onRetry={() => void run(batch?.version ?? undefined)}
       onResumeDraft={(version) => {
         const draft = drafts?.find((d) => d.version === version);
-        void run(version, (draft?.files ?? []).map((file) => file.path));
+        void run(
+          version,
+          (draft?.files ?? []).map((file) => file.path),
+        );
       }}
       onDiscardDraft={(version) => void discard(version)}
       onOpenInChart={() =>

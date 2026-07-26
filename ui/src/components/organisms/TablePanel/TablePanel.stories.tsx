@@ -59,9 +59,7 @@ export const WithADerivedColumn: Story = {
 /** Sorted and capped, so the visible rows are the interesting ones. */
 export const SortedAndLimited: Story = {
   args: {
-    pipeline: pipelineOf(
-      chartSpec({ steps: [step.sort(READINGS.temp, "desc"), step.limit(12)] }),
-    ),
+    pipeline: pipelineOf(chartSpec({ steps: [step.sort(READINGS.temp, "desc"), step.limit(12)] })),
   },
 };
 

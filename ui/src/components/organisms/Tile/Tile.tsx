@@ -95,11 +95,7 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
           ⠿
         </span>
 
-        <Presentation
-          ptype="tile"
-          value={node.id}
-          doc={`<tile> ${label} — split / close / swap`}
-        >
+        <Presentation ptype="tile" value={node.id} doc={`<tile> ${label} — split / close / swap`}>
           <Text size="tiny" strong>
             <span style={{ textTransform: "uppercase", letterSpacing: "var(--pbui-track-label)" }}>
               {label}

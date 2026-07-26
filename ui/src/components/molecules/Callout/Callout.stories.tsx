@@ -35,9 +35,8 @@ export const TheThreeItReplaced: Story = {
 
       <Callout variant="info">
         <Text size="small" prose>
-          This page is not a secure context, so the browser cannot compute
-          digests. Files will be uploaded in full and the server will hash them
-          as it writes.
+          This page is not a secure context, so the browser cannot compute digests. Files will be
+          uploaded in full and the server will hash them as it writes.
         </Text>
       </Callout>
     </Stack>
@@ -69,8 +68,8 @@ export const TheOneTimeSecret: Story = {
           ddp_exampleexampl_exampleexampleexampleexampleexam
         </CodeText>
         <Text size="tiny" tone="faint" prose>
-          datadrop stores only a hash of this. Dismissing the panel is
-          irreversible; if you lose it, revoke the token and mint another.
+          datadrop stores only a hash of this. Dismissing the panel is irreversible; if you lose it,
+          revoke the token and mint another.
         </Text>
       </Stack>
     </Callout>

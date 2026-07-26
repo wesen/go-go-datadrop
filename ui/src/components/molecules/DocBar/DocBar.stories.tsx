@@ -32,8 +32,8 @@ export const FollowsTheActiveDocument: Story = {
         <DocBar leafId="leaf-1" docId={null} />
       </Surface>
       <Text size="tiny" tone="faint" prose>
-        A null docId means "whatever is active". Re-point the tile with the
-        dropdown, or press ＋ to spawn a new document straight into it.
+        A null docId means "whatever is active". Re-point the tile with the dropdown, or press ＋ to
+        spawn a new document straight into it.
       </Text>
     </Stack>
   ),
@@ -50,8 +50,7 @@ export const TwoTilesOneDocument: Story = {
         <DocBar leafId="leaf-2" docId={null} />
       </Surface>
       <Text size="tiny" tone="faint" prose>
-        Both follow the active document. Two views of one object, not two
-        copies.
+        Both follow the active document. Two views of one object, not two copies.
       </Text>
     </Stack>
   ),

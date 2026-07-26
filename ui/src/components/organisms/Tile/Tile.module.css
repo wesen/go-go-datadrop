@@ -53,4 +53,6 @@
   font-weight: 700;
 }
 
-.dragging { opacity: 0.75; }
+.dragging {
+  opacity: 0.75;
+}

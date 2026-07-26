@@ -53,7 +53,14 @@ export function TourContentProvider({
   const value = useMemo(
     () => content,
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [content.lessons, content.brief, content.modules, content.cheat, content.onReset, content.rackTarget],
+    [
+      content.lessons,
+      content.brief,
+      content.modules,
+      content.cheat,
+      content.onReset,
+      content.rackTarget,
+    ],
   );
   return <TourContentContext.Provider value={value}>{children}</TourContentContext.Provider>;
 }

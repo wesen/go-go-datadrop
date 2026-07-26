@@ -66,8 +66,8 @@ export const WithPlaceholder: Story = {
         ]}
       />
       <Text size="tiny" tone="faint" prose>
-        Only drops the caller may write to are offered. Listing the rest would
-        be offering a guaranteed 403.
+        Only drops the caller may write to are offered. Listing the rest would be offering a
+        guaranteed 403.
       </Text>
     </Stack>
   ),

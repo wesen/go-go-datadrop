@@ -39,7 +39,7 @@ if (start < 0 || end < 0) {
   process.exit(1);
 }
 
-const next = css.slice(0, start + BEGIN.length) + "\n" + block() + "\n" + css.slice(end);
+const next = `${css.slice(0, start + BEGIN.length)}\n${block()}\n${css.slice(end)}`;
 
 if (next === css) {
   console.log("tokens.css palette already matches model/plot.ts");

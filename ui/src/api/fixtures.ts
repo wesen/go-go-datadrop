@@ -112,8 +112,7 @@ export function applyBudget(table: Table, limit: number): Table {
   if (!Number.isFinite(limit) || limit <= 0 || table.rows.length <= limit) {
     return table;
   }
-  const rows =
-    table.strategy === "latest" ? table.rows.slice(-limit) : table.rows.slice(0, limit);
+  const rows = table.strategy === "latest" ? table.rows.slice(-limit) : table.rows.slice(0, limit);
   return { ...table, rows, row_count: rows.length, truncated: true };
 }
 

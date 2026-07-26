@@ -26,9 +26,9 @@ export const TheGlyphsInUse: Story = {
         <IconButton glyph="↕" label="resize the split" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Hover any of them: the label is the accessible name and the tooltip. A
-        glyph-only button without one announces as "button" and nothing else,
-        which is why `label` is a required prop rather than an optional one.
+        Hover any of them: the label is the accessible name and the tooltip. A glyph-only button
+        without one announces as "button" and nothing else, which is why `label` is a required prop
+        rather than an optional one.
       </Text>
     </Stack>
   ),
@@ -42,10 +42,9 @@ export const Disabled: Story = {
         <IconButton variant="framed" glyph="↓" label="move down" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        The first step in a pipeline cannot move up. Every hand-written site
-        that dimmed a button also set `disabled`, so the opacity was the
-        disabled treatment all along — it is attached to `:disabled` here so the
-        two cannot come apart.
+        The first step in a pipeline cannot move up. Every hand-written site that dimmed a button
+        also set `disabled`, so the opacity was the disabled treatment all along — it is attached to
+        `:disabled` here so the two cannot come apart.
       </Text>
     </Stack>
   ),

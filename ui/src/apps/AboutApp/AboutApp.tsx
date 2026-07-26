@@ -38,38 +38,35 @@ function AboutApp(_props: AppProps) {
         <Stack gap={2}>
           <SectionLabel>What this is</SectionLabel>
           <Text size="small" prose>
-            A grammar-of-graphics workbench built on a presentation-based user
-            interface. A chart here is not a picture — it is a live composition,{" "}
-            <strong>source ⊳ pipeline steps ⊳ encoding ⊳ geom</strong> — and
-            every part of it is a typed object on screen that can be inspected,
-            reordered, toggled, mapped, snapshotted, or handed to a command
-            running in a different tile.
+            A grammar-of-graphics workbench built on a presentation-based user interface. A chart
+            here is not a picture — it is a live composition,{" "}
+            <strong>source ⊳ pipeline steps ⊳ encoding ⊳ geom</strong> — and every part of it is a
+            typed object on screen that can be inspected, reordered, toggled, mapped, snapshotted,
+            or handed to a command running in a different tile.
           </Text>
         </Stack>
 
         <Stack gap={2}>
           <SectionLabel>Lineage — why “presentations”</SectionLabel>
           <Text size="small" prose>
-            The interaction model comes from the Lisp machines: Symbolics
-            Genera’s Dynamic Windows and its standardised descendant CLIM. Their
-            idea is that programs never print dead text — they <em>present</em>{" "}
-            objects with their type attached. Anything ever displayed stays a
-            first-class handle: it has a menu of type-appropriate verbs, and any
-            command may pause to <strong>accept</strong> an object, at which
-            point everything acceptable on screen — in any tile, in any
-            workspace — lights up as a valid target.
+            The interaction model comes from the Lisp machines: Symbolics Genera’s Dynamic Windows
+            and its standardised descendant CLIM. Their idea is that programs never print dead text
+            — they <em>present</em> objects with their type attached. Anything ever displayed stays
+            a first-class handle: it has a menu of type-appropriate verbs, and any command may pause
+            to <strong>accept</strong> an object, at which point everything acceptable on screen —
+            in any tile, in any workspace — lights up as a valid target.
           </Text>
         </Stack>
 
         <Stack gap={2}>
           <SectionLabel>The grammar — why “graphics”</SectionLabel>
           <Text size="small" prose>
-            The domain model is Wilkinson’s grammar of graphics as popularised by
-            ggplot2. The pipeline is dplyr — filter, derive, group + summarize,
-            sort, limit. The encoding is <code>aes()</code> — declarative slot ↦
-            field mappings. The geoms are <code>geom_point / line / bar / area</code>,
-            the facet channel is <code>facet_wrap</code> with shared scales, and
-            the y toggle is <code>scale_y_log10</code>.
+            The domain model is Wilkinson’s grammar of graphics as popularised by ggplot2. The
+            pipeline is dplyr — filter, derive, group + summarize, sort, limit. The encoding is{" "}
+            <code>aes()</code> — declarative slot ↦ field mappings. The geoms are{" "}
+            <code>geom_point / line / bar / area</code>, the facet channel is{" "}
+            <code>facet_wrap</code> with shared scales, and the y toggle is{" "}
+            <code>scale_y_log10</code>.
           </Text>
         </Stack>
 
@@ -105,14 +102,14 @@ function AboutApp(_props: AppProps) {
         <Stack gap={2}>
           <SectionLabel>Conventions</SectionLabel>
           <Text size="small" prose>
-            <strong>Hover</strong> — the black bar documents the object and its
-            clicks. <strong>L</strong> — the default verb. <strong>R</strong> —
-            the full menu. <Kbd>Esc</Kbd> — abort an accept or close a menu.
+            <strong>Hover</strong> — the black bar documents the object and its clicks.{" "}
+            <strong>L</strong> — the default verb. <strong>R</strong> — the full menu.{" "}
+            <Kbd>Esc</Kbd> — abort an accept or close a menu.
           </Text>
           <Text size="small" prose>
-            Tiles: drag the border to resize (it snaps at ¼ ⅓ ½ ⅔ ¾); drag{" "}
-            <strong>⠿</strong> onto another tile — centre swaps applications,
-            edges split-dock. <strong>⬌ ⬍</strong> split, <strong>✕</strong> closes.
+            Tiles: drag the border to resize (it snaps at ¼ ⅓ ½ ⅔ ¾); drag <strong>⠿</strong> onto
+            another tile — centre swaps applications, edges split-dock. <strong>⬌ ⬍</strong> split,{" "}
+            <strong>✕</strong> closes.
           </Text>
         </Stack>
       </Stack>

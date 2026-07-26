@@ -59,14 +59,18 @@ export function ModuleRack({
   return (
     <div className={styles.rack}>
       <div className={styles.groups}>
-        <SectionLabel>Doc-bound views — carry a DOC strip; several tiles on one document stay in sync</SectionLabel>
+        <SectionLabel>
+          Doc-bound views — carry a DOC strip; several tiles on one document stay in sync
+        </SectionLabel>
         <div className={styles.chips}>
           {group(true).map((pair) => (
             <Chip key={pair.entry.id} pair={pair} current={current} onChoose={choose} />
           ))}
         </div>
 
-        <SectionLabel>World singletons — no DOC strip; one shared thing, visible from anywhere</SectionLabel>
+        <SectionLabel>
+          World singletons — no DOC strip; one shared thing, visible from anywhere
+        </SectionLabel>
         <div className={styles.chips}>
           {group(false).map((pair) => (
             <Chip key={pair.entry.id} pair={pair} current={current} onChoose={choose} />

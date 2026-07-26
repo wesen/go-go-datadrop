@@ -23,12 +23,7 @@ export function pinnedSpaces(): Workspace[] {
       id: ACCOUNT_SPACE_ID,
       name: "account",
       pinned: true,
-      tree: split(
-        "row",
-        leaf("profile"),
-        split("col", leaf("tokens"), leaf("upload"), 0.55),
-        0.38,
-      ),
+      tree: split("row", leaf("profile"), split("col", leaf("tokens"), leaf("upload"), 0.55), 0.38),
     },
   ];
 }
@@ -71,7 +66,12 @@ export function defaultSpaces(): LayoutState {
     {
       id: newId(),
       name: "explore",
-      tree: split("row", leaf("sources"), split("col", leaf("chart"), leaf("inspector"), 0.6), 0.34),
+      tree: split(
+        "row",
+        leaf("sources"),
+        split("col", leaf("chart"), leaf("inspector"), 0.6),
+        0.34,
+      ),
     },
     {
       id: newId(),
@@ -81,7 +81,12 @@ export function defaultSpaces(): LayoutState {
     {
       id: newId(),
       name: "1·objects",
-      tree: split("row", leaf("tut1"), split("col", leaf("sources"), leaf("inspector"), 0.55), 0.44),
+      tree: split(
+        "row",
+        leaf("tut1"),
+        split("col", leaf("sources"), leaf("inspector"), 0.55),
+        0.44,
+      ),
     },
     {
       id: newId(),

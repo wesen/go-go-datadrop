@@ -64,8 +64,7 @@ export const briefGoals: Goal[] = [
         (doc) =>
           doc.spec.geom === "bar" &&
           doc.spec.mapping.x === CENSUS_COLUMNS.region &&
-          doc.spec.mapping.y != null &&
-          doc.spec.mapping.y.startsWith("mean_"),
+          doc.spec.mapping.y?.startsWith("mean_"),
       ),
   },
   {

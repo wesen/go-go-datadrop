@@ -17,7 +17,10 @@ export const stepDescriptor: PresentationDescriptor<string> = {
   describe: (stepId) => ({ presentationType: "step", id: stepId }),
 
   actions: (stepId, env): Action[] => [
-    { label: "Enable / disable (keeps it in the chain)", verb: { kind: "toggleStep", docId: env.activeDocId, stepId } },
+    {
+      label: "Enable / disable (keeps it in the chain)",
+      verb: { kind: "toggleStep", docId: env.activeDocId, stepId },
+    },
     { label: "Move up ↑", verb: { kind: "moveStep", docId: env.activeDocId, stepId, by: -1 } },
     { label: "Move down ↓", verb: { kind: "moveStep", docId: env.activeDocId, stepId, by: 1 } },
     { label: "Remove", verb: { kind: "removeStep", docId: env.activeDocId, stepId } },

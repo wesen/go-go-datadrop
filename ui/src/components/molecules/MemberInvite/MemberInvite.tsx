@@ -59,8 +59,8 @@ export function MemberInvite({
       </Toolbar>
       {error && <ErrorNotice size="tiny" message={error} />}
       <Text size="tiny" tone="faint" prose>
-        They must have signed in here at least once. Removing someone takes
-        effect immediately, including for every API token they hold.
+        They must have signed in here at least once. Removing someone takes effect immediately,
+        including for every API token they hold.
       </Text>
     </Stack>
   );

@@ -6,8 +6,12 @@
   min-height: 0;
 }
 
-.alt { background: var(--pbui-pane-alt); }
-.selected { background: var(--pbui-selected); }
+.alt {
+  background: var(--pbui-pane-alt);
+}
+.selected {
+  background: var(--pbui-selected);
+}
 
 /*
  * The only inverted surfaces in the interface are the shell's two bars (rule 7).
@@ -34,9 +38,15 @@
   --pbui-line: var(--pbui-faint-inverted);
 }
 
-.hair { border: var(--pbui-border-hair); }
-.firm { border: var(--pbui-border-firm); }
-.none { border: 0; }
+.hair {
+  border: var(--pbui-border-hair);
+}
+.firm {
+  border: var(--pbui-border-firm);
+}
+.none {
+  border: 0;
+}
 
 /*
  * `raised` and `floating` used to differ from a plain surface by a hard offset
@@ -45,10 +55,22 @@
  * makes fifteen tiles on a screen read as fifteen panels rather than fifteen
  * panels each casting a 4px black rectangle onto its neighbour.
  */
-.raised { border: var(--pbui-border-hair); }
-.floating { border: var(--pbui-border-firm); }
+.raised {
+  border: var(--pbui-border-hair);
+}
+.floating {
+  border: var(--pbui-border-firm);
+}
 
-.pad-0 { padding: 0; }
-.pad-2 { padding: var(--pbui-space-2); }
-.pad-3 { padding: var(--pbui-space-3); }
-.pad-4 { padding: var(--pbui-space-4); }
+.pad-0 {
+  padding: 0;
+}
+.pad-2 {
+  padding: var(--pbui-space-2);
+}
+.pad-3 {
+  padding: var(--pbui-space-3);
+}
+.pad-4 {
+  padding: var(--pbui-space-4);
+}

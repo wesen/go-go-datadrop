@@ -82,9 +82,7 @@ export function describeFor(
   env: PbuiEnvironment,
 ): unknown {
   const descriptor = descriptorFor(ptype);
-  return descriptor
-    ? descriptor.describe(value as never, env)
-    : { presentationType: ptype, value };
+  return descriptor ? descriptor.describe(value as never, env) : { presentationType: ptype, value };
 }
 
 export function actionsFor(

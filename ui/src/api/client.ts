@@ -316,7 +316,7 @@ export const api = createApi({
     }),
     signOut: build.mutation<void, { global?: boolean } | void>({
       query: (args) => ({
-        url: args && args.global ? "/auth/logout?global=1" : "/auth/logout",
+        url: args?.global ? "/auth/logout?global=1" : "/auth/logout",
         method: "POST",
       }),
       invalidatesTags: ["Me", "Tokens", "Sessions"],

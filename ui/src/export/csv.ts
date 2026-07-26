@@ -21,7 +21,7 @@ export function toCSV(fields: Field[], rows: Row[]): string {
   }
   // A trailing newline, so `wc -l` and every line-oriented tool agree with the
   // row count.
-  return lines.join("\n") + "\n";
+  return `${lines.join("\n")}\n`;
 }
 
 export function downloadBlob(blob: Blob, filename: string): void {

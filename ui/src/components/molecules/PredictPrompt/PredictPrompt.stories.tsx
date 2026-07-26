@@ -46,11 +46,18 @@ export const TheGeomQuestion: Story = {
 /** Three options, to check the row wraps rather than overflowing a narrow rail. */
 export const ThreeOptions: Story = {
   args: {
-    question: "Two tiles are pointed at one document. You re-point the right-hand one. What happens to the left?",
+    question:
+      "Two tiles are pointed at one document. You re-point the right-hand one. What happens to the left?",
     options: ["it follows", "it is unchanged", "both reset"],
     answer: 1,
     reveal:
       "They were only moving together because they looked at the same document. Nothing was ever wired between the tiles.",
   },
-  decorators: [(Story) => <div style={{ maxWidth: 320 }}><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 320 }}>
+        <Story />
+      </div>
+    ),
+  ],
 };

@@ -49,8 +49,8 @@ export const grammarLessons: Lesson[] = [
       <>
         In the pipeline tile press <strong>+ filter…</strong>. It does not ask you to type a column
         name; it <em>accepts</em> one, so click <strong>{COLUMNS.station}</strong> anywhere — the
-        sources tile, a table header, the OUT schema. Then set the operator and the value. Row
-        count drops in the table and marks vanish from the chart.
+        sources tile, a table header, the OUT schema. Then set the operator and the value. Row count
+        drops in the table and marks vanish from the chart.
       </>
     ),
     run: ({ dispatch, getState }) => {
@@ -59,7 +59,12 @@ export const grammarLessons: Lesson[] = [
       dispatch(
         worldActions.addStep({
           docId,
-          step: { ...newStep("filter", readings.fields), field: COLUMNS.station, op: "=", value: "north" },
+          step: {
+            ...newStep("filter", readings.fields),
+            field: COLUMNS.station,
+            op: "=",
+            value: "north",
+          },
         }),
       );
     },
@@ -71,9 +76,9 @@ export const grammarLessons: Lesson[] = [
     body: (
       <>
         In the encoding tile, click the <strong>bar</strong> geom while x is still a quantitative
-        column. The chart does not draw nonsense and does not fail silently — it states the
-        problem: a bar geom wants a category on x. Geoms have <em>type requirements</em>, which is
-        exactly what a chart-type picker hides from you.
+        column. The chart does not draw nonsense and does not fail silently — it states the problem:
+        a bar geom wants a category on x. Geoms have <em>type requirements</em>, which is exactly
+        what a chart-type picker hides from you.
       </>
     ),
     run: ({ dispatch, getState }) => {
@@ -132,7 +137,7 @@ export const grammarLessons: Lesson[] = [
      */
     done: (state) => {
       const doc = active(state);
-      if (!doc || doc.spec.geom !== "bar") return false;
+      if (doc?.spec.geom !== "bar") return false;
       const summarized = doc.spec.steps.some((step) => step.kind === "summarize" && step.on);
       return summarized && doc.spec.mapping.x != null && doc.spec.mapping.y != null;
     },
@@ -161,10 +166,10 @@ export const grammarLessons: Lesson[] = [
     title: "The picture is an editable surface",
     body: (
       <>
-        Right-click a mark in the chart, or a legend swatch, and choose{" "}
-        <strong>Exclude …</strong>. A real filter step appears in the pipeline — visible,
-        reorderable, and switchable with its <strong>✓</strong> box. The chart was never a dead-end
-        render; it is one more surface of the same object graph.
+        Right-click a mark in the chart, or a legend swatch, and choose <strong>Exclude …</strong>.
+        A real filter step appears in the pipeline — visible, reorderable, and switchable with its{" "}
+        <strong>✓</strong> box. The chart was never a dead-end render; it is one more surface of the
+        same object graph.
       </>
     ),
     run: ({ dispatch, getState }) => {
@@ -173,7 +178,12 @@ export const grammarLessons: Lesson[] = [
       dispatch(
         worldActions.addStep({
           docId,
-          step: { ...newStep("filter", readings.fields), field: COLUMNS.station, op: "!=", value: "roof" },
+          step: {
+            ...newStep("filter", readings.fields),
+            field: COLUMNS.station,
+            op: "!=",
+            value: "roof",
+          },
         }),
       );
     },

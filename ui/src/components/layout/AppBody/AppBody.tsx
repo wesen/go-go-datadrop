@@ -13,7 +13,11 @@ export function AppBody({
   className?: string;
 }) {
   return (
-    <div className={[styles.body, flush ? styles.flush : "", className ?? ""].filter(Boolean).join(" ")}>
+    <div
+      className={[styles.body, flush ? styles.flush : "", className ?? ""]
+        .filter(Boolean)
+        .join(" ")}
+    >
       {children}
     </div>
   );

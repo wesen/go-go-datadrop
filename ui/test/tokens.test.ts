@@ -61,7 +61,7 @@ describe("contrast of the text tokens", () => {
 
   const channel = (v: number) => {
     const c = v / 255;
-    return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+    return c <= 0.04045 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4;
   };
 
   /** #rrggbb to three channels. Every token in the sheet is in that form. */
@@ -71,9 +71,7 @@ describe("contrast of the text tokens", () => {
   const luminance = (hex: string) => {
     const [r, g, b] = rgb(hex);
     return (
-      0.2126 * channel(r as number) +
-      0.7152 * channel(g as number) +
-      0.0722 * channel(b as number)
+      0.2126 * channel(r as number) + 0.7152 * channel(g as number) + 0.0722 * channel(b as number)
     );
   };
 
@@ -139,9 +137,7 @@ describe("contrast of the text tokens", () => {
     // --pbui-faint is tuned for pale surfaces and measures 2.95:1 on the ink
     // bars. Surface's .inverted re-points --pbui-faint to this token for its
     // descendants; without a distinct value the bars carry unreadable text.
-    expect(contrast(token("pbui-faint-inverted"), token("pbui-ink"))).toBeGreaterThanOrEqual(
-      4.5,
-    );
+    expect(contrast(token("pbui-faint-inverted"), token("pbui-ink"))).toBeGreaterThanOrEqual(4.5);
   });
 
   test("the pale-surface faint would NOT have worked on the bars", () => {

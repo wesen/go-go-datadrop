@@ -23,11 +23,19 @@
   padding: 0 var(--pbui-space-2);
 }
 
-.auto    { max-width: 220px; }
-.compact { max-width: 96px; }
+.auto {
+  max-width: 220px;
+}
+.compact {
+  max-width: 96px;
+}
 
-.tiny  { font-size: var(--pbui-fs-tiny); }
-.small { font-size: var(--pbui-fs-small); }
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
 
 .root:disabled {
   background: var(--pbui-pane-alt);

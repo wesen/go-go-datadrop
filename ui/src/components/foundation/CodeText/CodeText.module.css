@@ -6,9 +6,15 @@
   border-radius: var(--pbui-radius);
 }
 
-.tiny  { font-size: var(--pbui-fs-tiny); }
-.small { font-size: var(--pbui-fs-small); }
-.base  { font-size: var(--pbui-fs-base); }
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+.base {
+  font-size: var(--pbui-fs-base);
+}
 
 /* A sha256 digest is 64 hex characters with no break opportunity, so without
  * this it pushes its container wider rather than wrapping. */
@@ -17,4 +23,6 @@
   word-break: break-all;
 }
 
-.noselect { user-select: none; }
+.noselect {
+  user-select: none;
+}

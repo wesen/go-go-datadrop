@@ -45,8 +45,7 @@ export const Overflowing: Story = {
     <Stack gap={3}>
       <Legend title="station" entries={entries(8)} overflow={52} />
       <Text size="tiny" tone="faint" prose>
-        The palette has eight colours. A field with sixty distinct values gets
-        eight of them.
+        The palette has eight colours. A field with sixty distinct values gets eight of them.
       </Text>
     </Stack>
   ),

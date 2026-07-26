@@ -29,7 +29,7 @@ export async function svgToPngBlob(svg: SVGSVGElement, scale = 2): Promise<Blob>
   clone.insertBefore(background, clone.firstChild);
 
   const xml = new XMLSerializer().serializeToString(clone);
-  const url = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+  const url = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(xml)}`;
 
   const image = new Image();
   image.src = url;

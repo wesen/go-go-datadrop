@@ -18,11 +18,7 @@ export function TypeBadge({ type, overridden }: { type: FieldType; overridden?: 
     <abbr
       className={styles.badge}
       style={{ background: TONE[type] }}
-      title={
-        overridden
-          ? `${TYPE_LABEL[type]} — overridden for this chart only`
-          : TYPE_LABEL[type]
-      }
+      title={overridden ? `${TYPE_LABEL[type]} — overridden for this chart only` : TYPE_LABEL[type]}
     >
       {overridden ? `${type}*` : type}
     </abbr>

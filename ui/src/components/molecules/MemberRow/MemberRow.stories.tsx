@@ -32,9 +32,19 @@ type Story = StoryObj<typeof meta>;
 export const AsAReader: Story = {
   render: () => (
     <Stack gap={2}>
-      <MemberRow member={member({ role: "admin", isOwner: true, user: { id: "usr_ada", name: "ada", email: "ada@example.org" } })} canEdit={false} />
+      <MemberRow
+        member={member({
+          role: "admin",
+          isOwner: true,
+          user: { id: "usr_ada", name: "ada", email: "ada@example.org" },
+        })}
+        canEdit={false}
+      />
       <MemberRow member={member({ role: "writer" })} canEdit={false} />
-      <MemberRow member={member({ role: "reader", user: { id: "usr_cy", name: "cy", email: null } })} canEdit={false} />
+      <MemberRow
+        member={member({ role: "reader", user: { id: "usr_cy", name: "cy", email: null } })}
+        canEdit={false}
+      />
     </Stack>
   ),
 };
@@ -42,8 +52,18 @@ export const AsAReader: Story = {
 export const AsAnAdmin: Story = {
   render: () => (
     <Stack gap={2}>
-      <MemberRow member={member({ role: "writer" })} canEdit onRoleChange={() => {}} onRemove={() => {}} />
-      <MemberRow member={member({ role: "reader", user: { id: "usr_cy", name: "cy", email: null } })} canEdit onRoleChange={() => {}} onRemove={() => {}} />
+      <MemberRow
+        member={member({ role: "writer" })}
+        canEdit
+        onRoleChange={() => {}}
+        onRemove={() => {}}
+      />
+      <MemberRow
+        member={member({ role: "reader", user: { id: "usr_cy", name: "cy", email: null } })}
+        canEdit
+        onRoleChange={() => {}}
+        onRemove={() => {}}
+      />
     </Stack>
   ),
 };

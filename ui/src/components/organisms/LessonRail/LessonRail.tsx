@@ -39,13 +39,7 @@ import { wedgeOf } from "./wedge";
  * `useState`; ours lives in the same store as the world, so one `useSelector`
  * gives a predicate both halves.
  */
-export function LessonRail({
-  lessons,
-  onReset,
-}: {
-  lessons: Lesson[];
-  onReset?: () => void;
-}) {
+export function LessonRail({ lessons, onReset }: { lessons: Lesson[]; onReset?: () => void }) {
   const dispatch = useDispatch<AppDispatch>();
   const store = useStore<RootState>();
   const pbui = usePbui();

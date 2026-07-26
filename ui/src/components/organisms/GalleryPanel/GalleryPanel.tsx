@@ -59,9 +59,9 @@ export function GalleryPanel({
     <AppBody>
       <Stack gap={3}>
         <Text size="tiny" tone="faint" prose>
-          A snapshot freezes a whole pipeline and encoding. L-click restores into
-          the active document ({activeDocName}); R-click offers restore-as-new,
-          pinning for compare, and delete.
+          A snapshot freezes a whole pipeline and encoding. L-click restores into the active
+          document ({activeDocName}); R-click offers restore-as-new, pinning for compare, and
+          delete.
         </Text>
 
         {snapshots.length === 0 && (

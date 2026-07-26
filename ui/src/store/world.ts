@@ -153,7 +153,10 @@ export const worldSlice = createSlice({
   initialState: initialWorld,
   reducers: {
     newDoc: {
-      reducer(state, action: PayloadAction<{ id: DocId; source: SourceRef | null; limit: number }>) {
+      reducer(
+        state,
+        action: PayloadAction<{ id: DocId; source: SourceRef | null; limit: number }>,
+      ) {
         const { id, source, limit } = action.payload;
         const doc: Doc = {
           id,

@@ -10,7 +10,10 @@ import { Text } from "../../foundation";
  * handler cannot be typed into — and a story you cannot type into does not tell
  * you whether the component works.
  */
-function Live({ initial = "", ...props }: Omit<TextInputProps, "value" | "onValueChange"> & { initial?: string }) {
+function Live({
+  initial = "",
+  ...props
+}: Omit<TextInputProps, "value" | "onValueChange"> & { initial?: string }) {
   const [value, setValue] = useState(initial);
   return <TextInput value={value} onValueChange={setValue} {...props} />;
 }
@@ -37,8 +40,8 @@ export const TheFourItReplaced: Story = {
       <Live label="add a member to lab" placeholder="colleague@example.org" type="email" />
       <Live label="bearer token" type="password" initial="hunter2hunter2" />
       <Text size="tiny" tone="faint" prose>
-        UploadApp, TokensApp, MemberList and SignInApp each wrote the same four
-        style properties inline, character for character (guide §7.3).
+        UploadApp, TokensApp, MemberList and SignInApp each wrote the same four style properties
+        inline, character for character (guide §7.3).
       </Text>
     </Stack>
   ),
@@ -49,8 +52,8 @@ export const Empty: Story = {
     <Stack gap={2}>
       <Live label="dataset name" placeholder="readings" />
       <Text size="tiny" tone="faint">
-        The placeholder is faint, not the value colour — an empty field must not
-        read as a filled one.
+        The placeholder is faint, not the value colour — an empty field must not read as a filled
+        one.
       </Text>
     </Stack>
   ),
@@ -64,8 +67,8 @@ export const Invalid: Story = {
         no datadrop account has that address yet
       </Text>
       <Text size="tiny" tone="faint" prose>
-        Dashed as well as red. The border style carries the state on a
-        monochrome display, which is the rule Chip.module.css named first.
+        Dashed as well as red. The border style carries the state on a monochrome display, which is
+        the rule Chip.module.css named first.
       </Text>
     </Stack>
   ),
@@ -76,8 +79,8 @@ export const Disabled: Story = {
     <Stack gap={2}>
       <Live label="token name" placeholder="ci ingest" disabled />
       <Text size="tiny" tone="faint" prose>
-        TokensApp shows the mint form disabled with the reason beside it, rather
-        than hiding it: a rule you cannot see is a rule you cannot learn.
+        TokensApp shows the mint form disabled with the reason beside it, rather than hiding it: a
+        rule you cannot see is a rule you cannot learn.
       </Text>
     </Stack>
   ),

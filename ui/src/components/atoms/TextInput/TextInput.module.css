@@ -22,18 +22,33 @@
 /* 64px, from ChartsApp's document-name field — the only call site that ever
  * constrained a width. `.auto` states the absence deliberately so that adding
  * a third size later is a decision rather than a default. */
-.auto   { width: auto; }
-.narrow { width: 64px; }
-.compact { max-width: 96px; }
+.auto {
+  width: auto;
+}
+.narrow {
+  width: 64px;
+}
+.compact {
+  max-width: 96px;
+}
 /* flex: 1 with a floor, from SourceApp's token field. The floor matters: a
  * password field that collapses to nothing in a narrow tile looks broken. */
-.fill   { flex: 1; min-width: 120px; }
+.fill {
+  flex: 1;
+  min-width: 120px;
+}
 
 /* `.base` is what `font: inherit` already gives; stated so that `.small` reads
  * as one of a pair rather than as the only size anyone thought about. */
-.base   { font-size: var(--pbui-fs-base); }
-.small  { font-size: var(--pbui-fs-small); }
-.tiny   { font-size: var(--pbui-fs-tiny); }
+.base {
+  font-size: var(--pbui-fs-base);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
 
 /* Dashed, not only red: a field can be invalid on a monochrome display too
  * (guide §5.4, and the .stale rule in Chip.module.css that named the rule). */
@@ -47,7 +62,9 @@
   opacity: 0.55;
 }
 
-.root::placeholder { color: var(--pbui-faint); }
+.root::placeholder {
+  color: var(--pbui-faint);
+}
 
 .root:focus-visible {
   outline: var(--pbui-focus-ring);

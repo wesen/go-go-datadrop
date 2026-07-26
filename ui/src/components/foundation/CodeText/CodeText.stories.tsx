@@ -54,8 +54,8 @@ export const LongUnbreakableValues: Story = {
         </Surface>
       </div>
       <Text size="tiny" tone="faint" prose>
-        Without wrapAnywhere the same string forces the surface past 200px and
-        the tile scrolls sideways.
+        Without wrapAnywhere the same string forces the surface past 200px and the tile scrolls
+        sideways.
       </Text>
     </Stack>
   ),

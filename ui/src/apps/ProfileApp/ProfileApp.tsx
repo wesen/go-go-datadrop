@@ -72,11 +72,7 @@ function ProfileApp(_props: AppProps) {
       onToggleDrop={(drop) => setExpanded((current) => (current === drop ? null : drop))}
       onSignOut={(global) => void signOut(global ? { global: true } : undefined)}
       renderDropAccess={(drop) => (
-        <MemberList
-          drop={drop.name}
-          yourRole={drop.your_role ?? ""}
-          unowned={!drop.owner_id}
-        />
+        <MemberList drop={drop.name} yourRole={drop.your_role ?? ""} unowned={!drop.owner_id} />
       )}
     />
   );

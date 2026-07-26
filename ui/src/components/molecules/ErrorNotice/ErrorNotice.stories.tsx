@@ -43,9 +43,9 @@ export const CarriesWithoutColour: Story = {
     <Stack gap={3}>
       <ErrorNotice message="could not mint the token" />
       <Text size="tiny" tone="faint" prose>
-        The ✕ glyph is the primary signal, the announcement is the accessible
-        one, and the colour reinforces. Compare with a plain faint caption: on a
-        greyscale display only one of the two is identifiable as an error.
+        The ✕ glyph is the primary signal, the announcement is the accessible one, and the colour
+        reinforces. Compare with a plain faint caption: on a greyscale display only one of the two
+        is identifiable as an error.
       </Text>
     </Stack>
   ),

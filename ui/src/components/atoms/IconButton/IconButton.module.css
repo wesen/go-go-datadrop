@@ -16,8 +16,12 @@
   line-height: 1.4;
 }
 
-.tiny  { font-size: var(--pbui-fs-tiny); }
-.small { font-size: var(--pbui-fs-small); }
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
 
 .bare {
   background: none;
@@ -32,7 +36,9 @@
   font-weight: 700;
 }
 
-.danger { color: var(--pbui-danger); }
+.danger {
+  color: var(--pbui-danger);
+}
 
 /* See Button.module.css: 0.55, not the 0.4 the call sites used, because 0.4
  * composites to 2.32:1 on --pbui-pane-alt and a disabled control still has to

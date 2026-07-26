@@ -58,15 +58,7 @@ export const CHANNEL_ACCEPTS: Record<Channel, FieldType[]> = {
  */
 
 /** Envelope columns are metadata about delivery, not measurements. */
-const ENVELOPE_COLUMNS = new Set([
-  "id",
-  "drop",
-  "stream",
-  "seq",
-  "source",
-  "type",
-  "subject",
-]);
+const ENVELOPE_COLUMNS = new Set(["id", "drop", "stream", "seq", "source", "type", "subject"]);
 
 /** Payload first, then everything else, order otherwise preserved. */
 function payloadFirst(fields: Field[]): Field[] {
@@ -187,7 +179,13 @@ export function specFacts(spec: ChartSpec, limit?: number): Array<[string, strin
      * Disabled steps are excluded: the row answers "what is this chart doing",
      * and a step toggled off is doing nothing.
      */
-    ["steps", spec.steps.filter((s) => s.on).map(stepLabel).join(" ⊳ ") || "(none)"],
+    [
+      "steps",
+      spec.steps
+        .filter((s) => s.on)
+        .map(stepLabel)
+        .join(" ⊳ ") || "(none)",
+    ],
     ["x", spec.mapping.x ?? "—"],
     ["y", spec.mapping.y ?? "—"],
     ["colour", spec.mapping.color ?? "—"],

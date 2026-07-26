@@ -34,7 +34,7 @@ describe("niceTicks", () => {
   test("rounds the step to 1, 2, 5 or 10 times a power of ten", () => {
     expect(niceTicks(0, 97, 5)).toEqual([0, 20, 40, 60, 80]);
     expect(niceTicks(0, 10, 5)).toEqual([0, 2, 4, 6, 8, 10]);
-    expect(niceTicks(0, 1, 5)).toEqual([0, 0.2, 0.4, 0.6000000000, 0.8, 1]);
+    expect(niceTicks(0, 1, 5)).toEqual([0, 0.2, 0.4, 0.6, 0.8, 1]);
     expect(niceTicks(3, 7, 2)).toEqual([4, 6]);
   });
 
@@ -197,8 +197,10 @@ describe("geometry", () => {
     expect(rects).toHaveLength(2);
     // Both bars must share an edge: the baseline. One starts there and goes up,
     // the other starts there and goes down.
-    const edges = rects.map((r) => [r.y, r.y + r.h]).flat();
-    const shared = edges.filter((e, _, all) => all.filter((x) => Math.abs(x - e) < 1e-6).length > 1);
+    const edges = rects.flatMap((r) => [r.y, r.y + r.h]);
+    const shared = edges.filter(
+      (e, _, all) => all.filter((x) => Math.abs(x - e) < 1e-6).length > 1,
+    );
     expect(shared.length).toBeGreaterThan(0);
   });
 });

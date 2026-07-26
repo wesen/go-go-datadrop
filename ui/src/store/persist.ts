@@ -78,10 +78,7 @@ function isNode(value: unknown): value is Node {
 function isWorkspace(value: unknown): value is Workspace {
   const space = value as Partial<Workspace>;
   return (
-    !!space &&
-    typeof space.id === "string" &&
-    typeof space.name === "string" &&
-    isNode(space.tree)
+    !!space && typeof space.id === "string" && typeof space.name === "string" && isNode(space.tree)
   );
 }
 

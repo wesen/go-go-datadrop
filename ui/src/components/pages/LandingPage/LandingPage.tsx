@@ -109,7 +109,9 @@ export function LandingPage() {
 
       <div className={styles.column}>
         <div ref={heroRef} className={styles.hero}>
-          <div className={styles.eyebrow}>a workbench built on presentations · after Genera and CLIM</div>
+          <div className={styles.eyebrow}>
+            a workbench built on presentations · after Genera and CLIM
+          </div>
           <h1 className={styles.headline}>The thing on screen is the thing.</h1>
           <div className={styles.lede}>
             <Text size="base" prose>
@@ -163,7 +165,17 @@ export function LandingPage() {
           config={{
             fixtures: TOUR_FIXTURES,
             preloaded: objectsSeed(),
-            apps: ["sources", "inspector", "watch", "trace", "chart", "table", "lessons", "cheat", "launcher"],
+            apps: [
+              "sources",
+              "inspector",
+              "watch",
+              "trace",
+              "chart",
+              "table",
+              "lessons",
+              "cheat",
+              "launcher",
+            ],
             workspaces: false,
           }}
           lessons={objectsLessons}
@@ -188,11 +200,12 @@ export function LandingPage() {
           title="Tiles, documents, workspaces"
           blurb={
             <>
-              The confusion worth clearing up before anything else: <strong>tiles are windows,
-              documents are the thing</strong>. A chart, table, pipeline or encoding tile is a{" "}
-              <em>view</em> of one document, named in the DOC strip at its top. Point two tiles at
-              the same document and they move together, because they are not copies. Then the layout
-              itself — splitting, docking, whole workspaces — becomes safe to play with.
+              The confusion worth clearing up before anything else:{" "}
+              <strong>tiles are windows, documents are the thing</strong>. A chart, table, pipeline
+              or encoding tile is a <em>view</em> of one document, named in the DOC strip at its
+              top. Point two tiles at the same document and they move together, because they are not
+              copies. Then the layout itself — splitting, docking, whole workspaces — becomes safe
+              to play with.
             </>
           }
           config={{
@@ -207,7 +220,10 @@ export function LandingPage() {
               ["⠿ drag", "centre swaps two applications · edge docks the tile there"],
               ["⬌ ⬍ ✕", "split right · split below · close (the document survives)"],
               ["DOC strip", "which document this view shows · ＋ spawns a new one"],
-              ["ACTIVE doc", "the target of verbs fired from object menus — the menu header names it"],
+              [
+                "ACTIVE doc",
+                "the target of verbs fired from object menus — the menu header names it",
+              ],
               ["workspaces", "independent layouts over one shared world"],
             ],
           }}
@@ -221,8 +237,9 @@ export function LandingPage() {
             <>
               A chart here is not a type you pick from a menu. It is a composition —{" "}
               <strong>source ⊳ steps ↦ mapping · geom · scale</strong> — and this panel shows all
-              four parts at once, editable from either end. The left half is dplyr; the right half is{" "}
-              <em>aes()</em>. Watch what happens when you ask for a geometry the data cannot support.
+              four parts at once, editable from either end. The left half is dplyr; the right half
+              is <em>aes()</em>. Watch what happens when you ask for a geometry the data cannot
+              support.
             </>
           }
           tall
@@ -251,11 +268,11 @@ export function LandingPage() {
           title="The modules"
           blurb={
             <>
-              Twenty-five applications share one world. The distinction that makes them legible: if a
-              tile carries a <strong>DOC strip</strong> it is a view of a single chart document and
-              can be re-pointed; if it does not, it is the whole world and there is only one of it.
-              Pick any module to swap the large tile to it and read what it emits, what it accepts,
-              and which other module people confuse it with.
+              Twenty-five applications share one world. The distinction that makes them legible: if
+              a tile carries a <strong>DOC strip</strong> it is a view of a single chart document
+              and can be re-pointed; if it does not, it is the whole world and there is only one of
+              it. Pick any module to swap the large tile to it and read what it emits, what it
+              accepts, and which other module people confuse it with.
             </>
           }
           config={{ fixtures: TOUR_FIXTURES, preloaded: rack, workspaces: false }}
@@ -265,10 +282,16 @@ export function LandingPage() {
             title: "Modules",
             rows: [
               ["doc-bound", "chart · table · pipeline · encoding"],
-              ["singletons", "sources · charts · snapshots · compare · watchlist · inspector · trace"],
+              [
+                "singletons",
+                "sources · charts · snapshots · compare · watchlist · inspector · trace",
+              ],
               ["emits", "which presentation types are born in this tile"],
               ["accepts", "which types its commands will pause and ask you for"],
-              ["the pairs", "pipeline≠table · charts≠snapshots · watchlist≠inspector · trace≠pipeline"],
+              [
+                "the pairs",
+                "pipeline≠table · charts≠snapshots · watchlist≠inspector · trace≠pipeline",
+              ],
             ],
           }}
         />
@@ -294,16 +317,16 @@ export function LandingPage() {
         <section className={styles.closing}>
           <div className={styles.eyebrow}>where this comes from</div>
           <Text size="base" prose>
-            The interaction model is from the Lisp machines — Symbolics <strong>Genera</strong>&apos;s
-            Dynamic Windows and its standardised descendant <strong>CLIM</strong>. Their claim was
-            that programs should never print dead text: they <em>present</em> objects with the type
-            attached, so anything ever displayed stays a handle on the real value, with a menu of
-            type-appropriate verbs and the ability to be handed to a command waiting in a different
-            window. The domain model is Wilkinson&apos;s <em>Grammar of Graphics</em> by way of{" "}
-            <strong>ggplot2</strong> and the tidyverse: the pipeline is dplyr, the encoding is{" "}
-            <em>aes()</em>, the geometry chips are geom_*, the facet channel is facet_wrap. Because
-            the specification is data, freezing it and comparing two of them are trivial operations
-            rather than features.
+            The interaction model is from the Lisp machines — Symbolics <strong>Genera</strong>
+            &apos;s Dynamic Windows and its standardised descendant <strong>CLIM</strong>. Their
+            claim was that programs should never print dead text: they <em>present</em> objects with
+            the type attached, so anything ever displayed stays a handle on the real value, with a
+            menu of type-appropriate verbs and the ability to be handed to a command waiting in a
+            different window. The domain model is Wilkinson&apos;s <em>Grammar of Graphics</em> by
+            way of <strong>ggplot2</strong> and the tidyverse: the pipeline is dplyr, the encoding
+            is <em>aes()</em>, the geometry chips are geom_*, the facet channel is facet_wrap.
+            Because the specification is data, freezing it and comparing two of them are trivial
+            operations rather than features.
           </Text>
           <Text size="base" prose>
             The two sources are committed fixtures, served from memory rather than from a server, so
@@ -340,7 +363,10 @@ export function LandingPage() {
 }
 
 /** The id of the first leaf running `app`, for the rack to re-point. */
-function firstLeafOfApp(layout: ReturnType<typeof rackSeed>["layout"], app: string): string | undefined {
+function firstLeafOfApp(
+  layout: ReturnType<typeof rackSeed>["layout"],
+  app: string,
+): string | undefined {
   const space = layout.spaces.find((s) => s.id === layout.currentSpaceId) ?? layout.spaces[0];
   if (!space) return undefined;
   let found: string | undefined;

@@ -29,7 +29,9 @@ function GalleryApp(_props: AppProps) {
       // docId null means "the active document", resolved by the reducer at
       // application time rather than here — the active document can change
       // between the render and the click.
-      onRestore={(snapshotId) => dispatch(worldActions.restoreSnapshot({ snapshotId, docId: null }))}
+      onRestore={(snapshotId) =>
+        dispatch(worldActions.restoreSnapshot({ snapshotId, docId: null }))
+      }
       onPin={(slot, snapshotId) => dispatch(worldActions.pinSnapshot({ slot, snapshotId }))}
       onDelete={(snapshotId) => dispatch(worldActions.deleteSnapshot(snapshotId))}
     />

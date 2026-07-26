@@ -9,5 +9,9 @@
   min-width: 0;
 }
 
-.bordered { border-bottom: var(--pbui-border-hair); }
-.tight { padding: var(--pbui-space-1) var(--pbui-space-3); }
+.bordered {
+  border-bottom: var(--pbui-border-hair);
+}
+.tight {
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+}

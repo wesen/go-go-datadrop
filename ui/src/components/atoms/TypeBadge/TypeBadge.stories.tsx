@@ -23,8 +23,8 @@ export const TheThreeTypes: Story = {
         <TypeBadge type="t" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Quantitative, nominal, temporal. Hover for the full word — the letter is
-        the compact form and the title is the accessible one.
+        Quantitative, nominal, temporal. Hover for the full word — the letter is the compact form
+        and the title is the accessible one.
       </Text>
     </Stack>
   ),

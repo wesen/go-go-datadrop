@@ -38,7 +38,9 @@ describe("filter", () => {
   });
 
   test("compares quantitative fields numerically", () => {
-    const out = evaluate(table, [step({ kind: "filter", field: "mass_g", op: ">", value: "4000" })]);
+    const out = evaluate(table, [
+      step({ kind: "filter", field: "mass_g", op: ">", value: "4000" }),
+    ]);
     expect(out.rows).toHaveLength(2);
   });
 
@@ -86,10 +88,15 @@ describe("derive", () => {
   test("log10 of a non-positive value drops the row", () => {
     const withZero: Table = {
       ...table,
-      rows: [{ species: "a", mass_g: 100, wing_mm: 1 }, { species: "b", mass_g: 0, wing_mm: 1 }],
+      rows: [
+        { species: "a", mass_g: 100, wing_mm: 1 },
+        { species: "b", mass_g: 0, wing_mm: 1 },
+      ],
       row_count: 2,
     };
-    const out = evaluate(withZero, [step({ kind: "derive", name: "l", op: "log10", a: "mass_g", b: "" })]);
+    const out = evaluate(withZero, [
+      step({ kind: "derive", name: "l", op: "log10", a: "mass_g", b: "" }),
+    ]);
     expect(out.rows).toHaveLength(1);
     expect(out.rows[0]!.l).toBe(2);
   });
@@ -121,7 +128,11 @@ describe("sort and limit", () => {
   test("sorts quantitative fields numerically, not lexically", () => {
     const wide: Table = {
       ...table,
-      rows: [{ species: "a", mass_g: 9 }, { species: "b", mass_g: 10 }, { species: "c", mass_g: 100 }],
+      rows: [
+        { species: "a", mass_g: 9 },
+        { species: "b", mass_g: 10 },
+        { species: "c", mass_g: 100 },
+      ],
       row_count: 3,
     };
     const out = evaluate(wide, [step({ kind: "sort", field: "mass_g", dir: "asc" })]);

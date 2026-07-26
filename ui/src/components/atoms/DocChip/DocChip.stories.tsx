@@ -29,8 +29,8 @@ export const ActiveAndNot: Story = {
         <DocChip docId="d2" />
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        The left one is active. Ambient verbs — those fired from a chip that
-        names no document — land there.
+        The left one is active. Ambient verbs — those fired from a chip that names no document —
+        land there.
       </Text>
     </Stack>
   ),

@@ -40,8 +40,8 @@ export const layoutLessons: Lesson[] = [
       <>
         Both tiles are pointed at document <strong>α</strong> — look at their DOC strips.
         Right-click any mark in the chart and choose <strong>Keep only …</strong>. A filter step is
-        written into α&apos;s pipeline, so the chart redraws <em>and</em> the table&apos;s rows drop,
-        together. Nothing is wired between them: they are two views of one object.
+        written into α&apos;s pipeline, so the chart redraws <em>and</em> the table&apos;s rows
+        drop, together. Nothing is wired between them: they are two views of one object.
       </>
     ),
   },

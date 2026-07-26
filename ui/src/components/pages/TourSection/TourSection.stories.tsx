@@ -42,7 +42,13 @@ const meta = {
     pbui: false,
     a11y: { config: { rules: [{ id: "region", enabled: true }] } },
   },
-  decorators: [(Story) => <div style={{ padding: 20, maxWidth: 1180 }}><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div style={{ padding: 20, maxWidth: 1180 }}>
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     id: "objects",
     tag: "A",

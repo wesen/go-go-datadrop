@@ -45,7 +45,10 @@ export function FieldChip({ field: ref, testId }: { field: FieldRef; testId?: st
         badge={
           missing ? null : (
             <>
-              <TypeBadge type={effectiveType(field, pbui.environment.overridesFor(ref.docId))} overridden={overridden} />
+              <TypeBadge
+                type={effectiveType(field, pbui.environment.overridesFor(ref.docId))}
+                overridden={overridden}
+              />
               <ProvenanceBadge source={field.inferred_from} />
             </>
           )

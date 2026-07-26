@@ -22,7 +22,11 @@ export function useDocTable(docId: DocId | null): {
   error: unknown;
 } {
   const doc = useSelector((state: RootState) =>
-    docId ? state.world.docs[docId] : state.world.activeDocId ? state.world.docs[state.world.activeDocId] : undefined,
+    docId
+      ? state.world.docs[docId]
+      : state.world.activeDocId
+        ? state.world.docs[state.world.activeDocId]
+        : undefined,
   );
   const dispatch = useDispatch();
   const source = doc?.spec.source;
@@ -35,7 +39,7 @@ export function useDocTable(docId: DocId | null): {
       limit,
       order: "desc",
     },
-    { skip: !source || source.kind !== "stream" || !source.drop },
+    { skip: source?.kind !== "stream" || !source.drop },
   );
 
   const dataset = useDatasetTableQuery(
@@ -46,7 +50,7 @@ export function useDocTable(docId: DocId | null): {
       path: source?.path ?? "",
       limit,
     },
-    { skip: !source || source.kind !== "dataset" || !source.drop },
+    { skip: source?.kind !== "dataset" || !source.drop },
   );
 
   const query = source?.kind === "dataset" ? dataset : stream;
@@ -137,7 +141,11 @@ export function useTableFor(): (docId: DocId | null) => Table | null {
  */
 export function useDocPipeline(docId: DocId | null) {
   const doc = useSelector((state: RootState) =>
-    docId ? state.world.docs[docId] : state.world.activeDocId ? state.world.docs[state.world.activeDocId] : undefined,
+    docId
+      ? state.world.docs[docId]
+      : state.world.activeDocId
+        ? state.world.docs[state.world.activeDocId]
+        : undefined,
   );
   const { table, loading, error } = useDocTable(docId);
 

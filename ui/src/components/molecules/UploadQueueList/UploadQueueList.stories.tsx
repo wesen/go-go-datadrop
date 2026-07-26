@@ -5,7 +5,11 @@ import { Button } from "../../atoms";
 import { Stack } from "../../layout";
 import { Text } from "../../foundation";
 
-const item = (path: string, state: UploadItemView["state"], error: string | null = null): UploadItemView => ({
+const item = (
+  path: string,
+  state: UploadItemView["state"],
+  error: string | null = null,
+): UploadItemView => ({
   path,
   size: 1_482_112,
   state,
@@ -101,7 +105,5 @@ export const ReadyToCommit: Story = {
 
 /** No files, which happens between choosing a dataset and choosing files. */
 export const Empty: Story = {
-  render: () => (
-    <UploadQueueList dataset="readings" phase="picked" version={null} items={[]} />
-  ),
+  render: () => <UploadQueueList dataset="readings" phase="picked" version={null} items={[]} />,
 };

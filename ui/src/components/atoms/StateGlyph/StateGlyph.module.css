@@ -8,5 +8,9 @@
   font-size: var(--pbui-fs-small);
 }
 
-.ok     { color: var(--pbui-ok); }
-.danger { color: var(--pbui-danger); }
+.ok {
+  color: var(--pbui-ok);
+}
+.danger {
+  color: var(--pbui-danger);
+}

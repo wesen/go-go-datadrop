@@ -213,8 +213,8 @@ export const MODULES: ModuleEntry[] = [
     lr: "▶ dispatches exactly what the interface dispatches — so it ticks grey, not green.",
     vs: (
       <>
-        the <b>tutorial</b> tiles, which are fixed content. A rail is the same
-        application over whichever lessons its section carries.
+        the <b>tutorial</b> tiles, which are fixed content. A rail is the same application over
+        whichever lessons its section carries.
       </>
     ),
   },
@@ -224,7 +224,11 @@ export const MODULES: ModuleEntry[] = [
     emits: "—",
     accepts: "—",
     lr: "Read-only. Close it if you would rather have the room.",
-    vs: <>the <b>about</b> tile — that explains the system, this names its terms.</>,
+    vs: (
+      <>
+        the <b>about</b> tile — that explains the system, this names its terms.
+      </>
+    ),
   },
   {
     id: "modules",
@@ -232,7 +236,11 @@ export const MODULES: ModuleEntry[] = [
     emits: "—",
     accepts: "—",
     lr: "L a card to re-point a sibling tile to that application.",
-    vs: <>the <b>launcher</b> — that opens one, this explains what opening it would get you.</>,
+    vs: (
+      <>
+        the <b>launcher</b> — that opens one, this explains what opening it would get you.
+      </>
+    ),
   },
   {
     id: "brief",
@@ -242,8 +250,8 @@ export const MODULES: ModuleEntry[] = [
     lr: "No ▶. Goals tick by watching the world, so any route counts.",
     vs: (
       <>
-        the <b>lessons</b> rail — that teaches a move, this asks for an outcome and
-        does not say how.
+        the <b>lessons</b> rail — that teaches a move, this asks for an outcome and does not say
+        how.
       </>
     ),
   },

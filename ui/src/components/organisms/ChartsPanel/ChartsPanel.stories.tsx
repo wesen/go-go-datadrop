@@ -65,7 +65,12 @@ export const TheLastDocument: Story = {
 export const ADocumentWithNoSource: Story = {
   args: {
     docs: [
-      { id: "c", name: "γ", limit: 2000, spec: chartSpec({ source: { kind: "stream", drop: "" } }) },
+      {
+        id: "c",
+        name: "γ",
+        limit: 2000,
+        spec: chartSpec({ source: { kind: "stream", drop: "" } }),
+      },
       ...DOCS,
     ],
     activeDocId: "c",

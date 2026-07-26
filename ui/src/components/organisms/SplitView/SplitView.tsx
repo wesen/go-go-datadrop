@@ -17,11 +17,7 @@ export const NodeView = memo(function NodeView({ node }: { node: Node }) {
   return node.type === "leaf" ? <Tile node={node} /> : <SplitView node={node} />;
 });
 
-const SplitView = memo(function SplitView({
-  node,
-}: {
-  node: Extract<Node, { type: "split" }>;
-}) {
+const SplitView = memo(function SplitView({ node }: { node: Extract<Node, { type: "split" }> }) {
   const dispatch = useDispatch();
   const container = useRef<HTMLDivElement>(null);
   const [drag, setDrag] = useState<"idle" | "dragging" | "snapped">("idle");
@@ -69,22 +65,17 @@ const SplitView = memo(function SplitView({
     const increase = row ? "ArrowRight" : "ArrowDown";
     if (event.key !== decrease && event.key !== increase) return;
     event.preventDefault();
-    const next = Math.max(
-      0.1,
-      Math.min(0.9, node.ratio + (event.key === increase ? step : -step)),
-    );
+    const next = Math.max(0.1, Math.min(0.9, node.ratio + (event.key === increase ? step : -step)));
     dispatch(layoutActions.setRatio({ nodeId: node.id, ratio: next }));
   };
 
   return (
-    <div
-      ref={container}
-      className={[styles.split, row ? styles.row : styles.col].join(" ")}
-    >
+    <div ref={container} className={[styles.split, row ? styles.row : styles.col].join(" ")}>
       <div className={styles.pane} style={{ flex: `${node.ratio} 1 0px` }}>
         <NodeView node={node.a} />
       </div>
 
+      {/* biome-ignore lint/a11y/useSemanticElements: there is no semantic element for a splitter. role="separator" with aria-orientation and aria-valuenow is the ARIA pattern, and it has to sit on a <button> because a resize handle must be focusable and activatable from the keyboard — which is exactly what this component added over the prototype. */}
       <button
         type="button"
         role="separator"

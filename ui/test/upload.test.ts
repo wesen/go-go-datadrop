@@ -65,9 +65,7 @@ describe("hashing", () => {
     const digest = await digestOf(new Blob(["hello"]));
     // The exact hash of "hello", so this fails if the algorithm or the hex
     // encoding ever changes — the server verifies what we assert.
-    expect(digest).toBe(
-      "sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824",
-    );
+    expect(digest).toBe("sha256:2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824");
   });
 
   test("a file over the threshold is not hashed, and that is not a failure", async () => {
@@ -122,11 +120,7 @@ describe("resuming", () => {
     // version number is lost on reload, the API will not admit the draft
     // exists, and its blob references keep garbage collection from reclaiming
     // the bytes (guide §4.5).
-    const batch = newBatch("b1", "lab", "readings", [
-      file("a.csv"),
-      file("b.csv"),
-      file("c.csv"),
-    ]);
+    const batch = newBatch("b1", "lab", "readings", [file("a.csv"), file("b.csv"), file("c.csv")]);
     const pending = pendingAfterResume(batch.items, ["a.csv", "c.csv"]);
     expect(pending.map((item) => item.path)).toEqual(["b.csv"]);
   });

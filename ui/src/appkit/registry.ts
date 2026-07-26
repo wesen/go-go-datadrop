@@ -59,4 +59,7 @@ export function allApps(): AppDescriptor[] {
   return [...REGISTRY.values()];
 }
 
-export const DOC_BOUND = () => allApps().filter((a) => a.docBound).map((a) => a.id);
+export const DOC_BOUND = () =>
+  allApps()
+    .filter((a) => a.docBound)
+    .map((a) => a.id);

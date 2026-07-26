@@ -171,9 +171,7 @@ export const TwoInstances: Story = {
   render: () => (
     <div style={{ display: "flex", gap: 16, height: 460, padding: 8 }}>
       <div data-testid="left" style={{ display: "flex", flex: 1, minWidth: 0 }}>
-        <WorkbenchInstance
-          config={{ preloaded: { layout: grammarSpaces() }, workspaces: false }}
-        />
+        <WorkbenchInstance config={{ preloaded: { layout: grammarSpaces() }, workspaces: false }} />
       </div>
       <div data-testid="right" style={{ display: "flex", flex: 1, minWidth: 0 }}>
         <WorkbenchInstance

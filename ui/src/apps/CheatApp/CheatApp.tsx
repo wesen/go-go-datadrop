@@ -3,7 +3,6 @@ import { useTourContent } from "../../appkit/TourContent";
 import { AppBody } from "../../components/layout";
 import { CheatCard, EmptyState } from "../../components/molecules";
 
-
 /**
  * The section's vocabulary card, as a tile.
  *

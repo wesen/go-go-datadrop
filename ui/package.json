@@ -11,7 +11,10 @@
     "tokens": "bun run scripts/make-tokens.ts",
     "storybook": "storybook dev -p 6006 --no-open",
     "build-storybook": "storybook build -o storybook-static",
-    "fixtures": "bun run scripts/make-fixtures.ts"
+    "fixtures": "bun run scripts/make-fixtures.ts",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "format": "biome format --write"
   },
   "dependencies": {
     "@reduxjs/toolkit": "^2.12.0",
@@ -20,6 +23,7 @@
     "react-redux": "^9.3.0"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
     "@storybook/addon-a11y": "^10.5.4",
     "@storybook/addon-docs": "^10.5.4",
     "@storybook/addon-vitest": "^10.5.4",

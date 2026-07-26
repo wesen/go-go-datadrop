@@ -126,18 +126,18 @@ export function WorkbenchShell({
             <span className={styles.chromeSpacer} />
             {onToggleFullFrame && (
               <span className={styles.chromeAction}>
-              <IconButton
-                variant="framed"
-                size="tiny"
-                glyph={fullFrame ? "⤡" : "⤢"}
-                label={fullFrame ? "leave full frame (Esc)" : "fill the window"}
-                title={
-                  fullFrame
-                    ? "shrink back into the page — Esc does the same"
-                    : "fill the window, for room to work"
-                }
-                onClick={onToggleFullFrame}
-              />
+                <IconButton
+                  variant="framed"
+                  size="tiny"
+                  glyph={fullFrame ? "⤡" : "⤢"}
+                  label={fullFrame ? "leave full frame (Esc)" : "fill the window"}
+                  title={
+                    fullFrame
+                      ? "shrink back into the page — Esc does the same"
+                      : "fill the window, for room to work"
+                  }
+                  onClick={onToggleFullFrame}
+                />
               </span>
             )}
           </div>

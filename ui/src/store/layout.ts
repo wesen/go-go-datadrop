@@ -199,7 +199,11 @@ export const layoutSlice = createSlice({
     /** Move a tile to an edge of another, splitting it. The source closes. */
     dockTile(
       state,
-      action: PayloadAction<{ from: NodeId; to: NodeId; zone: "left" | "right" | "top" | "bottom" }>,
+      action: PayloadAction<{
+        from: NodeId;
+        to: NodeId;
+        zone: "left" | "right" | "top" | "bottom";
+      }>,
     ) {
       const space = current(state);
       if (!space || action.payload.from === action.payload.to) return;

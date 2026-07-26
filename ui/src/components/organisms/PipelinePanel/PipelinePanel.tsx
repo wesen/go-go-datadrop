@@ -88,7 +88,8 @@ export function PipelinePanel({
           <Button key={kind} variant="framed" onClick={() => onAdd(kind)}>
             {/* The ellipsis marks the two that ask you to point at a field
                 before they exist, so a click that opens an accept banner is not
-                a surprise. */}+ {kind}
+                a surprise. */}
+            + {kind}
             {kind === "filter" || kind === "summarize" ? "…" : ""}
           </Button>
         ))}

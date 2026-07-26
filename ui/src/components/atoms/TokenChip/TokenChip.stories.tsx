@@ -61,8 +61,8 @@ export const Lifecycle: Story = {
         }}
       />
       <Text size="tiny" tone="faint" prose>
-        A revoked token is shown rather than hidden: the question "did I revoke
-        that one?" needs an answer, and an absent row does not give one.
+        A revoked token is shown rather than hidden: the question "did I revoke that one?" needs an
+        answer, and an absent row does not give one.
       </Text>
     </Stack>
   ),

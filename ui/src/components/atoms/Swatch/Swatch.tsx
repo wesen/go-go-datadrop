@@ -16,6 +16,11 @@ import styles from "./Swatch.module.css";
  */
 export function Swatch({ color, label }: { color: string; label: string }) {
   return (
-    <span className={styles.swatch} style={{ background: color }} title={label} aria-hidden="true" />
+    <span
+      className={styles.swatch}
+      style={{ background: color }}
+      title={label}
+      aria-hidden="true"
+    />
   );
 }

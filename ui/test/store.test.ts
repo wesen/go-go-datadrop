@@ -335,7 +335,9 @@ describe("verbs become actions", () => {
 
 describe("persistence is defensive", () => {
   test("a payload from another version is refused", () => {
-    expect(validate({ version: 99, world: {}, layout: { spaces: [], currentSpaceId: "" } })).toBeNull();
+    expect(
+      validate({ version: 99, world: {}, layout: { spaces: [], currentSpaceId: "" } }),
+    ).toBeNull();
   });
 
   test("a malformed tree is refused rather than rendered", () => {
@@ -343,13 +345,23 @@ describe("persistence is defensive", () => {
       validate({
         version: 1,
         world: { docs: {}, docOrder: [] },
-        layout: { spaces: [{ id: "s", name: "x", tree: { id: "n", type: "split" } }], currentSpaceId: "s" },
+        layout: {
+          spaces: [{ id: "s", name: "x", tree: { id: "n", type: "split" } }],
+          currentSpaceId: "s",
+        },
       }),
     ).toBeNull();
   });
 
   test("a ratio outside the sane range is refused", () => {
-    const tree = { id: "n", type: "split", dir: "row", ratio: 12, a: { id: "a", type: "leaf", app: "chart" }, b: { id: "b", type: "leaf", app: "table" } };
+    const tree = {
+      id: "n",
+      type: "split",
+      dir: "row",
+      ratio: 12,
+      a: { id: "a", type: "leaf", app: "chart" },
+      b: { id: "b", type: "leaf", app: "table" },
+    };
     expect(
       validate({
         version: 1,

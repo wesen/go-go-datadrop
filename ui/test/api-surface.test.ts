@@ -29,7 +29,9 @@ function mutationNames(): string[] {
   // `useQuery` hook on a query one, which is the cheapest honest way to tell
   // them apart without reaching into internals that may be renamed.
   return Object.entries(definitions)
-    .filter(([, endpoint]) => typeof (endpoint as { useMutation?: unknown }).useMutation === "function")
+    .filter(
+      ([, endpoint]) => typeof (endpoint as { useMutation?: unknown }).useMutation === "function",
+    )
     .map(([name]) => name)
     .sort();
 }
@@ -76,10 +78,7 @@ describe("the API surface", () => {
     // fetchBaseQuery's closure and is not reachable from the built api object —
     // and an unreachable security-relevant setting is exactly the kind that
     // gets changed without anyone noticing.
-    const source = readFileSync(
-      new URL("../src/api/client.ts", import.meta.url),
-      "utf8",
-    );
+    const source = readFileSync(new URL("../src/api/client.ts", import.meta.url), "utf8");
     expect(source).toContain('credentials: "same-origin"');
     expect(source).not.toContain('credentials: "include"');
   });

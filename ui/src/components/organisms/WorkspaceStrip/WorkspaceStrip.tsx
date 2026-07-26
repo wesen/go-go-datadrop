@@ -51,6 +51,7 @@ export function WorkspaceStrip() {
               onActivate={() => dispatch(layoutActions.setCurrentSpace(space.id))}
               activateDoc="switch to it"
             >
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename, and that genuinely has NO keyboard route today: the `workspace` presentation type has no descriptor, so there is no Rename verb to reach by menu. DATADROP-8 adds one; until then this is a known gap recorded rather than hidden. */}
               <span
                 style={{
                   border: "var(--pbui-border-firm)",
@@ -76,8 +77,7 @@ export function WorkspaceStrip() {
           + workspace
         </Button>
         <Text size="tiny" tone="faint">
-          L switches · double-click renames · R for duplicate / delete · ⌾ is
-          defined in code
+          L switches · double-click renames · R for duplicate / delete · ⌾ is defined in code
         </Text>
       </Stack>
     </Toolbar>

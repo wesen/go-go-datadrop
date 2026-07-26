@@ -27,11 +27,51 @@ type Story = StoryObj<typeof meta>;
 export const EveryKind: Story = {
   render: () => (
     <Stack gap={2}>
-      <StepRow kind="filter" label="temp_c > 20" enabled canMoveUp={false} onToggle={noop} onMoveUp={noop} onRemove={noop} />
-      <StepRow kind="derive" label="delta = temp_c - baseline" enabled canMoveUp onToggle={noop} onMoveUp={noop} onRemove={noop} />
-      <StepRow kind="summarize" label="by station, mean of temp_c" enabled canMoveUp onToggle={noop} onMoveUp={noop} onRemove={noop} />
-      <StepRow kind="sort" label="temp_c desc" enabled canMoveUp onToggle={noop} onMoveUp={noop} onRemove={noop} />
-      <StepRow kind="limit" label="first 100 rows" enabled canMoveUp onToggle={noop} onMoveUp={noop} onRemove={noop} />
+      <StepRow
+        kind="filter"
+        label="temp_c > 20"
+        enabled
+        canMoveUp={false}
+        onToggle={noop}
+        onMoveUp={noop}
+        onRemove={noop}
+      />
+      <StepRow
+        kind="derive"
+        label="delta = temp_c - baseline"
+        enabled
+        canMoveUp
+        onToggle={noop}
+        onMoveUp={noop}
+        onRemove={noop}
+      />
+      <StepRow
+        kind="summarize"
+        label="by station, mean of temp_c"
+        enabled
+        canMoveUp
+        onToggle={noop}
+        onMoveUp={noop}
+        onRemove={noop}
+      />
+      <StepRow
+        kind="sort"
+        label="temp_c desc"
+        enabled
+        canMoveUp
+        onToggle={noop}
+        onMoveUp={noop}
+        onRemove={noop}
+      />
+      <StepRow
+        kind="limit"
+        label="first 100 rows"
+        enabled
+        canMoveUp
+        onToggle={noop}
+        onMoveUp={noop}
+        onRemove={noop}
+      />
     </Stack>
   ),
 };

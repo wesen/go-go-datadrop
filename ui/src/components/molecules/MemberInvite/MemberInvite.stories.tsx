@@ -36,11 +36,7 @@ export const Default: Story = {
 export const LookupFailed: Story = {
   render: () => (
     <Stack gap={3}>
-      <MemberInvite
-        drop="lab"
-        error="no datadrop account has that address yet"
-        onAdd={() => {}}
-      />
+      <MemberInvite drop="lab" error="no datadrop account has that address yet" onAdd={() => {}} />
       <Text size="tiny" tone="faint" prose>
         Dashed border as well as red, and the field reports aria-invalid.
       </Text>

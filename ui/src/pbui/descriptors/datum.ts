@@ -59,7 +59,10 @@ export const datumDescriptor: PresentationDescriptor<DatumRef> = {
     }
 
     actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "datum", value: ref } });
-    actions.push({ label: "Add to watchlist", verb: { kind: "watch", ptype: "datum", value: ref } });
+    actions.push({
+      label: "Add to watchlist",
+      verb: { kind: "watch", ptype: "datum", value: ref },
+    });
     return actions;
   },
 };

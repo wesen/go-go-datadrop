@@ -71,12 +71,13 @@ export const Sizes: Story = {
     <Stack gap={2}>
       <UploadItemRow item={item({ path: "tiny.csv", size: 512, state: "done" })} />
       <UploadItemRow item={item({ path: "small.csv", size: 2048, state: "done" })} />
-      <UploadItemRow item={item({ path: "at-the-hash-limit.csv", size: 67_108_864, state: "done" })} />
+      <UploadItemRow
+        item={item({ path: "at-the-hash-limit.csv", size: 67_108_864, state: "done" })}
+      />
       <UploadItemRow item={item({ path: "huge.csv", size: 5_368_709_120, state: "sending" })} />
       <Text size="tiny" tone="faint" prose>
-        Above 64 MiB the browser stops hashing — Web Crypto has no streaming
-        digest — so the mount fast path is skipped and the server hashes while
-        it writes.
+        Above 64 MiB the browser stops hashing — Web Crypto has no streaming digest — so the mount
+        fast path is skipped and the server hashes while it writes.
       </Text>
     </Stack>
   ),

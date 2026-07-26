@@ -62,9 +62,7 @@ const GOALS: Goal[] = [
   },
   {
     id: "g4",
-    label: (
-      <>the evidence beside the picture — a table and a chart, on one document, at once</>
-    ),
+    label: <>the evidence beside the picture — a table and a chart, on one document, at once</>,
     done: (state) => {
       // Reads the LAYOUT, not the world — which is the goal the prototype needs
       // a render-phase probe for and we get from a plain selector, because our

@@ -72,8 +72,8 @@ export const Dragging: Story = {
     <Stack gap={2}>
       <FileDropZone onFiles={() => {}} />
       <Text size="tiny" tone="faint" prose>
-        Drag a file over the surface above to see it. The state is carried by
-        the border weight as well as the fill.
+        Drag a file over the surface above to see it. The state is carried by the border weight as
+        well as the fill.
       </Text>
     </Stack>
   ),

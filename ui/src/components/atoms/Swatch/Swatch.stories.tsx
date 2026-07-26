@@ -32,8 +32,8 @@ export const TheCategoricalPalette: Story = {
         ))}
       </Stack>
       <Text size="tiny" tone="faint" prose>
-        Never hand-edit these tokens: `bun run tokens` writes them from PALETTE
-        in model/plot.ts, and test/tokens.test.ts proves the two still agree.
+        Never hand-edit these tokens: `bun run tokens` writes them from PALETTE in model/plot.ts,
+        and test/tokens.test.ts proves the two still agree.
       </Text>
     </Stack>
   ),

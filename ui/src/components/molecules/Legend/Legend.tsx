@@ -57,9 +57,7 @@ export function Legend({
             <Text size="small">{entry.label}</Text>
           </Stack>
         );
-        return (
-          <span key={entry.label}>{renderEntry ? renderEntry(entry, body) : body}</span>
-        );
+        return <span key={entry.label}>{renderEntry ? renderEntry(entry, body) : body}</span>;
       })}
       {overflow > 0 && (
         <Text size="tiny" tone="faint">

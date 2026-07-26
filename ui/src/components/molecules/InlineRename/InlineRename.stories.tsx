@@ -22,7 +22,13 @@ const meta = {
   title: "Component Library/Molecules/InlineRename",
   component: InlineRename,
   parameters: { tile: false },
-  args: { initial: "explore", label: "workspace name", fallback: "explore", onCommit: () => {}, onCancel: () => {} },
+  args: {
+    initial: "explore",
+    label: "workspace name",
+    fallback: "explore",
+    onCommit: () => {},
+    onCancel: () => {},
+  },
 } satisfies Meta<typeof InlineRename>;
 
 export default meta;
@@ -64,9 +70,9 @@ export const Live: Story = {
           </Text>
         )}
         <Text size="tiny" tone="faint" prose>
-          Enter commits, Escape discards, clicking away cancels. Try committing
-          an empty field: it falls back to the current name, because a workspace
-          called "" is unreachable — there is nothing to click.
+          Enter commits, Escape discards, clicking away cancels. Try committing an empty field: it
+          falls back to the current name, because a workspace called "" is unreachable — there is
+          nothing to click.
         </Text>
       </Stack>
     );

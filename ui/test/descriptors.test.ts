@@ -123,11 +123,10 @@ describe("<field> inspection is honest about its window", () => {
   });
 
   test("provenance is reported, not just the type", () => {
-    const schemaTyped = describeFor(
-      "field",
-      { docId: "d2", name: "station_id" },
-      env(),
-    ) as Record<string, unknown>;
+    const schemaTyped = describeFor("field", { docId: "d2", name: "station_id" }, env()) as Record<
+      string,
+      unknown
+    >;
     expect(schemaTyped.type).toBe("nominal");
     expect(schemaTyped.type_source).toBe("from the dataset schema");
   });

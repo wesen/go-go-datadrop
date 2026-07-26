@@ -49,9 +49,7 @@ if (!container) throw new Error("#root is missing from the page shell");
  */
 const isTour = window.location.pathname.startsWith("/ui/tour");
 
-createRoot(container).render(
-  <StrictMode>{isTour ? <LandingPage /> : <Product />}</StrictMode>,
-);
+createRoot(container).render(<StrictMode>{isTour ? <LandingPage /> : <Product />}</StrictMode>);
 
 /**
  * The workbench, with the one store the product has.

@@ -20,8 +20,7 @@ import styles from "./LinkAction.module.css";
  * of navigating is a button wearing a link's clothes, and it breaks
  * middle-click, copy-link and open-in-new-tab. If you need script, use Button.
  */
-export interface LinkActionProps
-  extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "onClick"> {
+export interface LinkActionProps extends Omit<AnchorHTMLAttributes<HTMLAnchorElement>, "onClick"> {
   href: string;
   variant?: ButtonVariant;
   size?: ButtonSize;

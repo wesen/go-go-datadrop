@@ -43,16 +43,16 @@ export function PredictPrompt({
         {question}
       </Text>
 
+      {/*
+        biome-ignore lint/a11y/useSemanticElements: <fieldset> is the element
+        this rule wants, and it brings a legend and default chrome that fight
+        the tile's type scale. role="group" with an aria-label is the ARIA
+        pattern for exactly this and announces identically.
+      */}
       <div className={styles.options} role="group" aria-label="predict the outcome">
         {options.map((option, index) => {
           const right = index === answer;
-          const state = !locked
-            ? "idle"
-            : right
-              ? "right"
-              : index === picked
-                ? "chosen"
-                : "other";
+          const state = !locked ? "idle" : right ? "right" : index === picked ? "chosen" : "other";
           return (
             <Button
               key={option}

@@ -13,14 +13,15 @@ import type { CatRef, FieldRef, PresentationType } from "./types";
  */
 type Conversion = (value: unknown) => unknown | undefined;
 
-export const CONVERSIONS: Partial<Record<`${PresentationType}->${PresentationType}`, Conversion>> = {
-  // A legend swatch knows which field it is a level of, so clicking one can
-  // answer "which field?" — which is what makes "facet by this" reachable from
-  // the chart rather than only from the encoding editor.
-  "cat->field": (value) => {
-    const cat = value as CatRef;
-    return cat?.field ? ({ docId: cat.docId, name: cat.field } satisfies FieldRef) : undefined;
-  },
-  // A document knows its source.
-  "doc->source": () => undefined, // filled in by the shell in phase 2, which knows the docs
-};
+export const CONVERSIONS: Partial<Record<`${PresentationType}->${PresentationType}`, Conversion>> =
+  {
+    // A legend swatch knows which field it is a level of, so clicking one can
+    // answer "which field?" — which is what makes "facet by this" reachable from
+    // the chart rather than only from the encoding editor.
+    "cat->field": (value) => {
+      const cat = value as CatRef;
+      return cat?.field ? ({ docId: cat.docId, name: cat.field } satisfies FieldRef) : undefined;
+    },
+    // A document knows its source.
+    "doc->source": () => undefined, // filled in by the shell in phase 2, which knows the docs
+  };

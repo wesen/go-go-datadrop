@@ -165,7 +165,13 @@ function batches(): Table {
   }));
 
   return {
-    source: { kind: "dataset", drop: "factory", dataset: "batches", version: 1, path: "rows.ndjson" },
+    source: {
+      kind: "dataset",
+      drop: "factory",
+      dataset: "batches",
+      version: 1,
+      path: "rows.ndjson",
+    },
     fields: [
       field("batch", "n", "values", rows),
       field("line", "n", "values", rows),
@@ -190,7 +196,7 @@ const FIXTURES: Record<string, Table> = {
 
 for (const [name, table] of Object.entries(FIXTURES)) {
   const path = new URL(`../src/fixtures/${name}.json`, import.meta.url).pathname;
-  await Bun.write(path, JSON.stringify(table, null, 2) + "\n");
+  await Bun.write(path, `${JSON.stringify(table, null, 2)}\n`);
   console.log(
     `${name}.json — ${table.rows.length} rows × ${table.fields.length} fields` +
       (table.truncated ? " (truncated)" : ""),

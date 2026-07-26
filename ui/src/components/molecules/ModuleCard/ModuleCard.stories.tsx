@@ -19,7 +19,13 @@ const meta = {
   title: "Component Library/Molecules/ModuleCard",
   component: ModuleCard,
   parameters: { tile: false },
-  decorators: [(Story) => <div style={{ maxWidth: 380 }}><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 380 }}>
+        <Story />
+      </div>
+    ),
+  ],
   args: {
     title: "pipeline",
     what: "The chain of verbs that produces the data: filter, derive, group∑, sort, limit.",
@@ -69,5 +75,11 @@ export const Narrow: Story = {
     lr: "A draft survives a reload; the queue says which stage each file reached.",
     vs: "a file picker. The four stages are separately observable because they fail separately.",
   },
-  decorators: [(Story) => <div style={{ maxWidth: 260 }}><Story /></div>],
+  decorators: [
+    (Story) => (
+      <div style={{ maxWidth: 260 }}>
+        <Story />
+      </div>
+    ),
+  ],
 };

@@ -14,4 +14,6 @@
   padding: var(--pbui-space-3) var(--pbui-space-4);
 }
 
-.flush { padding: 0; }
+.flush {
+  padding: 0;
+}

@@ -56,8 +56,7 @@ export function SignInPanel({
         {errorCode && (
           <Callout variant="warning" title="Sign-in did not complete">
             <Text size="small" tone="faint">
-              {SIGN_IN_ERRORS[errorCode] ??
-                "Something went wrong on the way back. Try again."}
+              {SIGN_IN_ERRORS[errorCode] ?? "Something went wrong on the way back. Try again."}
             </Text>
           </Callout>
         )}
@@ -67,9 +66,8 @@ export function SignInPanel({
             <Stack gap={2}>
               <SectionLabel>Sign in</SectionLabel>
               <Text size="small" prose>
-                datadrop does not hold your password. Signing in hands you to the
-                identity provider, which sends you back here once it is
-                satisfied.
+                datadrop does not hold your password. Signing in hands you to the identity provider,
+                which sends you back here once it is satisfied.
               </Text>
             </Stack>
 
@@ -103,9 +101,8 @@ export function SignInPanel({
             <Stack gap={2}>
               <SectionLabel>Access token</SectionLabel>
               <Text size="small" prose>
-                This server has no user accounts — it is running with a shared
-                token. Paste it here; it is kept for this tab only and is never
-                written to durable storage.
+                This server has no user accounts — it is running with a shared token. Paste it here;
+                it is kept for this tab only and is never written to durable storage.
               </Text>
             </Stack>
             <Toolbar>

@@ -56,6 +56,8 @@ export function FileDropZone({
         </Text>
       </Toolbar>
 
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: a drop target is a pointer gesture with no keyboard equivalent. The keyboard path is the "choose files" Button above — it is the tab stop and opens the same hidden <input type=file>, so this zone is an additional affordance and never the only one. */}
+      {/* biome-ignore lint/a11y/useKeyWithClickEvents: same reason — this click opens the picker the Button already opens, so a key handler would be a second route to one dialog rather than an access route. */}
       <div
         className={[styles.zone, dragging ? styles.dragging : "", disabled ? styles.disabled : ""]
           .filter(Boolean)

@@ -44,8 +44,7 @@ function statistics(ref: FieldRef, table: Table, type: FieldType) {
     const numbers = values.map(asNumber).filter(Number.isFinite);
     if (numbers.length === 0) return { n: 0 };
     const mean = numbers.reduce((a, b) => a + b, 0) / numbers.length;
-    const variance =
-      numbers.reduce((a, b) => a + (b - mean) * (b - mean), 0) / numbers.length;
+    const variance = numbers.reduce((a, b) => a + (b - mean) * (b - mean), 0) / numbers.length;
     return {
       n: numbers.length,
       min: Number(Math.min(...numbers).toFixed(3)),
@@ -177,7 +176,10 @@ export const fieldDescriptor: PresentationDescriptor<FieldRef> = {
     }
 
     actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "field", value: ref } });
-    actions.push({ label: "Add to watchlist", verb: { kind: "watch", ptype: "field", value: ref } });
+    actions.push({
+      label: "Add to watchlist",
+      verb: { kind: "watch", ptype: "field", value: ref },
+    });
     return actions;
   },
 };

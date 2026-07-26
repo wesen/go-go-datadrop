@@ -12,9 +12,7 @@ import { PbuiContext, type PbuiContextValue } from "./PbuiProvider";
 export function usePbui(): PbuiContextValue {
   const context = useContext(PbuiContext);
   if (!context) {
-    throw new Error(
-      "usePbui outside a PbuiProvider — a presentation cannot be live without one",
-    );
+    throw new Error("usePbui outside a PbuiProvider — a presentation cannot be live without one");
   }
   return context;
 }

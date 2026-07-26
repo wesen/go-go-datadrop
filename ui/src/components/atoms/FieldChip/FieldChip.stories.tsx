@@ -44,8 +44,8 @@ export const Stale: Story = {
     <Stack gap={3}>
       <FieldChip field={{ docId: "d1", name: "a_field_a_step_removed" }} />
       <Text size="tiny" tone="faint" prose>
-        Not in the pipeline output. Distinguishable without colour: dashed
-        border, ⚠ appended to the label.
+        Not in the pipeline output. Distinguishable without colour: dashed border, ⚠ appended to the
+        label.
       </Text>
     </Stack>
   ),

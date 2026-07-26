@@ -127,10 +127,7 @@ export function heroSeed(): Seed {
   const doc = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space(
-      "start",
-      split("row", leaf("pipeline", doc), leaf("chart", doc), 0.44),
-    ),
+    layout: space("start", split("row", leaf("pipeline", doc), leaf("chart", doc), 0.44)),
   };
 }
 

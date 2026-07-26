@@ -46,13 +46,10 @@ export const TakesNoSpace: Story = {
 export const LiveRegion: Story = {
   render: () => (
     <Stack gap={2}>
-      <VisuallyHidden live="polite">
-        &lt;field&gt; temp_c — quantitative, 240 rows
-      </VisuallyHidden>
+      <VisuallyHidden live="polite">&lt;field&gt; temp_c — quantitative, 240 rows</VisuallyHidden>
       <Text size="tiny" tone="faint" prose>
-        Nothing renders. A screen reader announces the field description as the
-        pointer moves, which is what makes the mouse-doc line reachable without
-        a mouse.
+        Nothing renders. A screen reader announces the field description as the pointer moves, which
+        is what makes the mouse-doc line reachable without a mouse.
       </Text>
     </Stack>
   ),
