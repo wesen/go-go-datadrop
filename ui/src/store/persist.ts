@@ -15,9 +15,18 @@ import type { WorldState } from "./world";
  * specifications, and that payload is audited by a test for anything
  * token-shaped, because "a snapshot is designed to be shared" and a shared
  * snapshot carrying a bearer token is a credential-exfiltration feature.
+ *
+ * **The key is a parameter, not a constant** (DATADROP-7 DR-47). It used to be
+ * the module-level `KEY` below, which is correct while there is one workbench
+ * per page and destructive the moment there is not: five embedded instances
+ * would each run the 500 ms debounced `save()` against one key, so the reader's
+ * real layout would be overwritten by whichever tutorial section they last
+ * scrolled past, silently. `usePersistence(null)` — the default for an embedded
+ * instance — never calls either function.
  */
 
-const KEY = "datadrop-workbench";
+/** The application's key. Embedded instances pass null and persist nothing. */
+export const WORKBENCH_KEY = "datadrop-workbench";
 /** Bumped when a shape change makes older payloads unreadable. */
 const VERSION = 1;
 
@@ -103,7 +112,7 @@ export function validate(raw: unknown): Persisted | null {
   };
 }
 
-export function save(world: WorldState, layout: LayoutState): void {
+export function save(key: string, world: WorldState, layout: LayoutState): void {
   const payload: Persisted = {
     version: VERSION,
     world: {
@@ -130,16 +139,16 @@ export function save(world: WorldState, layout: LayoutState): void {
   }
 
   try {
-    localStorage.setItem(KEY, JSON.stringify(payload));
+    localStorage.setItem(key, JSON.stringify(payload));
   } catch (error) {
     // A full quota must not take the application down with it.
     console.warn("could not persist the workbench layout", error);
   }
 }
 
-export function load(): Persisted | null {
+export function load(key: string): Persisted | null {
   try {
-    const raw = localStorage.getItem(KEY);
+    const raw = localStorage.getItem(key);
     if (!raw) return null;
     const parsed: unknown = JSON.parse(raw);
     const valid = validate(parsed);
@@ -154,9 +163,9 @@ export function load(): Persisted | null {
   }
 }
 
-export function clear(): void {
+export function clear(key: string): void {
   try {
-    localStorage.removeItem(KEY);
+    localStorage.removeItem(key);
   } catch {
     /* ignore */
   }

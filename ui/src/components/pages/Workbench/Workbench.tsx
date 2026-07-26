@@ -11,9 +11,9 @@ import {
   type Verb,
 } from "../../../pbui";
 import type { RootState } from "../../../store";
+import { usePersistence } from "../../../appkit/usePersistence";
 import { actionsForVerb, environmentFor } from "../../../store/applyVerb";
 import { countLeaves, layoutActions } from "../../../store/layout";
-import { save } from "../../../store/persist";
 import { ACCOUNT_SPACE_ID, WELCOME_SPACE_ID } from "../../../store/spaces";
 import { NodeView, WorkspaceStrip } from "../../organisms";
 import { Surface, Toolbar } from "../../layout";
@@ -29,7 +29,22 @@ import styles from "./Workbench.module.css";
  * demonstrates — the prototype's equivalent is 314 lines because it also holds
  * `labelFor`, `describe` and `actionsFor` (pbui-gog.jsx:2458-2772).
  */
-export function Workbench() {
+export interface WorkbenchProps {
+  /**
+   * Where to persist, or null for memory-only.
+   *
+   * **Defaults to null, and the default is the point** (DATADROP-7 DR-47).
+   * Persistence used to be an unconditional effect in this file, which is
+   * correct while there is one workbench per page and destructive the moment
+   * there is not — five embedded instances would each write to one key, so the
+   * reader's real layout would be overwritten by whichever tutorial section
+   * they last scrolled past. Defaulting to null means an embedded instance that
+   * forgets to opt out is inert rather than destructive; `main.tsx` opts in.
+   */
+  persistKey?: string | null;
+}
+
+export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
   const dispatch = useDispatch();
   const store = useStore<RootState>();
   const world = useSelector((state: RootState) => state.world);
@@ -92,15 +107,7 @@ export function Workbench() {
     [dispatch, environment, store],
   );
 
-  // Persist, debounced. A layout write per keystroke would be wasteful and a
-  // write per session would lose work.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      const state = store.getState();
-      save(state.world, state.layout);
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [world, space, store]);
+  usePersistence(persistKey);
 
   return (
     <PbuiProvider environment={environment} onPerform={perform}>

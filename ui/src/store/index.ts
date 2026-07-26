@@ -3,15 +3,14 @@ import { setupListeners } from "@reduxjs/toolkit/query";
 import { api } from "../api/client";
 import { layoutSlice, type LayoutState } from "./layout";
 import { worldSlice, initialWorld, type WorldState } from "./world";
-import { load } from "./persist";
 import { defaultSpaces } from "./spaces";
 
 /**
- * The store.
+ * The store, as a factory and only as a factory.
  *
- * Phase 0 wires only the RTK Query cache. Phase 2 adds the `world` slice
+ * Phase 0 wired only the RTK Query cache. Phase 2 added the `world` slice
  * (documents, snapshots, pins, watchlist, trace) and the `layout` slice
- * (workspaces and split trees) beside it — see guide §7.
+ * (workspaces and split trees) beside it — see the DATADROP-4 guide §7.
  *
  * The division of labour between the two is deliberate and is the reason they
  * are separate slices: RTK Query owns anything the server said, keyed by the
@@ -22,19 +21,26 @@ import { defaultSpaces } from "./spaces";
  * Everything in the world slices must be JSON-serialisable (guide §7.5). The
  * pending-accept resolver is the canonical thing that is not, and it lives in a
  * React ref inside PbuiProvider rather than here.
+ *
+ * **This module exports no constructed store** (DATADROP-7 DR-46), and the
+ * absence is the point. It used to export one, restored from localStorage at
+ * module load, and exactly one file imported it. That was harmless right up
+ * until the landing page needed five workbenches on one page, at which point a
+ * single ambient store is not a convenience but a defect — five instances
+ * sharing one world, one layout and one persistence key. Removing the export
+ * makes the wrong import *unavailable* rather than merely discouraged, which is
+ * the only kind of discouragement that survives contact with a hurry.
+ *
+ * `main.tsx` constructs the application's store. `test/store.test.ts` asserts
+ * that nothing else can.
  */
 
 /**
- * Build a store.
+ * A partial of a real state shape.
  *
- * A factory rather than a singleton because Storybook needs one per story: a
- * shared store would let a `play` function in one story leave state behind for
- * the next, and an intermittently-failing story is worse than no story.
- *
- * `preloadedState` is a partial of a real state shape. Typing it as an
- * arbitrary record forces configureStore to infer the reducer from the
- * preloaded value, producing a store whose type no longer matches its own
- * reducer — which is why phase 0 left the parameter out until the slices
+ * Typing it as an arbitrary record forces configureStore to infer the reducer
+ * from the preloaded value, producing a store whose type no longer matches its
+ * own reducer — which is why phase 0 left the parameter out until the slices
  * existed to be partial *of*.
  */
 export interface PreloadedState {
@@ -42,17 +48,52 @@ export interface PreloadedState {
   layout?: LayoutState;
 }
 
-export function makeStore(preloaded?: PreloadedState) {
+export interface MakeStoreOptions {
+  /** Restored state, or a seed for a story or an embedded instance. */
+  preloaded?: PreloadedState;
+  /**
+   * Give a world with no documents one.
+   *
+   * The four document-bound applications are views OF a composition; with no
+   * document they have nothing to be views of, and every one of them shows "no
+   * documents" with no way forward. The prototype seeds two on construction
+   * (pbui-gog.jsx:697-702) for the same reason.
+   *
+   * One, not two: the second exists in the prototype to demonstrate the
+   * multi-chart story, which the `charts` workspace covers instead.
+   *
+   * This used to live beside the module-level store as three lines of
+   * `if (getState()…) dispatch(…)`. That made it a property of *the* store
+   * rather than of *a* store — so a Storybook story, which builds its own,
+   * silently got a workbench with nothing in it. Defaulting to true here fixes
+   * both at once.
+   */
+  seed?: boolean;
+}
+
+export function makeStore(options: MakeStoreOptions = {}) {
+  const { preloaded, seed = true } = options;
+
   // Both slices are always supplied, never conditionally spread. A preloaded
   // object whose `layout` key is sometimes absent makes configureStore infer
   // that the layout reducer must accept `undefined`, and the resulting store
   // type stops matching its own reducer. Same trap as phase 0's, one level in.
-  const preloadedState = preloaded
-    ? {
-        world: { ...initialWorld, ...preloaded.world },
-        layout: preloaded.layout ?? defaultSpaces(),
-      }
-    : undefined;
+  //
+  // **Always supplied, even with no `preloaded` at all**, which used to leave
+  // `preloadedState` undefined and fall through to the slices' own initial
+  // state. Two problems, both of which only show up with more than one store:
+  //
+  //  - `layoutSlice`'s `initialState: initialLayout()` is evaluated ONCE, at
+  //    module load, so every store built without a preload started with the
+  //    same workspace *id*. Harmless while there is one store and confusing the
+  //    moment there are five.
+  //  - The fallback layout was one launcher tile rather than `defaultSpaces()`,
+  //    so the shell's own Storybook story rendered an empty workbench. The
+  //    story was showing the fallback, not the product.
+  const preloadedState = {
+    world: { ...initialWorld, ...preloaded?.world },
+    layout: preloaded?.layout ?? defaultSpaces(),
+  };
 
   const store = configureStore({
     reducer: {
@@ -64,35 +105,14 @@ export function makeStore(preloaded?: PreloadedState) {
     preloadedState,
   });
 
+  if (seed && store.getState().world.docOrder.length === 0) {
+    store.dispatch(worldSlice.actions.newDoc(null));
+  }
+
   // Refetch on focus and reconnect — a workbench left open overnight should not
   // show yesterday's catalogue.
   setupListeners(store.dispatch);
   return store;
-}
-
-/**
- * The application store, restored from localStorage when a valid payload is
- * there. `load()` returns null on anything it cannot read, so a payload from a
- * previous version produces the defaults rather than a blank screen.
- */
-const restored = typeof window === "undefined" ? null : load();
-export const store = makeStore({
-  ...(restored ? { world: restored.world, layout: restored.layout } : {}),
-});
-
-/**
- * A first run needs a document.
- *
- * The four document-bound applications are views OF a composition; with no
- * document they have nothing to be views of, and every one of them shows "no
- * documents" with no way forward. The prototype seeds two on construction
- * (pbui-gog.jsx:697-702) for the same reason.
- *
- * One, not two: the second exists in the prototype to demonstrate the
- * multi-chart story, which belongs to phase 5.
- */
-if (store.getState().world.docOrder.length === 0) {
-  store.dispatch(worldSlice.actions.newDoc(null));
 }
 
 export type AppStore = ReturnType<typeof makeStore>;
