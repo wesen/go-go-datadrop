@@ -8,6 +8,8 @@ export { ChartPanel } from "./ChartPanel";
 export { SourcePanel, BUDGETS } from "./SourcePanel";
 export type { DropOption } from "./SourcePanel";
 export { TablePanel, RENDER_LIMIT } from "./TablePanel";
+export { PipelinePanel, STEP_KINDS } from "./PipelinePanel";
+export type { PipelineStepView } from "./PipelinePanel";
 export { SignInPanel } from "./SignInPanel";
 export type { SignInMode } from "./SignInPanel";
 export { ProfilePanel } from "./ProfilePanel";

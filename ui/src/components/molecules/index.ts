@@ -22,6 +22,9 @@ export { MemberInvite } from "./MemberInvite";
 export { InlineRename } from "./InlineRename";
 export { ChannelRow } from "./ChannelRow";
 export { StepRow } from "./StepRow";
+// Extracted from PipelineApp by DATADROP-6 phase 3: a five-way switch nothing
+// had ever rendered outside a running pipeline.
+export { StepEditor } from "./StepEditor";
 
 // The teaching layer (DATADROP-7 phase 4). Presentational: they take a state
 // and callbacks and know nothing about what a lesson means.

@@ -1,27 +1,30 @@
 import { useDispatch, useSelector } from "react-redux";
-import { newStep, schemaAfter, stepLabel } from "../../model/pipeline";
+import { newStep, schemaAfter } from "../../model/pipeline";
 import type { Step } from "../../model/pipeline";
-import { AGGREGATES, DERIVE_OPS, FILTER_OPS } from "../../model/pipeline";
-import { Presentation, usePbui, type FieldRef } from "../../pbui";
+import { usePbui, type FieldRef } from "../../pbui";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import { useDocPipeline } from "../useTable";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
-import { AppBody, Stack, Toolbar } from "../../components/layout";
-import { SectionLabel, Text } from "../../components/foundation";
 import { DocBar } from "../../components/molecules";
-import { Button, FieldChip, SelectInput, TextInput } from "../../components/atoms";
-import { StepRow } from "../../components/molecules";
-
-const KINDS: Step["kind"][] = ["filter", "derive", "summarize", "sort", "limit"];
+import { PipelinePanel, type PipelineStepView } from "../../components/organisms";
 
 /**
- * The tidyverse chain, each step a live object.
+ * The tidyverse chain — the container half.
  *
- * The checkbox that disables a step WITHOUT deleting it is not a convenience.
- * It is what makes a pipeline an experiment rather than a recording: you A/B
- * your own transform by toggling it, and the chart, the table and the output
- * schema all answer immediately.
+ * What is left here after DATADROP-6 phase 3 is everything the panel must not
+ * hold: two hooks, the accept protocol, and the schema computation that needs a
+ * table. `PipelinePanel` takes a list of step views and five callbacks.
+ *
+ * ## Why `filter` and `summarize` are different from the other three
+ *
+ * They ACCEPT their field before the step exists, so it can be pointed at from
+ * any tile — the source browser, a table header, the chart's legend. The other
+ * three are minted with a defensible default and edited in place.
+ *
+ * That asymmetry is why `onAdd` is async at this level and synchronous in the
+ * panel's props: the panel fires an intent, and whether satisfying it needs a
+ * round trip through the accept banner is not its business.
  */
 function PipelineApp({ leafId, docId }: AppProps) {
   const dispatch = useDispatch();
@@ -35,8 +38,6 @@ function PipelineApp({ leafId, docId }: AppProps) {
     if (!table || !doc) return;
     const schema = schemaAfter(table, steps, undefined, doc.spec.typeOverrides);
 
-    // filter and summarize ACCEPT their field, so it can be pointed at from any
-    // tile — the data browser, a table header, the chart's legend.
     if (kind === "filter" || kind === "summarize") {
       const result = await pbui.accept({
         ptype: "field",
@@ -47,6 +48,7 @@ function PipelineApp({ leafId, docId }: AppProps) {
         filter: (_p, value) => {
           const field = schema.find((f) => f.name === (value as FieldRef).name);
           if (!field) return false;
+          // A quantitative column makes a poor group key: one group per row.
           return kind === "filter" ? true : field.type !== "q";
         },
       });
@@ -69,219 +71,30 @@ function PipelineApp({ leafId, docId }: AppProps) {
     dispatch(worldActions.addStep({ docId: target, step: newStep(kind, schema) }));
   };
 
-  const update = (step: Step) => dispatch(worldActions.updateStep({ docId: target, step }));
+  // The schema as of just before each step, so step 3's dropdowns offer what
+  // steps 1 and 2 produced. Computed here because it needs the table.
+  const views: PipelineStepView[] = steps.map((step, index) => ({
+    step,
+    available: table ? schemaAfter(table, steps, index, doc?.spec.typeOverrides).map((f) => f.name) : [],
+    dropped: pipeline?.dropped[step.id],
+  }));
 
   return (
     <>
       <DocBar leafId={leafId} docId={docId} />
-      <Toolbar tight>
-        {KINDS.map((kind) => (
-          <Button key={kind} variant="framed" onClick={() => void add(kind)}>
-            + {kind}
-            {kind === "filter" || kind === "summarize" ? "…" : ""}
-          </Button>
-        ))}
-      </Toolbar>
-
-      <AppBody>
-        <Stack gap={3}>
-          {steps.length === 0 && (
-            <Text size="small" tone="faint">
-              No steps — the chart draws the table as loaded. Add a verb above.
-            </Text>
-          )}
-
-          {steps.map((step, index) => {
-            const available = table
-              ? schemaAfter(table, steps, index, doc?.spec.typeOverrides)
-              : [];
-            const dropped = pipeline?.dropped[step.id];
-            return (
-              <Stack key={step.id} gap={2}>
-                <StepRow
-                  kind={step.kind}
-                  label={stepLabel(step)}
-                  enabled={step.on}
-                  canMoveUp={index > 0}
-                  onToggle={() =>
-                    dispatch(worldActions.toggleStep({ docId: target, stepId: step.id }))
-                  }
-                  onMoveUp={() =>
-                    dispatch(worldActions.moveStep({ docId: target, stepId: step.id, by: -1 }))
-                  }
-                  onRemove={() =>
-                    dispatch(worldActions.removeStep({ docId: target, stepId: step.id }))
-                  }
-                  // The DR-38 seam: the badge becomes a live <step>
-                  // presentation, so its verbs are a right-click away.
-                  renderKind={(badge) => (
-                    <Presentation ptype="step" value={step.id} doc={`<step> ${stepLabel(step)}`}>
-                      {badge}
-                    </Presentation>
-                  )}
-                />
-
-                <StepEditor step={step} fields={available.map((f) => f.name)} onChange={update} />
-
-                {dropped ? (
-                  <Text size="tiny" tone="danger">
-                    removed {dropped} rows whose result was not a finite number
-                  </Text>
-                ) : null}
-                {step.kind === "summarize" && (
-                  <Text size="tiny" tone="faint">
-                    summarize keeps only the group key and the aggregate — every other column is
-                    dropped
-                  </Text>
-                )}
-              </Stack>
-            );
-          })}
-
-          <Stack gap={2}>
-            <SectionLabel>Out → {pipeline?.rows.length.toLocaleString() ?? 0} rows</SectionLabel>
-            <Stack direction="row" gap={2} wrap>
-              {(pipeline?.fields ?? []).map((field) => (
-                <FieldChip key={field.name} field={{ docId: target, name: field.name }} />
-              ))}
-            </Stack>
-          </Stack>
-        </Stack>
-      </AppBody>
+      <PipelinePanel
+        steps={views}
+        outputFields={(pipeline?.fields ?? []).map((f) => f.name)}
+        outputRows={pipeline?.rows.length ?? 0}
+        docId={target}
+        onAdd={(kind) => void add(kind)}
+        onToggle={(stepId) => dispatch(worldActions.toggleStep({ docId: target, stepId }))}
+        onMoveUp={(stepId) => dispatch(worldActions.moveStep({ docId: target, stepId, by: -1 }))}
+        onRemove={(stepId) => dispatch(worldActions.removeStep({ docId: target, stepId }))}
+        onChange={(step) => dispatch(worldActions.updateStep({ docId: target, step }))}
+      />
     </>
   );
-}
-
-function StepEditor({
-  step,
-  fields,
-  onChange,
-}: {
-  step: Step;
-  fields: string[];
-  onChange: (step: Step) => void;
-}) {
-  // `label` is required by SelectInput and none of these had one before: the
-  // step editor shipped six unlabelled selects, which a screen reader announces
-  // as "combo box" and nothing else. Naming them is the one behaviour change in
-  // this substitution, and it is a fix.
-  const select = (
-    label: string,
-    value: string,
-    options: string[],
-    onPick: (v: string) => void,
-    compact = false,
-  ) => (
-    <SelectInput
-      label={label}
-      variant="framed"
-      width={compact ? "compact" : "auto"}
-      value={value}
-      onValueChange={onPick}
-      options={
-        options.length === 0
-          ? [{ value: "", label: "(no field)" }]
-          : options.map((option) => ({ value: option, label: option }))
-      }
-    />
-  );
-
-  switch (step.kind) {
-    case "filter":
-      return (
-        <Stack direction="row" gap={2} wrap>
-          {select("field to filter on", step.field, fields, (field) => onChange({ ...step, field }))}
-          {select(
-            "comparison",
-            step.op,
-            [...FILTER_OPS],
-            (op) => onChange({ ...step, op: op as typeof step.op }),
-            true,
-          )}
-          <TextInput
-            label="value to compare against"
-            size="small"
-            value={step.value}
-            placeholder="value (blank passes everything)"
-            onValueChange={(value) => onChange({ ...step, value })}
-          />
-        </Stack>
-      );
-    case "derive":
-      return (
-        <Stack direction="row" gap={2} wrap align="center">
-          <TextInput
-            label="name of the derived field"
-            size="small"
-            width="compact"
-            value={step.name}
-            onValueChange={(name) => onChange({ ...step, name })}
-          />
-          <Text size="small">=</Text>
-          {select("left operand", step.a, fields, (a) => onChange({ ...step, a }))}
-          {select(
-            "operator",
-            step.op,
-            [...DERIVE_OPS],
-            (op) => onChange({ ...step, op: op as typeof step.op }),
-            true,
-          )}
-          {step.op !== "log10" &&
-            select("right operand", step.b, fields, (b) => onChange({ ...step, b }))}
-        </Stack>
-      );
-    case "summarize":
-      return (
-        <Stack direction="row" gap={2} wrap align="center">
-          <Text size="tiny" tone="faint">
-            by
-          </Text>
-          {select("field to group by", step.by, fields, (by) => onChange({ ...step, by }))}
-          {select(
-            "aggregate",
-            step.fn,
-            [...AGGREGATES],
-            (fn) => onChange({ ...step, fn: fn as typeof step.fn }),
-            true,
-          )}
-          {step.fn !== "count" &&
-            select("field to aggregate", step.field, fields, (field) =>
-              onChange({ ...step, field }),
-            )}
-        </Stack>
-      );
-    case "sort":
-      return (
-        <Stack direction="row" gap={2} wrap>
-          {select("field to sort on", step.field, fields, (field) => onChange({ ...step, field }))}
-          {select(
-            "direction",
-            step.dir,
-            ["asc", "desc"],
-            (dir) => onChange({ ...step, dir: dir as "asc" | "desc" }),
-            true,
-          )}
-        </Stack>
-      );
-    case "limit":
-      return (
-        <Stack direction="row" gap={2} align="center">
-          <TextInput
-            label="rows to keep"
-            size="small"
-            width="compact"
-            inputMode="numeric"
-            value={String(step.n)}
-            onValueChange={(n) => onChange({ ...step, n: Number(n) })}
-          />
-          {/* Never the bare word "limit": there are two, and the other one is
-              the row budget on the source. */}
-          <Text size="tiny" tone="faint">
-            rows kept after the transform
-          </Text>
-        </Stack>
-      );
-  }
 }
 
 registerApp({
