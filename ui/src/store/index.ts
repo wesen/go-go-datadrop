@@ -1,6 +1,7 @@
 import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { api } from "../api/client";
+import type { FixtureData } from "../api/fixtures";
 import { layoutSlice, type LayoutState } from "./layout";
 import { worldSlice, initialWorld, type WorldState } from "./world";
 import { defaultSpaces } from "./spaces";
@@ -52,6 +53,16 @@ export interface MakeStoreOptions {
   /** Restored state, or a seed for a story or an embedded instance. */
   preloaded?: PreloadedState;
   /**
+   * Tables served from memory instead of from the server (DR-48).
+   *
+   * Travels on the thunk extra argument, which RTK Query hands to every base
+   * query — so its scope is exactly this store's scope, and no call site above
+   * `fixtureBaseQuery` knows it exists. A store with fixtures never touches the
+   * network at all, which is what lets a landing page render charts with the
+   * API absent, 500ing, or demanding an account.
+   */
+  fixtures?: FixtureData;
+  /**
    * Give a world with no documents one.
    *
    * The four document-bound applications are views OF a composition; with no
@@ -72,7 +83,7 @@ export interface MakeStoreOptions {
 }
 
 export function makeStore(options: MakeStoreOptions = {}) {
-  const { preloaded, seed = true } = options;
+  const { preloaded, seed = true, fixtures } = options;
 
   // Both slices are always supplied, never conditionally spread. A preloaded
   // object whose `layout` key is sometimes absent makes configureStore infer
@@ -101,7 +112,10 @@ export function makeStore(options: MakeStoreOptions = {}) {
       world: worldSlice.reducer,
       layout: layoutSlice.reducer,
     },
-    middleware: (getDefault) => getDefault().concat(api.middleware),
+    middleware: (getDefault) =>
+      // The fixture map rides the thunk extra argument, which is the only
+      // per-store channel RTK Query's base query can read (DR-48).
+      getDefault({ thunk: { extraArgument: { fixtures } } }).concat(api.middleware),
     preloadedState,
   });
 

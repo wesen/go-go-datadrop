@@ -1,5 +1,8 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
 import { WorkbenchInstance } from "./WorkbenchInstance";
+import { fixturesFrom } from "../../../api/fixtures";
+import { readings, census } from "../../../fixtures";
+import { defaultChart } from "../../../model/chart";
 import { leaf, split } from "../../../store/layout";
 import { newId } from "../../../store/world";
 
@@ -57,6 +60,70 @@ function grammarSpaces() {
     currentSpaceId: id,
   };
 }
+
+/**
+ * A world holding one document already pointed at a fixture source.
+ *
+ * `defaultChart(table)` is the same function `useDocTable` applies when a table
+ * first arrives, so the encoding here is the encoding the product would infer —
+ * a story that hand-wrote a mapping would be asserting what the engine produces
+ * rather than showing it.
+ */
+function seededWorld() {
+  const id = newId();
+  return {
+    docs: {
+      [id]: {
+        id,
+        name: "α",
+        limit: 2000,
+        spec: { ...defaultChart(readings), source: readings.source, steps: [] },
+      },
+    },
+    docOrder: [id],
+    activeDocId: id,
+  };
+}
+
+/** Chart beside table, both on one document — the pair §B teaches. */
+function chartAndTable() {
+  const id = newId();
+  return {
+    spaces: [{ id, name: "look", tree: split("row", leaf("chart"), leaf("table"), 0.55) }],
+    currentSpaceId: id,
+  };
+}
+
+/**
+ * A workbench with data and no server (DR-48).
+ *
+ * **This story is phase 3's acceptance test, and the way to check it is to stop
+ * the API.** Nothing here mocks `fetch`, installs a service worker or swaps a
+ * component: `ChartApp` and `TableApp` are the product's, `useDocTable` calls
+ * the same generated hooks, and RTK Query keys the cache the same way. The only
+ * difference is that the store carries a fixture map on its thunk extra
+ * argument, so the base query answers from memory and never reaches the
+ * network.
+ *
+ * If this story ever needs `msw` or a running server, DR-48 has failed.
+ */
+export const WithFixtures: Story = {
+  args: {
+    config: {
+      fixtures: fixturesFrom(readings, census),
+      preloaded: { world: seededWorld(), layout: chartAndTable() },
+      apps: ["chart", "table", "pipeline", "encode", "sources", "launcher"],
+      workspaces: false,
+    },
+  },
+  decorators: [
+    (Story) => (
+      <div style={{ display: "flex", height: 520 }}>
+        <Story />
+      </div>
+    ),
+  ],
+};
 
 export const Default: Story = {
   args: { config: {} },

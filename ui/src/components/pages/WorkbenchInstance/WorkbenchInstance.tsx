@@ -2,6 +2,7 @@ import { useRef, type ReactNode } from "react";
 import { Provider } from "react-redux";
 import { AppScope } from "../../../appkit/AppScope";
 import { usePersistence } from "../../../appkit/usePersistence";
+import type { FixtureData } from "../../../api/fixtures";
 import { makeStore, type AppStore, type PreloadedState } from "../../../store";
 import { WorkbenchProviders } from "../Workbench/WorkbenchProviders";
 import { WorkbenchShell } from "../Workbench/WorkbenchShell";
@@ -56,6 +57,15 @@ export interface InstanceConfig {
    */
   seed?: boolean;
   /**
+   * Tables answered from memory instead of from the server (DR-48).
+   *
+   * With this set the instance never reaches the network — not "prefers not
+   * to", never — so a tour panel renders the same charts with the API absent,
+   * returning 500, or demanding an account, which is what a landing page's
+   * visitor always faces.
+   */
+  fixtures?: FixtureData;
+  /**
    * Which applications the tile dropdown and the launcher offer (DR-53).
    *
    * Omit for every registered application, which is what the product wants.
@@ -96,7 +106,11 @@ export function WorkbenchInstance({
    */
   const storeRef = useRef<AppStore | null>(null);
   if (!storeRef.current) {
-    storeRef.current = makeStore({ preloaded: config.preloaded, seed: config.seed });
+    storeRef.current = makeStore({
+      preloaded: config.preloaded,
+      seed: config.seed,
+      fixtures: config.fixtures,
+    });
   }
 
   return (

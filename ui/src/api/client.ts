@@ -12,6 +12,7 @@
 // pipelines and snapshots remains read-only.
 
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
+import { fixtureBaseQuery } from "./fixtureBaseQuery";
 import type { SourceRef, Table } from "../model/table";
 
 /**
@@ -181,37 +182,89 @@ export interface SessionInfo {
   ip?: string;
 }
 
+/**
+ * The real transport.
+ *
+ * Split out so `fixtureBaseQuery` can wrap it (DATADROP-7 DR-48). A store with
+ * no fixture map on its thunk extra argument reaches this and behaves exactly
+ * as it always has; a store with one never gets here at all.
+ */
+const httpBaseQuery = fetchBaseQuery({
+  baseUrl: "/v1",
+  // "same-origin", never "include". The SPA is served from the same origin as
+  // the API (pkg/webui mounts at /ui on the API server), so this attaches the
+  // session cookie to our own requests and to nothing else.
+  credentials: "same-origin",
+  prepareHeaders: (headers) => {
+    // Still supported: a static token in --auth=token mode. A bearer beats a
+    // cookie server-side, so presenting both is well defined.
+    const token = readToken();
+    if (token) headers.set("Authorization", `Bearer ${token}`);
+    return headers;
+  },
+});
+
+/**
+ * The request each endpoint builds, as named functions.
+ *
+ * Extracted from the `query` fields below so that something other than RTK can
+ * call them (DATADROP-7 phase 3). `fixtureBaseQuery` re-parses these URLs back
+ * into a `SourceRef`, and a renamed parameter or a changed path shape would
+ * break the landing page and nothing else, silently.
+ *
+ * `test/fixture-query.test.ts` round-trips every one of them. That test is only
+ * worth having because it calls **these** functions rather than hand-written
+ * URLs — a built RTK endpoint does not expose its `query` at runtime, so
+ * without this indirection the test could only assert against literal strings,
+ * which is exactly the assertion that would keep passing after a rename.
+ */
+export const PATHS = {
+  me: () => "/me",
+  drops: () => "/drops",
+  streams: (drop: string) => `/drops/${encodeURIComponent(drop)}/streams`,
+  datasets: (drop: string) => `/drops/${encodeURIComponent(drop)}/datasets`,
+  dataset: ({ drop, dataset }: { drop: string; dataset: string }) =>
+    `/drops/${encodeURIComponent(drop)}/datasets/${encodeURIComponent(dataset)}`,
+  datasetVersion: ({
+    drop,
+    dataset,
+    version,
+  }: {
+    drop: string;
+    dataset: string;
+    version: number | "latest";
+  }) =>
+    `/drops/${encodeURIComponent(drop)}/datasets/${encodeURIComponent(dataset)}/versions/${version}`,
+  streamTable: ({ drop, ...params }: StreamTableArgs) => ({
+    url: `/drops/${encodeURIComponent(drop)}/table`,
+    params,
+  }),
+  datasetTable: ({ drop, dataset, version, ...params }: DatasetTableArgs) => ({
+    url: `/drops/${encodeURIComponent(drop)}/datasets/${encodeURIComponent(dataset)}/versions/${version}/table`,
+    params,
+  }),
+  tokens: (includeRevoked?: boolean | void) =>
+    includeRevoked ? "/me/tokens?include_revoked=true" : "/me/tokens",
+  sessions: () => "/me/sessions",
+} as const;
+
 export const api = createApi({
   reducerPath: "datadrop",
-  baseQuery: fetchBaseQuery({
-    baseUrl: "/v1",
-    // "same-origin", never "include". The SPA is served from the same origin as
-    // the API (pkg/webui mounts at /ui on the API server), so this attaches the
-    // session cookie to our own requests and to nothing else.
-    credentials: "same-origin",
-    prepareHeaders: (headers) => {
-      // Still supported: a static token in --auth=token mode. A bearer beats a
-      // cookie server-side, so presenting both is well defined.
-      const token = readToken();
-      if (token) headers.set("Authorization", `Bearer ${token}`);
-      return headers;
-    },
-  }),
+  baseQuery: fixtureBaseQuery(httpBaseQuery),
   tagTypes: ["Me", "Tokens", "Sessions", "Members", "Drops"],
   endpoints: (build) => ({
     listDrops: build.query<{ drops: DropSummary[] }, void>({
-      query: () => "/drops",
+      query: PATHS.drops,
       providesTags: ["Drops"],
     }),
 
     // ── accounts (DATADROP-5) ───────────────────────────────────────────────
     me: build.query<Me, void>({
-      query: () => "/me",
+      query: PATHS.me,
       providesTags: ["Me"],
     }),
     listTokens: build.query<{ tokens: ApiToken[] }, boolean | void>({
-      query: (includeRevoked) =>
-        includeRevoked ? "/me/tokens?include_revoked=true" : "/me/tokens",
+      query: PATHS.tokens,
       providesTags: ["Tokens"],
     }),
     createToken: build.mutation<
@@ -258,7 +311,7 @@ export const api = createApi({
       invalidatesTags: ["Drops"],
     }),
     listSessions: build.query<{ sessions: SessionInfo[] }, void>({
-      query: () => "/me/sessions",
+      query: PATHS.sessions,
       providesTags: ["Sessions"],
     }),
     signOut: build.mutation<void, { global?: boolean } | void>({
@@ -269,33 +322,25 @@ export const api = createApi({
       invalidatesTags: ["Me", "Tokens", "Sessions"],
     }),
     listStreams: build.query<{ streams: StreamInfo[] }, string>({
-      query: (drop) => `/drops/${encodeURIComponent(drop)}/streams`,
+      query: PATHS.streams,
     }),
     listDatasets: build.query<{ datasets: DatasetSummary[] }, string>({
-      query: (drop) => `/drops/${encodeURIComponent(drop)}/datasets`,
+      query: PATHS.datasets,
     }),
     getDataset: build.query<DatasetSummary, { drop: string; dataset: string }>({
-      query: ({ drop, dataset }) =>
-        `/drops/${encodeURIComponent(drop)}/datasets/${encodeURIComponent(dataset)}`,
+      query: PATHS.dataset,
     }),
     getDatasetVersion: build.query<
       DatasetVersion,
       { drop: string; dataset: string; version: number | "latest" }
     >({
-      query: ({ drop, dataset, version }) =>
-        `/drops/${encodeURIComponent(drop)}/datasets/${encodeURIComponent(dataset)}/versions/${version}`,
+      query: PATHS.datasetVersion,
     }),
     streamTable: build.query<Table, StreamTableArgs>({
-      query: ({ drop, ...params }) => ({
-        url: `/drops/${encodeURIComponent(drop)}/table`,
-        params,
-      }),
+      query: PATHS.streamTable,
     }),
     datasetTable: build.query<Table, DatasetTableArgs>({
-      query: ({ drop, dataset, version, ...params }) => ({
-        url: `/drops/${encodeURIComponent(drop)}/datasets/${encodeURIComponent(dataset)}/versions/${version}/table`,
-        params,
-      }),
+      query: PATHS.datasetTable,
     }),
   }),
 });
