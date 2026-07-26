@@ -37,3 +37,12 @@ Phase 2: the shell splits from the application, and WorkbenchInstance embeds it 
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/pages/Workbench/WorkbenchShell.tsx — What is left of the shell once the session concerns leave
 
+
+## 2026-07-26
+
+Phase 3: fixtures answer instead of the network (commit 8302e2c). Interception at the base query, with the map on the store's thunk extra argument — the only per-store channel a base query can read — so no call site above it changes. client.ts gains PATHS because a built RTK endpoint does not expose its query at runtime, which is what makes the round-trip test able to fail. Verified in a browser with no server: 365 marks, 203 table rows, zero requests to /v1/. 204 tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/api/fixtures.ts — Listings derived from the sources, so a tour cannot name a drop it has no table for
+

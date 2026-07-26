@@ -16,6 +16,10 @@ Owners: []
 RelatedFiles:
     - Path: repo://ttmp/2026/07/26/DATADROP-7--landing-page-and-embedded-tutorial-workbenches-multi-instance-workbench-lesson-rail-and-the-module-rack/design/01-the-landing-page-the-embedded-workbench-and-the-lesson-rail-analysis-design-and-implementation-guide.md
       Note: The guide this step produced
+    - Path: repo://ui/src/api/client.ts
+      Note: PATHS exists because a built RTK endpoint does not expose its query at runtime (commit 8302e2c)
+    - Path: repo://ui/src/api/fixtureBaseQuery.ts
+      Note: The interception point; its docstring names its own fragility (commit 8302e2c)
     - Path: repo://ui/src/appkit/AppScope.tsx
       Note: DR-53; the registry stays global and only the visible set is per instance (commit 24d0a07)
     - Path: repo://ui/src/appkit/usePersistence.ts
@@ -28,6 +32,8 @@ RelatedFiles:
       Note: Line 9 is the only runtime import of the store singleton in the whole frontend — the finding the design rests on
     - Path: repo://ui/src/store/index.ts
       Note: makeStore is now the only way to get a store; the preloadedState comment describes the two defects one store could not reveal (commit 4796da2)
+    - Path: repo://ui/test/fixture-query.test.ts
+      Note: The round-trip guard, verified by renaming the stream table path (commit 8302e2c)
     - Path: repo://ui/test/instances.test.ts
       Note: Ten tests; both ambient-store guards verified by breaking them (commit 4796da2)
     - Path: repo://ui/test/no-raw-controls.test.ts
@@ -38,6 +44,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -832,4 +839,264 @@ leftDoc:      "… 3 tiles · 1 workspaces · 2 documents"   // ＋ pressed here
 rightDoc:     "… 3 tiles · 1 workspaces · 1 documents"   // untouched
 leftOptions:  63    // 21 applications × 3 pickers
 rightOptions: 11    // 3 allowed + own, × 3 pickers
+```
+
+## Step 4: Phase 3 — a workbench with data and no server
+
+The last of the three architectural phases, and the one the guide called the
+largest design question. A landing page must render real charts with the API
+absent, 500ing, or demanding an account — because a landing page's visitor has
+no account — while the applications stay *byte-identical* to the product's. The
+moment a tour needs its own `ChartApp`, a lesson can go stale without anything
+failing, and the claim that the tutorial is executable documentation is dead.
+
+The answer is to intercept as far down as it is possible to go: at the base
+query, below every hook and every component. The story I ended on renders 365
+chart marks, a four-category legend and 203 table rows with zero requests to
+`/v1/`.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 3 of the ticket.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** `8302e2c` — "DATADROP-7 phase 3: a workbench that answers from fixtures, never the network"
+
+### What I did
+
+- `api/fixtures.ts` (160 lines): `FixtureData`, `applyBudget`, `sameSource`,
+  `fixturesFrom(...tables)`, and the three listing derivations.
+- `api/fixtureBaseQuery.ts` (140 lines): the wrapper, `sourceFromRequest`, and
+  the two refusals.
+- `client.ts`: `fetchBaseQuery` extracted to `httpBaseQuery`, wrapped; and
+  `PATHS`, the request builders, lifted out of the `query` fields.
+- `makeStore({ fixtures })` → thunk extra argument.
+- `WorkbenchInstance` config gains `fixtures`.
+- `test/fixture-query.test.ts` — 17 tests, and the rename guard verified.
+- A `WithFixtures` story, checked in a browser against the static build.
+
+### Why
+
+**The extra argument is the only per-store channel a base query can read**, and
+that is the entire reason this mechanism beat the three tidier-looking ones.
+`configureStore` takes `thunk: { extraArgument }`, RTK Query hands it to every
+base query as `api.extra`, and so the fixture map's scope is *exactly* the
+instance's scope — the same boundary the store already draws. Nothing above the
+base query has to know it exists, which is what keeps the applications
+identical.
+
+**A fixture store never falls through to the network, and the refusal is the
+design rather than an omission.** Falling through would mean a tour panel on a
+machine with a dev server running behaves differently from the same panel on a
+laptop with no server. That is the class of difference that makes a bug report
+unreproducible, and it would be invisible to me specifically, because I always
+have the server available.
+
+**The listings are derived from the sources rather than declared.** A declared
+list lets a tour name a drop it has no table for, which produces an empty chart
+and a reader who concludes they broke something. Deriving makes that state
+unreachable.
+
+### What worked
+
+**Discovering the fixtures already know what they are.** Every committed
+fixture carries its own `source` — `readings` is `lab/temps`, `census` is
+`lab/census/rows.csv` — because the server sends it and `make-fixtures.ts`
+keeps it:
+
+```console
+$ python3 -c "..."
+readings -> {'kind': 'stream',  'drop': 'lab',     'stream': 'temps'}      rows 360
+census   -> {'kind': 'dataset', 'drop': 'lab',     'dataset': 'census'}    rows 24
+batches  -> {'kind': 'dataset', 'drop': 'factory', 'dataset': 'batches'}   rows 500  truncated
+```
+
+So `fixturesFrom(readings, census)` derives the whole map, and the only way this
+could have gone quietly wrong — a `SourceRef` written beside a table it does not
+describe, producing a 404 for a table sitting right there — is now unreachable.
+I had drafted the map as hand-written pairs and deleted that after checking.
+
+**Verifying the rename guard by renaming.** Changing
+`/drops/{drop}/table` to `/drops/{drop}/rows` in `client.ts` fails four tests.
+Without that check the round-trip test would be decoration.
+
+**Checking the acceptance criterion in a browser, and checking the right
+thing.** Not "does a chart appear" but "does a chart appear *and* was the
+network untouched":
+
+```js
+marks:       365            // svg circle/rect/path
+tableRows:   203
+v1Requests:  []             // performance.getEntriesByType('resource')
+```
+
+The axis ticks (20/30/40/50/60, 09:00/12:00/15:00) and the four-category legend
+(cellar, north, roof, south) are the real engine's output over the real
+fixture. Nothing was mocked.
+
+### What didn't work
+
+**`api.endpoints.streamTable.query` does not exist at runtime.** The round-trip
+test's whole premise was calling the endpoint's own `query` so that a change in
+`client.ts` changes what the test sees. Ten tests failed with `endpoint
+streamTable has no query function`, and probing the object explained why:
+
+```console
+endpoint keys: name, select, initiate, matchPending, matchFulfilled,
+               matchRejected, useQuery, useLazyQuery, useQueryState, …
+```
+
+RTK builds endpoints into thunk/selector/hook triples and keeps the definitions
+private. The fix was not to work around it but to make the thing addressable:
+`PATHS` in `client.ts`, holding the request builders as named functions, which
+the endpoints then use as their `query`. The test calls the *same functions* the
+product does.
+
+This is the better outcome and I would not have got there without the failure.
+The alternative I was one step from taking — asserting against hand-written URL
+strings — produces a test that passes through exactly the rename it exists to
+catch, which is worse than no test because it reads like coverage.
+
+**The Playwright screenshot timed out on the fixture story.** `TimeoutError:
+browserBackend.callTool: Timeout 5000ms exceeded` — the page was busy rendering
+360 rows and 365 SVG marks. Evaluating a small function against the DOM
+succeeded immediately, which is the better check anyway: a screenshot shows me
+that *something* is drawn, and `marks: 365, v1Requests: []` shows me *what* and
+*how*.
+
+### What I learned
+
+**A library's public surface and its testable surface are different things, and
+the gap is a design signal.** The instinct on hitting "RTK does not expose that"
+was to find another way to get at it. The right move was to notice that if I
+want to call the request builders, they should be callable — and that making
+them so is a small improvement to `client.ts` independent of any test.
+
+**`performance.getEntriesByType('resource')` is the cheap way to assert a
+negative about network traffic.** No interception, no instrumentation, no
+service worker. It is a list of everything the page fetched, and filtering it
+for `/v1/` answers "did this reach the API" in one line. I will use this again.
+
+**Deriving beats declaring wherever the derivation is total.** Three things in
+this phase became derivations — the drop list, the stream list, the dataset
+list — and each removed a way for the tour content to disagree with itself. The
+same argument produced `fixturesFrom`. The rule seems to be: if a declaration
+could contradict something already in the data, it should not be a declaration.
+
+### What was tricky to build
+
+**Deciding what `version: "latest"` means in a `SourceRef`.** The dataset table
+URL carries a version, and `latest` is a legal value. Putting the string
+`"latest"` into `SourceRef.version` — typed `number | undefined` — would be a
+type lie, and widening the type would push the lie into every consumer.
+
+The resolution came from reading `useTableFor` (`apps/useTable.ts:117-123`): it
+compares on kind, drop, stream, dataset and path, and **never on version**. So
+version is not part of a source's identity as the interface understands it, and
+`latest` simply produces a ref without one. That is now a test — "a dataset
+table at `latest` carries no version" — with the reasoning in the comment,
+because the next person will otherwise assume it was an oversight.
+
+**Making `applyBudget` real rather than cosmetic.** The obvious implementation
+returns every row and ignores the limit, and nothing visible breaks — until you
+notice that `TruncationNotice` and `SourcePanel`'s budget selector both read
+`truncated`, `row_count` and `strategy`. A fixture that never truncates leaves
+both of those describing something that cannot happen, and §D's module card for
+the sources browser would be documenting a control that does nothing. The
+`strategy: "latest"` branch takes from the *end*, because that is what the
+server does for a stream.
+
+There is one subtlety I nearly missed: a table *under* budget must be returned
+by identity, not copied. `useDocPipeline` memoises on the table reference, so a
+fresh object per request would defeat the memo on every refetch. That is now a
+test.
+
+### What warrants a second pair of eyes
+
+- **The 501 for account endpoints.** A fixture instance refuses `/me/tokens`,
+  `/me/sessions` and every mutation. I think that is right — an embedded
+  workbench has no session to list and no token to mint — but it means
+  `TokensApp` in a tour panel would render an error rather than an empty state.
+  Since the app scope will exclude those applications anyway it should never
+  arise, but "should never arise" is doing work in that sentence.
+- **`sourceFromRequest`'s two regexes.** They are the fragile part by design and
+  the test covers both shapes plus escaping, but a third table endpoint added
+  later would need a third branch and nothing would fail until a tour used it.
+- **Whether `fixtureBaseQuery` belongs in `api/`.** It is transport, so yes; but
+  it also encodes tour-specific policy (which endpoints are refused), and that
+  policy may want to move once the tour content exists.
+
+### What should be done in the future
+
+- **The null-key persistence test**, still owed from phases 1 and 2. Now easier:
+  a third instance in the two-instance story, with a key, asserting the other
+  two wrote nothing.
+- **A guard for mistyped CSS custom properties**, from phase 2. Still unfixed
+  and still has no owner.
+- Phase 4, the rail components — the first of the four teaching-layer phases,
+  and the first that is mostly new components rather than moved ones.
+
+### Code review instructions
+
+- `api/fixtureBaseQuery.ts` top to bottom; it is 140 lines and the docstring
+  names its own fragility.
+- `test/fixture-query.test.ts` — then break it: rename the stream table path in
+  `client.ts` and confirm four failures.
+- `client.ts` `PATHS` — check that every endpoint's `query` now points at it and
+  that none was left inline.
+- Open `Applications/Embedding → WithFixtures` **with the dev server stopped**.
+  If it needs a server, DR-48 has failed.
+- Validate: `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build && bun run --cwd=ui build-storybook`.
+
+### Technical details
+
+The mechanism, in three lines across three files:
+
+```ts
+// store/index.ts — the only per-store channel a base query can read
+getDefault({ thunk: { extraArgument: { fixtures } } }).concat(api.middleware)
+
+// api/client.ts — the real transport, wrapped
+baseQuery: fixtureBaseQuery(httpBaseQuery)
+
+// api/fixtureBaseQuery.ts — the whole decision
+const fixtures = (api.extra as Extra | undefined)?.fixtures;
+if (!fixtures) return real(args, api, extraOptions);
+```
+
+The four mechanisms weighed, with the reason each lost:
+
+```text
+MSW                a service worker in the production bundle, intercepting the
+                   real API on its way past
+second createApi   reducerPath and the hooks are fixed at creation; two APIs is
+                   two hook sets and a conditional import at every call site
+React context      legal only while the value never changes identity after
+                   mount — a rule no test can express
+base query    ✓    the extra argument is per store, so the map's scope is the
+                   instance's scope, and no call site changes
+```
+
+Verification in the browser, against `storybook-static` on a static file server
+with no API anywhere:
+
+```text
+marks         365     svg circle + rect + path
+tableRows     203
+v1Requests    []      performance.getEntriesByType('resource')
+ticks         20 30 40 50 60 · 09:00 12:00 15:00
+legend        data.station → cellar · north · roof · south
+```
+
+Suite growth across the three architectural phases:
+
+```text
+            tests   files
+before        177      14
+phase 1       187      15   instances.test.ts
+phase 2       187      15
+phase 3       204      16   fixture-query.test.ts
 ```
