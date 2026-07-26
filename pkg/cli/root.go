@@ -42,7 +42,10 @@ type globalOptions struct {
 // fails to load. That failure means a help page carries malformed frontmatter or
 // a duplicate slug — a mistake made at authoring time that the compiler cannot
 // see, so it must surface as a plain message rather than as a stack trace.
-func NewRootCmd() (*cobra.Command, error) {
+// The registrars come in as arguments rather than being imported, because the
+// group packages import this one for the client section, the row projections
+// and the exit helper. cmd/datadrop/main.go names them; see build.go.
+func NewRootCmd(registrars ...Registrar) (*cobra.Command, error) {
 	opts := &globalOptions{}
 
 	root := &cobra.Command{
@@ -84,7 +87,6 @@ Then, from another shell:
 	root.AddCommand(
 		newServeCmd(opts),
 		newCreateCmd(opts),
-		newListCmd(opts),
 		newInspectCmd(opts),
 		newPushCmd(opts),
 		newQueryCmd(opts),
@@ -95,6 +97,15 @@ Then, from another shell:
 		newWhoamiCmd(opts),
 		newHealthcheckCmd(),
 	)
+
+	// The converted verbs. Both styles coexist on one root while the conversion
+	// runs (DR-84): there is no green point in the middle of a big-bang
+	// rewrite of nineteen verbs.
+	for _, register := range registrars {
+		if err := register(root); err != nil {
+			return nil, err
+		}
+	}
 
 	// The Glazed help system, loaded from the pages embedded in pkg/doc.
 	//
@@ -146,8 +157,8 @@ func addLoggingSection(root *cobra.Command) error {
 
 // Execute runs the root command and maps errors onto the documented exit
 // codes. It is the only place in the CLI that writes to stderr directly.
-func Execute() int {
-	root, err := NewRootCmd()
+func Execute(registrars ...Registrar) int {
+	root, err := NewRootCmd(registrars...)
 	if err != nil {
 		_, _ = os.Stderr.WriteString("datadrop: " + err.Error() + "\n")
 		return ExitError

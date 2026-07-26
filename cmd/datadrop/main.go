@@ -11,8 +11,15 @@ import (
 	"os"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/cli"
+	"github.com/go-go-golems/go-go-datadrop/pkg/cli/drops"
 )
 
+// The group registrars are named here rather than inside pkg/cli, because the
+// group packages import pkg/cli for the client section, the row projections and
+// the exit helper. This is the one place in the tree that knows about all of
+// them.
 func main() {
-	os.Exit(cli.Execute())
+	os.Exit(cli.Execute(
+		drops.Register,
+	))
 }
