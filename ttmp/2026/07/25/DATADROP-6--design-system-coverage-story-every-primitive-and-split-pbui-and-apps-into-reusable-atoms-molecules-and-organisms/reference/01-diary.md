@@ -2521,3 +2521,150 @@ one list molecule and three thin containers. It is not: the shells rhyme, the
 contents and actions do not, and a shared list taking a config object would be a
 generic solution to three specific instances. What is shared is the description
 of a specification — `specFacts`, `SpecSummary`, `SpecDiff`.
+
+## Step 15: Phases 1 and 2 — the render path, and Biome
+
+The last two phases, and the only user-visible ones: a field chip cost a full
+pipeline evaluation per render, thirteen of them per table header, 144 ms at the
+budget the source browser offers as a button. It now costs a schema walk that is
+flat in row count. Biome went in alongside, and found three real defects on its
+first run.
+
+### Prompt Context
+
+**User prompt (verbatim):** "Ok, implement both phases, setup biome. that would allow us to do semantic matching, right?"
+
+**Assistant interpretation:** Implement DATADROP-6 phases 1 and 2 (`fieldsFor`,
+the `resolveField` split, the guard), add Biome to the UI, and say whether
+Biome's custom rules give semantic matching.
+
+**Inferred user intent:** Finish the ticket, and get a real linter in place —
+with the guard expressed as a lint rule if the tooling can express it properly.
+
+**Commits (code):**
+- `82f0d55` — phases 1 and 2
+- `33b8d4e` — Biome setup and the three defects it found
+
+### What I did
+
+- Measured first: 13 evaluates against 13 `schemaAfter`s over the fixture grown
+  to each budget, warmed up, printed as a table.
+- Split `PbuiEnvironment` into `fieldsFor` (render) and `tableFor` (menu);
+  `resolveField` moved to the former and stopped returning a table (DR-41);
+  `datum`'s actions moved too, since they only ever read `table.fields`.
+- Added `useFieldsFor` beside `useTableFor`, sharing a `sameCachedSource` helper
+  so the two lookups cannot match different cache entries for one document.
+- Wrote `test/render-path.test.ts`: a cost guard and a structural guard.
+- Installed Biome 2.5.5, configured it to the existing style, wrote one GritQL
+  plugin scoped to `src/components` via `overrides`.
+- Probed GritQL's actual capability before relying on it (below).
+
+### Why
+
+The earlier fix — making `tableFor` evaluate, so a chip resolves against the
+pipeline's columns rather than the source's — was correct and had a cost that
+was reasoned about wrongly. The diary said "runs once per menu open"; that is
+true of descriptors and false of `resolveField`, which is a helper that
+`FieldChip` calls during render.
+
+### What worked
+
+- **The measurement is the argument.** 144.0 ms against 0.023 ms at 50 000 rows,
+  and flat as the data grows. Nothing about the fix needed defending after that.
+- **The structural guard is the one that will hold.** The cost guard only fires
+  once a regression is slow enough to time; the structural one fails on the
+  import. Both verified by breaking them.
+- **Biome found three real things on its first run.** Conditional hooks in the
+  Storybook decorator, and — the good one — both `filter` callbacks in
+  `pipeline.ts` returning nothing on the implicit fifth `FilterOp` path, which
+  `filter` reads as false. A fifth op would have silently emptied the table.
+
+### What didn't work
+
+- **I destroyed my own phase-1 work with a `git checkout`.** Trying to separate
+  the formatting sweep from the logic change, I wrote `for f in $MINE` — and zsh
+  does not word-split unquoted variables, so `$MINE` was one filename, the `cp`
+  loop did nothing, and the `git checkout --` that followed reverted all ten
+  files. Redone from the transcript. **The fix is not "be careful with zsh": it
+  is to stop shell-quoting multi-file operations at all and drive them from a
+  Python script with absolute paths**, which is what the redo used and what
+  every subsequent edit in this session used.
+- **Two stacked `{/* biome-ignore */}` comments suppress only the nearest rule.**
+  The drop zone needed two rules suppressed; the first comment was silently
+  ignored. One comment per rule, each on its own line, both attached.
+- **`const unknown: never = step.op` does not compile.** In the default branch
+  TypeScript has narrowed the whole discriminated `step` to `never`, so `.op` is
+  an access on `never`. The assertion has to be on `step` itself.
+
+### What I learned
+
+- **GritQL in Biome is AST matching, not semantic matching**, and the difference
+  is worth being precise about. Probed with three shapes:
+
+  ```ts
+  env.tableFor("x")                          // matched
+  const { tableFor } = env; tableFor("x")    // matched only by a bare-name pattern
+  const t = env.tableFor; t("x")             // NOT matched — no symbol resolution
+  ```
+
+  It reads the syntax tree, so it ignores the name in comments and strings —
+  a real gain over grep. It has no symbol table, no types, and no dataflow, so
+  it cannot follow an alias and cannot express "on a render path" at all. The
+  file-boundary rule is a proxy for the real one, and it is expressible either
+  way; the bun test remains the guard that holds the line.
+- **A `biome-ignore` is a good place to record a gap.** The workspace chip's
+  suppression says double-click-to-rename has no keyboard route because the
+  `workspace` presentation type has no descriptor, and names DATADROP-8 as the
+  fix. That is more likely to be read than a TODO.
+
+### What was tricky to build
+
+Keeping the formatting sweep out of the logic commit. 149 files reformat the
+moment Biome runs, and a behaviour change buried in that is unreviewable. The
+attempt to separate them by reverting and restoring is what caused the incident
+above. The order that works is: land the logic, commit, *then* run the formatter
+and commit that alone — which is what the two commits do.
+
+### What warrants a second pair of eyes
+
+- **The `default: return true` in both filter callbacks** changes an unreachable
+  branch's behaviour from "drop every row" to "keep every row". Provably
+  unreachable today; the reasoning for the direction is in the comment and is a
+  judgement call.
+- **`sameCachedSource` is now shared** by the schema and table lookups. That is
+  the point, but it means a bug in it is a bug in both.
+- **Three lint rules are off globally.** Each has a written reason; the
+  `noArrayIndexKey` one is the weakest of the three.
+
+### What should be done in the future
+
+- **A dev-mode call counter on `tableFor`**, which the design proposed as the
+  second guard. The structural test catches a call under `components/`; a
+  counter would catch indirection and a call site outside that tree. Not built.
+- **`asNumber` and booleans** — still open from step 14, still a separate ticket.
+- **Biome in CI.** `bun run lint` exists; nothing runs it automatically. The Go
+  side has lefthook; the UI side does not.
+
+### Code review instructions
+
+- `src/pbui/types.ts` — the two-member split and the measurement in its comment.
+- `src/pbui/descriptors/field.ts` — `resolveField` (render) against `describe`
+  (menu), which is the boundary in eight lines.
+- `test/render-path.test.ts` — break it both ways: add `env.tableFor(null)` to
+  any component, and make `schemaAfter` touch `table.rows`.
+- `src/model/pipeline.ts` — the two `default` branches. Add a fifth `FilterOp`
+  and confirm both fail to compile.
+- `bun run --cwd=ui lint` must be clean over 425 files.
+
+### Technical details
+
+```text
+                    13x evaluate   13x schemaAfter    ratio
+  2 000 rows              5.2 ms        0.032 ms        161x
+ 10 000 rows             30.6 ms        0.080 ms        381x
+ 50 000 rows            144.0 ms        0.023 ms      6 329x
+```
+
+Biome's first run, after configuring to the existing style: 18 files needing
+format, 19 lint findings. Three real, five safe rewrites, four suppressed at the
+site, three rules off with reasons.
