@@ -11,16 +11,22 @@ import {
   grammarLessons,
   grammarSeed,
   objectsLessons,
+  rackSeed,
   objectsSeed,
 } from "../../../tour";
 
 /**
- * One section of the tour, in each of its three shapes.
+ * One section of the tour, in each of its shapes.
  *
  * **These are live and they are the real content.** The workbench is the real
  * shell over its own store, answering from committed fixtures; the lessons are
- * the ones the page ships. Press ▶ and the panel beside it moves, or do the
- * move yourself and the tick goes green instead of grey.
+ * the ones the page ships. Press ▶ and the tiles beside the rail move, or do
+ * the move yourself and the tick goes green instead of grey.
+ *
+ * The rail, the rack, the brief and the cheat sheet are **tiles**. Close the
+ * lessons tile, split it, swap it for the trace — the thing teaching you about
+ * the shell is part of the shell. Press ⤢ in the chrome to fill the window when
+ * a section gets crowded.
  *
  * ↺ resets by remounting the subtree, which throws away the store *and* the
  * rail's completion state together. Try it: complete a step, press ↺, and both
@@ -57,7 +63,7 @@ export const WithRail: Story = {
     config: {
       fixtures: TOUR_FIXTURES,
       preloaded: objectsSeed(),
-      apps: ["sources", "inspector", "watch", "trace", "launcher"],
+      apps: ["sources", "inspector", "watch", "trace", "lessons", "cheat", "launcher"],
       workspaces: false,
     },
     lessons: objectsLessons,
@@ -80,10 +86,11 @@ export const TheGrammar: Story = {
     title: "The grammar of graphics",
     blurb:
       "A chart is not a type you pick from a menu. It is a composition — source ⊳ steps ↦ mapping · geom · scale — editable from either end.",
+    tall: true,
     config: {
       fixtures: TOUR_FIXTURES,
       preloaded: grammarSeed(),
-      apps: ["chart", "table", "pipeline", "encode", "sources", "launcher"],
+      apps: ["chart", "table", "pipeline", "encode", "sources", "lessons", "cheat", "launcher"],
       workspaces: false,
     },
     lessons: grammarLessons,
@@ -98,8 +105,16 @@ export const WithRack: Story = {
     title: "The modules",
     blurb:
       "Twenty-one applications share one world. If a tile carries a DOC strip it is a view of a single document; if it does not, it is the whole world.",
-    config: { fixtures: TOUR_FIXTURES, preloaded: grammarSeed(), workspaces: false },
+    config: { fixtures: TOUR_FIXTURES, preloaded: rackSeed(), workspaces: false },
     modules: MODULES,
+    cheat: {
+      title: "Cheat sheet · modules",
+      rows: [
+        ["doc-bound", "chart · table · pipeline · encoding"],
+        ["emits", "which presentation types are born in this tile"],
+        ["the pairs", "pipeline≠table · charts≠snapshots · watchlist≠inspector"],
+      ],
+    },
   },
 };
 
@@ -111,6 +126,7 @@ export const TheBrief: Story = {
     title: "The brief",
     blurb:
       "A question, a workbench, and five things that have to be true when you are finished. They tick by watching the world, not by watching you.",
+    tall: true,
     config: { fixtures: TOUR_FIXTURES, preloaded: briefSeed() },
     brief: { question: briefQuestion, goals: briefGoals, hints: briefHints },
   },

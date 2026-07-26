@@ -53,3 +53,28 @@
 .tagline {
   letter-spacing: var(--pbui-track-label);
 }
+
+/*
+ * The row holding the workspace strip and the full-frame control.
+ *
+ * Both are optional and either can be absent, so the row exists only when
+ * something is in it — an empty 1px-bordered strip above the canvas reads as a
+ * rendering fault rather than as spare capacity.
+ */
+.chrome {
+  display: flex;
+  align-items: stretch;
+  flex-shrink: 0;
+  border-bottom: var(--pbui-border-grid);
+}
+
+.chromeSpacer {
+  flex: 1;
+}
+
+/* The strip brings its own padding; a lone button does not. */
+.chromeAction {
+  display: flex;
+  align-items: center;
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+}

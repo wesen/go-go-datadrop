@@ -10,6 +10,7 @@ export {
   TOUR_FIXTURES,
   seedStream,
   seedTwo,
+  heroSeed,
   objectsSeed,
   layoutSeed,
   grammarSeed,

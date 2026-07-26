@@ -123,7 +123,7 @@
  */
 .heroPanel {
   display: flex;
-  height: 380px;
+  height: 460px;
 }
 
 .heroFoot {
@@ -169,6 +169,6 @@
   }
 
   .heroPanel {
-    height: 420px;
+    height: 460px;
   }
 }

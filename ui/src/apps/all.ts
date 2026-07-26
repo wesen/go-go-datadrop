@@ -18,6 +18,15 @@ import "./InspectorApp/InspectorApp";
 import "./WatchlistApp/WatchlistApp";
 import "./TraceApp/TraceApp";
 import "./AboutApp/AboutApp";
+
+// The teaching layer as tiles (DATADROP-7). Their content comes from
+// TourContent, not from props: a tile names an application and carries nothing
+// else, so §A's rail and §C's rail are the same application over different
+// context.
+import "./LessonsApp/LessonsApp";
+import "./CheatApp/CheatApp";
+import "./BriefApp/BriefApp";
+import "./ModulesApp/ModulesApp";
 import "./tutorials/Tut1";
 import "./tutorials/Tut2";
 import "./tutorials/Tut3";

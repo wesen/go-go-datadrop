@@ -1,4 +1,4 @@
-import { useRef, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Provider } from "react-redux";
 import { AppScope } from "../../../appkit/AppScope";
 import { usePersistence } from "../../../appkit/usePersistence";
@@ -83,6 +83,16 @@ export interface InstanceConfig {
   masthead?: boolean;
   /** The workspace strip. On by default — switching layouts is §B's lesson. */
   workspaces?: boolean;
+  /**
+   * Offer a control that expands the workbench to fill the window.
+   *
+   * On by default for an embedded instance and meaningless in the product,
+   * which already fills the window. A 660px band down a scrolling page is not
+   * enough room to do the work a lesson asks for — the brief wants a table
+   * beside a chart beside a pipeline — and telling the reader to open the
+   * application in another tab defeats the point of embedding it.
+   */
+  fullFrame?: boolean;
 }
 
 export function WorkbenchInstance({
@@ -104,6 +114,8 @@ export function WorkbenchInstance({
    * (pbui-landing.jsx:2088-2090). An effect would be worse still — the first
    * render must already have a store to hand to `Provider`.
    */
+  const [expanded, setExpanded] = useState(false);
+
   const storeRef = useRef<AppStore | null>(null);
   if (!storeRef.current) {
     storeRef.current = makeStore({
@@ -128,13 +140,21 @@ export function WorkbenchInstance({
           `.root` is a column by default, which is what the product wants; a
           caller lays them out differently by passing a className.
         */}
-        <div className={className ? `${styles.root} ${className}` : styles.root}>
+        <div
+          className={[styles.root, expanded ? styles.expanded : "", className ?? ""]
+            .filter(Boolean)
+            .join(" ")}
+        >
           <WorkbenchProviders>
             {children}
             <div className={styles.instance}>
               <WorkbenchShell
                 masthead={config.masthead ?? false}
                 workspaces={config.workspaces ?? true}
+                fullFrame={expanded}
+                onToggleFullFrame={
+                  config.fullFrame === false ? undefined : () => setExpanded((on) => !on)
+                }
               />
             </div>
           </WorkbenchProviders>

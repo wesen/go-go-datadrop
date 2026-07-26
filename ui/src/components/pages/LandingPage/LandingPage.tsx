@@ -13,6 +13,7 @@ import {
   briefSeed,
   grammarLessons,
   grammarSeed,
+  heroSeed,
   layoutLessons,
   layoutSeed,
   objectsLessons,
@@ -124,7 +125,7 @@ export function LandingPage() {
             <WorkbenchInstance
               config={{
                 fixtures: TOUR_FIXTURES,
-                preloaded: grammarSeed(),
+                preloaded: heroSeed(),
                 apps: [...CHART_APPS],
                 workspaces: false,
               }}
@@ -162,7 +163,7 @@ export function LandingPage() {
           config={{
             fixtures: TOUR_FIXTURES,
             preloaded: objectsSeed(),
-            apps: ["sources", "inspector", "watch", "trace", "chart", "table", "launcher"],
+            apps: ["sources", "inspector", "watch", "trace", "chart", "table", "lessons", "cheat", "launcher"],
             workspaces: false,
           }}
           lessons={objectsLessons}
@@ -197,7 +198,7 @@ export function LandingPage() {
           config={{
             fixtures: TOUR_FIXTURES,
             preloaded: layoutSeed(),
-            apps: [...CHART_APPS, "charts", "inspector"],
+            apps: [...CHART_APPS, "charts", "inspector", "lessons", "cheat"],
           }}
           lessons={layoutLessons}
           cheat={{
@@ -224,10 +225,11 @@ export function LandingPage() {
               <em>aes()</em>. Watch what happens when you ask for a geometry the data cannot support.
             </>
           }
+          tall
           config={{
             fixtures: TOUR_FIXTURES,
             preloaded: grammarSeed(),
-            apps: [...CHART_APPS],
+            apps: [...CHART_APPS, "lessons", "cheat"],
             workspaces: false,
           }}
           lessons={grammarLessons}
@@ -285,6 +287,7 @@ export function LandingPage() {
             </>
           }
           config={{ fixtures: TOUR_FIXTURES, preloaded: briefSeed() }}
+          tall
           brief={{ question: briefQuestion, goals: briefGoals, hints: briefHints }}
         />
 

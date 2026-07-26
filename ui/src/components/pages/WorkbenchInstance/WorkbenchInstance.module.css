@@ -36,3 +36,29 @@
   box-shadow: var(--pbui-shadow-menu);
   background: var(--pbui-paper);
 }
+
+/*
+ * Full frame: the workbench covers the window.
+ *
+ * `position: fixed` rather than the Fullscreen API, deliberately. The API puts
+ * the element in a top-layer that escapes the page's stacking context — which
+ * sounds like what we want until an object menu, rendered `position: fixed` by
+ * `pbui/ObjectMenu`, lands *behind* it and right-click stops working. Every
+ * verb in this interface arrives through that menu, so a mode that breaks it is
+ * not a mode.
+ *
+ * It also means Escape belongs to us rather than to the browser, which is why
+ * `WorkbenchShell` binds it — and binds it only while expanded, so an Escape
+ * meant for a pending accept is never stolen by a workbench sitting quietly in
+ * a page.
+ *
+ * The z-index sits below `pbui.module.css`'s menu (100) and banner, on purpose.
+ */
+.expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  height: auto;
+  padding: var(--pbui-space-3);
+  background: var(--pbui-wash);
+}

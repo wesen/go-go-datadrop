@@ -1,8 +1,10 @@
+import { useEffect } from "react";
 import { useSelector } from "react-redux";
 import { AcceptBanner, MouseDocLine, ObjectMenu } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves } from "../../../store/layout";
 import { NodeView, WorkspaceStrip } from "../../organisms";
+import { IconButton } from "../../atoms";
 import { Surface, Toolbar } from "../../layout";
 import { Text } from "../../foundation";
 import styles from "./Workbench.module.css";
@@ -46,18 +48,51 @@ export interface WorkbenchShellProps {
   workspaces?: boolean;
   /** Extra ambient text for the mouse-doc line, appended to the tile counts. */
   ambient?: string;
+  /**
+   * Expand to fill the window, and come back.
+   *
+   * Supplied by an embedded instance, absent in the product — which already
+   * fills the window, so a control that promised to do it again would be a lie.
+   *
+   * Fifteen tiles in a 660px band down a scrolling page is not enough room to
+   * do the work a lesson asks for, and asking a reader to open the application
+   * in another tab defeats the point of embedding it. The shell renders the
+   * control; the instance owns the state, because it owns the box being
+   * resized.
+   */
+  fullFrame?: boolean;
+  onToggleFullFrame?: () => void;
 }
 
 export function WorkbenchShell({
   masthead = true,
   workspaces = true,
   ambient,
+  fullFrame = false,
+  onToggleFullFrame,
 }: WorkbenchShellProps = {}) {
   const space = useSelector((state: RootState) =>
     state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId),
   );
   const spaceCount = useSelector((state: RootState) => state.layout.spaces.length);
   const docCount = useSelector((state: RootState) => state.world.docOrder.length);
+
+  /**
+   * Escape leaves full frame.
+   *
+   * Registered only while expanded, so a page with six collapsed instances adds
+   * no listeners at all — and, more importantly, an Escape meant for the object
+   * menu or a pending accept is never intercepted by a workbench that is not
+   * covering the window.
+   */
+  useEffect(() => {
+    if (!fullFrame || !onToggleFullFrame) return;
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onToggleFullFrame();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [fullFrame, onToggleFullFrame]);
 
   const counts =
     `${space ? countLeaves(space.tree) : 0} tiles · ` +
@@ -84,7 +119,29 @@ export function WorkbenchShell({
         )}
 
         <AcceptBanner />
-        {workspaces && <WorkspaceStrip />}
+
+        {(workspaces || onToggleFullFrame) && (
+          <div className={styles.chrome}>
+            {workspaces && <WorkspaceStrip />}
+            <span className={styles.chromeSpacer} />
+            {onToggleFullFrame && (
+              <span className={styles.chromeAction}>
+              <IconButton
+                variant="framed"
+                size="tiny"
+                glyph={fullFrame ? "⤡" : "⤢"}
+                label={fullFrame ? "leave full frame (Esc)" : "fill the window"}
+                title={
+                  fullFrame
+                    ? "shrink back into the page — Esc does the same"
+                    : "fill the window, for room to work"
+                }
+                onClick={onToggleFullFrame}
+              />
+              </span>
+            )}
+          </div>
+        )}
 
         <div className={styles.canvas}>{space && <NodeView node={space.tree} />}</div>
 

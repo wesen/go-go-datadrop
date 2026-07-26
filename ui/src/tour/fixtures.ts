@@ -114,28 +114,78 @@ export interface Seed {
   layout: LayoutState;
 }
 
-/** §A: browse the sources, inspect into a panel, keep things in a watchlist. */
+/**
+ * The hero: the composition, and no teaching tiles at all.
+ *
+ * It borrowed §C's seed until the page was read end to end, at which point the
+ * hero was rendering a `lessons` tile with no lessons in it — "No lessons here",
+ * at the top of the page, as the first thing anyone sees. The empty state was
+ * doing its job; the layout was asking a question it had no answer to.
+ */
+export function heroSeed(): Seed {
+  const world = seedStream();
+  const doc = world.docOrder?.[0] ?? null;
+  return {
+    world,
+    layout: space(
+      "start",
+      split("row", leaf("pipeline", doc), leaf("chart", doc), 0.44),
+    ),
+  };
+}
+
+/**
+ * §A: the rail with its vocabulary beneath it, the sources, and somewhere for
+ * Inspect to land.
+ *
+ * The lesson rail is a TILE now rather than a panel bolted to the side. That
+ * costs a third of the width and buys the thing the section is about: a reader
+ * who wants more room can close it, split it, or swap it for the trace — and
+ * the lessons are demonstrating tiling rather than describing it from outside.
+ */
 export function objectsSeed(): Seed {
   return {
     world: seedStream(),
     layout: space(
       "objects",
-      split("row", leaf("sources"), split("col", leaf("inspector"), leaf("watch"), 0.56), 0.46),
+      split(
+        "row",
+        // The cheat sheet sits UNDER the rail, in the same column: the
+        // vocabulary of a section belongs beneath the lessons that teach it,
+        // and a reader who wants the room can close either.
+        split("col", leaf("lessons"), leaf("cheat"), 0.72),
+        split("col", leaf("sources"), split("col", leaf("inspector"), leaf("watch"), 0.55), 0.42),
+        0.34,
+      ),
     ),
   };
 }
 
-/** §B: two views of ONE document, both explicitly bound to it. */
+/** §B: the rail, and two views of ONE document, both explicitly bound to it. */
 export function layoutSeed(): Seed {
   const world = seedTwo();
   const first = world.docOrder?.[0] ?? null;
   return {
     world,
-    layout: space("two views", split("row", leaf("chart", first), leaf("table", first), 0.56)),
+    layout: space(
+      "two views",
+      split(
+        "row",
+        split("col", leaf("lessons"), leaf("cheat"), 0.72),
+        split("col", leaf("chart", first), leaf("table", first), 0.55),
+        0.34,
+      ),
+    ),
   };
 }
 
-/** §C: the whole composition at once — pipeline and encoding left, chart and table right. */
+/**
+ * §C: the rail plus the whole composition — pipeline, encoding, chart, table.
+ *
+ * Five tiles is the most crowded layout in the tour, which is exactly why the
+ * section carries a taller frame and why the full-frame control matters most
+ * here.
+ */
 export function grammarSeed(): Seed {
   const world = seedStream();
   const doc = world.docOrder?.[0] ?? null;
@@ -145,15 +195,20 @@ export function grammarSeed(): Seed {
       "build",
       split(
         "row",
-        split("col", leaf("pipeline", doc), leaf("encode", doc), 0.54),
-        split("col", leaf("chart", doc), leaf("table", doc), 0.66),
-        0.44,
+        split("col", leaf("lessons"), leaf("cheat"), 0.74),
+        split(
+          "row",
+          split("col", leaf("pipeline", doc), leaf("encode", doc), 0.54),
+          split("col", leaf("chart", doc), leaf("table", doc), 0.62),
+          0.44,
+        ),
+        0.3,
       ),
     ),
   };
 }
 
-/** §D: one large tile the rack re-points, with a chart to check the claim against. */
+/** §D: the rack, and the chart tile it re-points. */
 export function rackSeed(): Seed {
   const world = seedStream();
   const doc = world.docOrder?.[0] ?? null;
@@ -161,17 +216,17 @@ export function rackSeed(): Seed {
     world,
     layout: space(
       "rack",
-      split("row", leaf("sources"), split("col", leaf("chart", doc), leaf("inspector"), 0.56), 0.58),
+      split("row", leaf("modules"), split("col", leaf("chart", doc), leaf("cheat"), 0.62), 0.36),
     ),
   };
 }
 
 /**
- * The brief: everything, and no instructions.
+ * The brief: the checklist, a pipeline and a chart — and no table.
  *
- * Deliberately NOT seeded with a table tile beside the chart — goal E5 asks the
- * reader to put one there, and a layout that already satisfies a goal is a goal
- * that teaches nothing.
+ * Deliberately no table tile: goal E5 asks the reader to put one beside the
+ * chart on the same document, and a layout that already satisfies a goal is a
+ * goal that teaches nothing.
  */
 export function briefSeed(): Seed {
   const world = seedStream();
@@ -180,7 +235,12 @@ export function briefSeed(): Seed {
     world,
     layout: space(
       "build",
-      split("row", split("col", leaf("pipeline", doc), leaf("encode", doc), 0.55), leaf("chart", doc), 0.46),
+      split(
+        "row",
+        leaf("brief"),
+        split("col", leaf("pipeline", doc), leaf("chart", doc), 0.45),
+        0.32,
+      ),
     ),
   };
 }
