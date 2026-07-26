@@ -45,6 +45,17 @@
   --pbui-line: #d9d9d4; /* hairlines, grid lines, dotted rules */
   --pbui-selected: #fdeec6; /* selection and hover fill — the only one */
   /*
+   * A wash for "this row is the one currently open", where --pbui-selected
+   * would be too loud to sit under a paragraph of prose.
+   *
+   * Added by DATADROP-7 for the lesson rail's open step, and taken from the
+   * prototype, which uses the same value for the same job in three places
+   * (pbui-landing.jsx:971, :1873). It is not a second selection colour: nothing
+   * is *selected* here, something is merely expanded, and the distinction is
+   * why the two are not the same token.
+   */
+  --pbui-selected-wash: #fffdf4;
+  /*
    * Semantic TEXT colours, and therefore held to 4.5:1 on both --pbui-pane and
    * --pbui-pane-alt. The prototype's #c2503a and #3f9d6b measure 4.12 and 2.97
    * on the alt surface; both were darkened until they clear it.

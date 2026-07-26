@@ -1,0 +1,41 @@
+/*
+ * A fixed square, so a rail of steps reads as a column.
+ *
+ * The number and the tick are different widths in the monospace face, and a
+ * marker that resizes between states makes the titles beside it shift as the
+ * reader completes them — which is exactly the moment their eye is elsewhere.
+ */
+.tick {
+  flex-shrink: 0;
+  width: 17px;
+  height: 17px;
+  border: var(--pbui-border-firm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  line-height: 1;
+}
+
+.pending {
+  background: var(--pbui-selected);
+  color: var(--pbui-ink);
+}
+
+.self {
+  background: var(--pbui-ok);
+  color: var(--pbui-paper);
+}
+
+/*
+ * Line-grey rather than green, and deliberately the quietest of the three.
+ *
+ * A watched step is complete but unearned. Rendering it as loudly as a step the
+ * reader performed would make the rail's progress count a lie they told
+ * themselves.
+ */
+.watched {
+  background: var(--pbui-line);
+  color: var(--pbui-ink);
+}

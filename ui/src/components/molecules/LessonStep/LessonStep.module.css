@@ -1,0 +1,75 @@
+.step {
+  border-bottom: var(--pbui-border-rule);
+}
+
+.open {
+  background: var(--pbui-selected-wash);
+}
+
+/*
+ * The disclosure control, which is a `Button`, not a div with an onClick.
+ *
+ * It needs Enter and Space, a focus ring, and `aria-expanded` so a screen
+ * reader knows the body exists at all. The prototype's rail is `<div onClick>`
+ * throughout (pbui-landing.jsx:1874) with no role and no keyboard path — the
+ * workbench half of that file is careful about this and the rail simply was not
+ * finished to the same standard.
+ *
+ * **The doubled selector is deliberate.** `Button`'s `.bare` variant sets
+ * `padding: 0` and `background: none`, and both it and `.header` are
+ * single-class selectors, so which wins depends on stylesheet order — which
+ * depends on module import order, which nobody is watching. `.header.header`
+ * raises the specificity to (0,2,0) and settles it explicitly. Two characters
+ * beat a comment asking people not to reorder imports.
+ */
+.header.header {
+  display: flex;
+  gap: var(--pbui-space-3);
+  align-items: center;
+  width: 100%;
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+
+.header.header:hover {
+  background: var(--pbui-pane-alt);
+}
+
+.title {
+  flex: 1;
+  font-size: var(--pbui-fs-small);
+  line-height: 1.35;
+}
+
+.strong {
+  font-weight: 700;
+}
+
+.watched {
+  letter-spacing: var(--pbui-track-label);
+}
+
+.chevron {
+  color: var(--pbui-faint);
+  flex-shrink: 0;
+}
+
+/*
+ * Indented to clear the tick, so the prose starts where the title starts and
+ * the rail reads as a single column of text rather than two ragged ones.
+ */
+.body {
+  padding: 0 var(--pbui-space-4) var(--pbui-space-4);
+  padding-left: calc(17px + var(--pbui-space-3) + var(--pbui-space-4));
+}
+
+.actions {
+  display: flex;
+  gap: var(--pbui-space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  margin-top: var(--pbui-space-3);
+}

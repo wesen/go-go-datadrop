@@ -22,3 +22,10 @@ export { MemberInvite } from "./MemberInvite";
 export { InlineRename } from "./InlineRename";
 export { ChannelRow } from "./ChannelRow";
 export { StepRow } from "./StepRow";
+
+// The teaching layer (DATADROP-7 phase 4). Presentational: they take a state
+// and callbacks and know nothing about what a lesson means.
+export { LessonStep } from "./LessonStep";
+export { PredictPrompt } from "./PredictPrompt";
+export { GoalItem } from "./GoalItem";
+export { HintList } from "./HintList";

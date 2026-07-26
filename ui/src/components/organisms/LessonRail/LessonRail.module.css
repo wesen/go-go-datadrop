@@ -1,0 +1,99 @@
+/*
+ * The rail sits beside a workbench and has to be able to scroll independently
+ * of it, so it is a bounded flex column like a tile is.
+ */
+.rail {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border: var(--pbui-border-firm);
+  box-shadow: var(--pbui-shadow-menu);
+  background: var(--pbui-pane);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  padding: var(--pbui-space-2) var(--pbui-space-4);
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  flex-shrink: 0;
+}
+
+.headerTitle {
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+}
+
+.spacer {
+  flex: 1;
+}
+
+/*
+ * Chart-tone while in progress, geom-tone (mint) when finished.
+ *
+ * Both are chosen for the INK background, not the pane: --pbui-ok is #317a53,
+ * which is tuned to clear 4.5:1 on a pale surface and is nearly invisible on a
+ * dark one. The tone palette is where the light-on-dark values live.
+ *
+ * The colour change is the ONLY visual difference between the two states,
+ * which is exactly why the visually-hidden "N of M complete" beside it is not
+ * optional — colour alone is never the signal (WCAG 1.4.1).
+ */
+.progress {
+  color: var(--pbui-tone-chart);
+}
+
+.finished {
+  color: var(--pbui-tone-geom);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.wedge {
+  flex-shrink: 0;
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  border-bottom: var(--pbui-border-firm);
+}
+
+.steps {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.question {
+  padding: var(--pbui-space-4);
+  border-bottom: var(--pbui-border-rule);
+  flex-shrink: 0;
+}
+
+.goals {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-4);
+}
+
+.finale {
+  margin-top: var(--pbui-space-4);
+}
+
+.hints {
+  margin-top: var(--pbui-space-4);
+  padding-top: var(--pbui-space-3);
+  border-top: var(--pbui-border-rule);
+}

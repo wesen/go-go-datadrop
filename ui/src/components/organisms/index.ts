@@ -17,3 +17,8 @@ export { TokensPanel } from "./TokensPanel";
 export type { MintRequest, MintedToken } from "./TokensPanel";
 export { UploadPanel } from "./UploadPanel";
 export type { UploadTarget, UploadBatchView } from "./UploadPanel";
+
+// The teaching layer (DATADROP-7 phase 4).
+export { LessonRail } from "./LessonRail";
+export { BriefChecklist } from "./BriefChecklist";
+export { wedgeOf } from "./LessonRail";

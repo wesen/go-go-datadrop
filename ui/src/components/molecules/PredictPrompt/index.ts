@@ -1,0 +1,1 @@
+export { PredictPrompt } from "./PredictPrompt";

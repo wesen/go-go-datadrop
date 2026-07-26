@@ -3,7 +3,7 @@ import { useDispatch, useSelector } from "react-redux";
 import type { AppDispatch, RootState } from "../../store";
 import { AppBody, Stack } from "../../components/layout";
 import { SectionLabel, Text } from "../../components/foundation";
-import { Button } from "../../components/atoms";
+import { Button, Tick } from "../../components/atoms";
 
 /**
  * The tutorial machinery.
@@ -53,24 +53,14 @@ export function Step({
 
   return (
     <Stack direction="row" gap={3} align="start">
-      <span
-        aria-hidden="true"
-        style={{
-          flexShrink: 0,
-          width: 18,
-          height: 18,
-          border: "1.5px solid var(--pbui-ink)",
-          background: done ? "var(--pbui-ok)" : "var(--pbui-selected)",
-          color: done ? "var(--pbui-paper)" : "var(--pbui-ink)",
-          display: "inline-flex",
-          alignItems: "center",
-          justifyContent: "center",
-          fontSize: "var(--pbui-fs-tiny)",
-          fontWeight: 700,
-        }}
-      >
-        {done ? "✓" : n}
-      </span>
+      {/*
+        Was eleven properties of inline style here until DATADROP-7 phase 4.
+        The atom also fixes an accessibility defect the inline version had: it
+        was `aria-hidden`, so a screen-reader user got no step number and no
+        completion state at all — the numbering existed only for sighted
+        readers. `Tick` carries `role="img"` and a described label.
+      */}
+      <Tick state={done ? "self" : "pending"} n={n} />
       <Stack gap={2}>
         <Text size="small" prose>
           {children}

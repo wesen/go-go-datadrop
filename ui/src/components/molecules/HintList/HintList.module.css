@@ -1,0 +1,4 @@
+/* Indented under an implied bullet so a run of hints reads as one list. */
+.hint {
+  padding-left: var(--pbui-space-2);
+}
