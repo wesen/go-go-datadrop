@@ -1,0 +1,14 @@
+/*
+ * The JSON body.
+ *
+ * `pre-wrap` and `break-word` together, and both are needed. A source
+ * reference or a long field name will exceed a narrow tile, and a <pre> that
+ * does not wrap produces a horizontal scrollbar inside a tile that already has
+ * a vertical one — which is the shape of scrolling nobody can use.
+ */
+.body {
+  margin: var(--pbui-space-3) 0 0;
+  font-size: var(--pbui-fs-small);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
