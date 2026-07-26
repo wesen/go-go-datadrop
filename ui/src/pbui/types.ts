@@ -1,5 +1,5 @@
 import type { Channel } from "../model/chart";
-import type { FieldType, SourceRef, Table } from "../model/table";
+import type { Field, FieldType, SourceRef, Table } from "../model/table";
 
 /**
  * The presentation type vocabulary (guide §7.1).
@@ -130,7 +130,33 @@ export interface PresentationValues {
  * what lets `actions` be tested with a literal object and no Provider.
  */
 export interface PbuiEnvironment {
-  /** The table behind a document, or the ambient one when docId is null. */
+  /**
+   * The post-pipeline SCHEMA. Cheap, O(steps), safe in a render body.
+   *
+   * Everything that resolves a field for DISPLAY uses this. `schemaAfter` walks
+   * the steps transforming a list of field descriptors and never touches a row,
+   * so its cost is independent of the row budget.
+   *
+   * This is the render path (DATADROP-6 DR-40). `resolveField` is called by
+   * `FieldChip`, and a table header draws one chip per column — thirteen for
+   * the `readings` fixture, unbounded in general. Measured at the 50 000-row
+   * budget the source browser offers as a button:
+   *
+   *     13x evaluate  144.0 ms        13x schemaAfter  0.023 ms
+   *
+   * 144 ms is roughly nine dropped frames, on every keystroke in the pipeline
+   * editor, every divider drag, and every arriving event on a live stream.
+   */
+  fieldsFor(docId: DocId | null): Field[];
+
+  /**
+   * The post-pipeline TABLE, rows and all. **Evaluates the pipeline.**
+   *
+   * Only for `describe()` and `actions()`, which run from a menu handler —
+   * once, when a user opens a menu, where the cost is affordable and the rows
+   * are the point. `test/render-path.test.ts` fails the build if anything under
+   * `components/` calls it.
+   */
   tableFor(docId: DocId | null): Table | null;
   /** The document an ownerless presentation's verbs fall back to. */
   activeDocId: DocId | null;

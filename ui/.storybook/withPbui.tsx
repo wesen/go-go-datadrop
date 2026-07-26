@@ -22,32 +22,52 @@ import { describeVerb } from "../src/pbui";
  *
  * Configure with `parameters.pbui = { table, activeDocId, overrides }`.
  */
+interface PbuiStoryConfig {
+  table?: Table;
+  activeDocId?: string;
+  overrides?: Record<string, "q" | "n" | "t">;
+  showLog?: boolean;
+}
+
+/**
+ * The decorator, which decides *whether* to wrap and holds no hooks of its own.
+ *
+ * `parameters: { pbui: false }` — for a story that brings its own. A
+ * `WorkbenchInstance` supplies its own environment and its own `PbuiProvider`,
+ * so wrapping it in the decorator's is not wrong — React resolves to the
+ * nearest provider and the shell gets the right one — but it renders a second
+ * accept banner, a second mouse-doc line and a verb log below the story, all
+ * describing a context nothing is using. A reviewer cannot tell those apart
+ * from the instance's own chrome, which is exactly the kind of story that
+ * teaches something false.
+ *
+ * **The early return sits above every hook, and that split is the fix for a
+ * real bug.** It used to live inside the component that also called `useState`
+ * and `useMemo`, so the hook count changed with a parameter. Biome's
+ * `useHookAtTopLevel` caught it the first time the linter ran. It had survived
+ * because a story's parameters rarely change while it is mounted — editing them
+ * live in the Storybook UI is exactly when they would.
+ */
 export const withPbui: Decorator = (Story, ctx) => {
-  /**
-   * `parameters: { pbui: false }` — for a story that brings its own.
-   *
-   * Added by DATADROP-7. A `WorkbenchInstance` supplies its own environment and
-   * its own `PbuiProvider`, so wrapping it in the decorator's is not wrong —
-   * React resolves to the nearest provider, and the shell gets the right one —
-   * but it renders a second accept banner, a second mouse-doc line and a verb
-   * log below the story, all of them describing a context nothing is using.
-   *
-   * A reviewer cannot tell those apart from the instance's own chrome, which is
-   * exactly the kind of story that teaches something false.
-   */
   if (ctx.parameters.pbui === false) return <Story />;
+  return <PbuiChrome config={(ctx.parameters.pbui ?? {}) as PbuiStoryConfig} Story={Story} />;
+};
 
-  const config = (ctx.parameters.pbui ?? {}) as {
-    table?: Table;
-    activeDocId?: string;
-    overrides?: Record<string, "q" | "n" | "t">;
-    showLog?: boolean;
-  };
-
+/** The wrapper, which always runs the same hooks in the same order. */
+function PbuiChrome({
+  config,
+  Story,
+}: {
+  config: PbuiStoryConfig;
+  Story: Parameters<Decorator>[0];
+}) {
   const [log, setLog] = useState<Verb[]>([]);
 
   const environment = useMemo<PbuiEnvironment>(
     () => ({
+      // One table, both lookups derived from it, so a chip and a menu can
+      // never disagree about which columns exist.
+      fieldsFor: () => (config.table ?? readings).fields,
       tableFor: () => config.table ?? readings,
       activeDocId: config.activeDocId ?? "d1",
       nameOf: (docId) => (docId === "d2" ? "β" : "α"),
@@ -114,4 +134,4 @@ export const withPbui: Decorator = (Story, ctx) => {
       <ObjectMenu />
     </PbuiProvider>
   );
-};
+}

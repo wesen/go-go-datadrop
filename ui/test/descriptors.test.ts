@@ -17,6 +17,9 @@ import type { FieldType, Table } from "../src/model/table";
 function env(overrides: Partial<PbuiEnvironment> = {}): PbuiEnvironment {
   const tables: Record<string, Table> = { d1: readings, d2: census };
   return {
+    // Both lookups over one table, so a fixture cannot describe a field the
+    // menu path would not find (DR-40).
+    fieldsFor: (docId) => (docId === null ? readings : (tables[docId] ?? null))?.fields ?? [],
     tableFor: (docId) => (docId === null ? readings : (tables[docId] ?? null)),
     activeDocId: "d1",
     nameOf: (docId) => (docId === "d2" ? "β" : "α"),

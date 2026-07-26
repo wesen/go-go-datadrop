@@ -67,6 +67,7 @@ export interface PbuiContextValue {
 export const PbuiContext = createContext<PbuiContextValue | null>(null);
 
 const EMPTY_ENVIRONMENT: PbuiEnvironment = {
+  fieldsFor: () => [],
   tableFor: () => null,
   activeDocId: null,
   nameOf: () => "α",

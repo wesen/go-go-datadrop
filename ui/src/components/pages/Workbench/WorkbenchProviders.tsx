@@ -1,7 +1,7 @@
 import { useCallback, useMemo, type ReactNode } from "react";
 import { useDispatch, useSelector, useStore } from "react-redux";
 import "../../../apps/all";
-import { useTableFor } from "../../../apps/useTable";
+import { useFieldsFor, useTableFor } from "../../../apps/useTable";
 import { PbuiProvider, type Verb } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { actionsForVerb, environmentFor } from "../../../store/applyVerb";
@@ -29,6 +29,9 @@ export function WorkbenchProviders({ children }: { children: ReactNode }) {
   const store = useStore<RootState>();
   const world = useSelector((state: RootState) => state.world);
   const tableFor = useTableFor();
+  // The render path's lookup (DR-40): cheap, and what descriptors use to
+  // resolve a field for display.
+  const fieldsFor = useFieldsFor();
 
   /**
    * The environment descriptors resolve against.
@@ -36,7 +39,10 @@ export function WorkbenchProviders({ children }: { children: ReactNode }) {
    * Rebuilt when the world changes, which is what keeps a menu opened after a
    * document was renamed from naming the old name.
    */
-  const environment = useMemo(() => environmentFor(world, tableFor), [world, tableFor]);
+  const environment = useMemo(
+    () => environmentFor(world, tableFor, fieldsFor),
+    [world, tableFor, fieldsFor],
+  );
 
   /**
    * Where the verbs finally land.

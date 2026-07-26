@@ -1,6 +1,6 @@
 import { newStep, schemaAfter } from "../model/pipeline";
 import type { Step } from "../model/pipeline";
-import type { Table } from "../model/table";
+import type { Field, Table } from "../model/table";
 import { describeFor } from "../pbui/registry";
 import type { PbuiEnvironment } from "../pbui/types";
 import type { Verb } from "../pbui/verbs";
@@ -169,12 +169,21 @@ export function actionsForVerb(
   return out as ReturnType<typeof worldActions.setMapping>[];
 }
 
-/** The environment a descriptor sees, built from world state and a table lookup. */
+/**
+ * The environment a descriptor sees, built from world state and two lookups.
+ *
+ * Two, not one, and the split is DR-40. `fieldsFor` is the render path — cheap,
+ * O(steps), called once per field chip per frame. `tableFor` evaluates the
+ * pipeline and belongs to the menu path. Taking both from the caller keeps this
+ * a pure mapping and keeps the cost visible where it is paid.
+ */
 export function environmentFor(
   world: WorldState,
   tableOf: (docId: string | null) => Table | null,
+  fieldsOf: (docId: string | null) => Field[],
 ): PbuiEnvironment {
   return {
+    fieldsFor: (docId) => fieldsOf(docId ?? world.activeDocId),
     tableFor: (docId) => tableOf(docId ?? world.activeDocId),
     activeDocId: world.activeDocId,
     nameOf: (docId) => world.docs[docId ?? world.activeDocId ?? ""]?.name ?? "—",

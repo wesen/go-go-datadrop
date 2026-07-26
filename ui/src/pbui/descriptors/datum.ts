@@ -29,13 +29,17 @@ export const datumDescriptor: PresentationDescriptor<DatumRef> = {
   actions: (ref, env) => {
     const target = ref.docId ?? env.activeDocId;
     const where = `chart ${env.nameOf(target)}`;
-    const table = env.tableFor(ref.docId);
+    // Schema, not rows: this only needs each column's type to decide which get
+    // keep/exclude. `actions` is a menu path so `tableFor` would be affordable,
+    // but asking for rows you do not read is how a render path acquires one by
+    // accident later.
+    const fields = env.fieldsFor(ref.docId);
     const overrides = env.overridesFor(ref.docId);
 
     // Only categorical columns get keep/exclude: "keep only temp_c = 21.4" is a
     // filter that matches one row and is never what anyone wants.
     const categorical = Object.keys(ref.row).filter((name) => {
-      const field = table?.fields.find((f) => f.name === name);
+      const field = fields.find((f) => f.name === name);
       if (!field) return false;
       const type = overrides?.[name] ?? field.type;
       return type !== "q";

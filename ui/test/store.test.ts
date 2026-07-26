@@ -283,7 +283,13 @@ describe("the trace ring", () => {
 /* ------------------------------------------------------------- verb seam -- */
 
 describe("verbs become actions", () => {
-  const env = (state: WorldState) => environmentFor(state, () => readings);
+  // Both lookups over the same fixture, so schema and rows agree (DR-40).
+  const env = (state: WorldState) =>
+    environmentFor(
+      state,
+      () => readings,
+      () => readings.fields,
+    );
 
   test("a verb naming a document targets that document", () => {
     const { state, docId } = withDoc();

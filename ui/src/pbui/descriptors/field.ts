@@ -13,15 +13,27 @@ import type { Action } from "../verbs";
  * title, and it is the same object in all five.
  */
 
-/** Resolve a field against the document that owns the presentation. */
+/**
+ * Resolve a field against the document that owns the presentation.
+ *
+ * **Schema only — this is the render path** (DR-40). `FieldChip` calls it during
+ * render, and a table header draws one chip per column, so anything expensive
+ * here is paid per column per frame. `fieldsFor` is O(steps); `tableFor` would
+ * evaluate the whole pipeline, measured at 144 ms for thirteen columns at the
+ * 50 000-row budget.
+ *
+ * **It deliberately does not return the table** (DR-41). Its callers use `field`
+ * and `type` and nothing else, and returning a table it never needed is what
+ * made a cheap call look like an expensive one — which is how the next person
+ * reintroduces the problem by reaching for a cache instead of a schema.
+ */
 export function resolveField(
   ref: FieldRef,
   env: PbuiEnvironment,
-): { table: Table | null; field: Field | null; type: FieldType | null } {
-  const table = env.tableFor(ref.docId);
-  const field = table?.fields.find((f) => f.name === ref.name) ?? null;
-  if (!field) return { table, field: null, type: null };
-  return { table, field, type: effectiveType(field, env.overridesFor(ref.docId)) };
+): { field: Field | null; type: FieldType | null } {
+  const field = env.fieldsFor(ref.docId).find((f) => f.name === ref.name) ?? null;
+  if (!field) return { field: null, type: null };
+  return { field, type: effectiveType(field, env.overridesFor(ref.docId)) };
 }
 
 /** Summary statistics, always reported with the window they cover. */
@@ -65,7 +77,11 @@ export const fieldDescriptor: PresentationDescriptor<FieldRef> = {
   label: (ref) => ref.name,
 
   describe: (ref, env) => {
-    const { table, field, type } = resolveField(ref, env);
+    const { field, type } = resolveField(ref, env);
+    // The menu path, and the one place that genuinely wants rows: a statistic
+    // has to be computed over something. Runs when a user opens a menu, not on
+    // every render, which is the boundary DR-40 draws.
+    const table = env.tableFor(ref.docId);
     if (!table || !field) {
       return {
         presentationType: "field",
