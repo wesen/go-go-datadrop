@@ -22,6 +22,8 @@ RelatedFiles:
       Note: The interception point; its docstring names its own fragility (commit 8302e2c)
     - Path: repo://ui/src/appkit/AppScope.tsx
       Note: DR-53; the registry stays global and only the visible set is per instance (commit 24d0a07)
+    - Path: repo://ui/src/appkit/TourContent.tsx
+      Note: Why the lesson content travels in context rather than in props or the store (commit f268cc5)
     - Path: repo://ui/src/appkit/lessons.ts
       Note: The Lesson contract, in appkit for DR-33's reason — both organisms and tour already depend on it (commit f7b4261)
     - Path: repo://ui/src/appkit/usePersistence.ts
@@ -34,10 +36,14 @@ RelatedFiles:
       Note: showToken — a server with no authentication should not ask for a credential (commit 99f4fb8)
     - Path: repo://ui/src/components/pages/LandingPage/LandingPage.tsx
       Note: 'The tour: six sandboxed workbenches down one page (commit 99f4fb8)'
+    - Path: repo://ui/src/components/pages/TourSection/TourSection.module.css
+      Note: The height lives on a wrapper, so two files stop arguing about one element (commit f268cc5)
     - Path: repo://ui/src/components/pages/TourSection/TourSection.tsx
       Note: Reset is remount; the key discards the store and the rail's ticks together (commit 99f4fb8)
     - Path: repo://ui/src/components/pages/Workbench/WorkbenchProviders.tsx
       Note: Separate so the lesson rail can be a sibling of the shell inside one PbuiProvider — DR-55 (commit 24d0a07)
+    - Path: repo://ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.module.css
+      Note: .expanded — position:fixed rather than the Fullscreen API, so the object menu still works (commit f268cc5)
     - Path: repo://ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.tsx
       Note: The embeddable unit; the ref-with-null-check is correct under StrictMode where useState's initialiser is not (commit 24d0a07)
     - Path: repo://ui/src/main.tsx
@@ -70,6 +76,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -2074,4 +2081,235 @@ phase 4       204     16
 phase 5       209     17    tour.test.ts
 phase 6       226     18    lessons.test.ts
 phase 7       229     19    tokens-used.test.ts
+```
+
+## Step 9: The teaching panels become tiles, and a full-frame control
+
+Three changes asked for after the tour was read end to end. The first is the
+interesting one, and it is a correction I should have arrived at myself: the
+lesson rail was a panel bolted to the side of the workbench, which meant a tour
+arguing for a tiling window manager was doing so from a fixed panel bolted to
+the side of one.
+
+Moving the rail, the cheat sheet, the module rack and the brief *into* the
+workspace as applications took about an hour and immediately surfaced three
+defects, two of which were unreachable content — the same class as the watched
+nudge in phase 4.
+
+### Prompt Context
+
+**User prompt (verbatim):** "move lessons and cheatsheet into the workspace itself, and make a button to fullframe the workspace to the size of the window so that users can have enough room. also make the demo workspaces in the landing page have more height, they feel cramped."
+
+**Assistant interpretation:** Turn the teaching panels into tiles inside the
+workbench; add a control that expands an embedded workbench to fill the window;
+raise the section heights.
+
+**Inferred user intent:** They read the page and found it cramped and slightly
+self-contradictory. All three asks point the same way — the tour should give
+the reader room to actually *work*, and the workbench should be the whole
+surface rather than sharing it with chrome that cannot be moved.
+
+**Commit (code):** `f268cc5` — "DATADROP-7: the teaching panels become tiles, and a full-frame control"
+
+### What I did
+
+- `appkit/TourContent.tsx` — a context carrying the section's lessons, brief,
+  modules, cheat sheet, reset callback and rack target.
+- `apps/LessonsApp`, `apps/CheatApp`, `apps/BriefApp`, `apps/ModulesApp` — four
+  registered applications, each a thin container over the organism it renders.
+- Four module cards, because `tour.test.ts` demanded them.
+- `WorkbenchShell` — a chrome row holding the workspace strip and the ⤢ control;
+  Escape bound while expanded.
+- `WorkbenchInstance` — owns the expanded state; `.expanded` is `position: fixed`.
+- `TourSection` — the side panel is gone; the height moves to a wrapper.
+- `tour/fixtures.ts` — every seeded layout names its teaching tiles, plus a new
+  `heroSeed`.
+
+### Why
+
+**Content travels in context, not in props and not in the store.** A tile names
+an application by id and carries nothing else (DR-11) — that is what makes
+swapping two tiles a two-field exchange. So `LessonsApp` cannot take lessons as
+a prop. The store is not an option either: a `Lesson` holds a `ReactNode` and
+two functions, and the world must stay serialisable (guide §7.5). Context scoped
+to the instance is the remaining seam, and `AppScope` had already established
+the pattern for the visible application set.
+
+**`position: fixed` rather than the Fullscreen API**, and this is the decision I
+would defend hardest. The API puts the element in a top layer that escapes the
+page's stacking context — which sounds like exactly what a full-frame mode wants
+until you notice that `pbui/ObjectMenu` is itself `position: fixed` at z-index
+100 and would land *behind* it. Every verb in this interface arrives through
+that menu. A mode that breaks right-click is not a mode, so I checked it rather
+than assuming:
+
+```text
+expanded height   800   = viewport
+menu present      true
+menu z-index      100   above the workbench's 50
+menu visible      true
+```
+
+### What worked
+
+**The coverage test fired the moment the four applications registered:**
+
+```console
+(fail) the module rack covers the registry > every registered application has a module card
++   "brief"  "cheat"  "lessons"  "modules"
+```
+
+That is the third time a guard written earlier in this ticket has caught
+something the same day, and it cost nothing to satisfy — four cards, and writing
+`NOT TO BE` for `lessons` produced the distinction I wanted anyway: *the
+tutorial tiles are fixed content; a rail is the same application over whichever
+lessons its section carries.*
+
+**Reading the rendered page rather than trusting the build**, again, and again
+it was the only thing that would have worked.
+
+### What didn't work
+
+**The full-frame control did not full-frame.** Width went to the viewport;
+height stayed at 820 inside an 800px window:
+
+```text
+viewport   1719 × 800
+expanded   1719 × 820      ← overflowing
+```
+
+`position: fixed; inset: 0` sets top and bottom, but an explicit `height` on the
+same element wins. The section was passing its height into the instance as a
+`className`, so `.tall.tall` (0,2,0) beat `.expanded` (0,1,0).
+
+Specificity was the proximate cause and the wrong thing to fix. **The real
+mistake was two rules from two files arguing about one element's height.** I
+moved the height onto a wrapper, which settles it structurally and buys
+something I had not thought of: the wrapper holds the instance's place while it
+is out of flow, so the page does not jump under the reader as they expand and
+collapse.
+
+**The hero rendered "No lessons here".** It borrowed §C's seed, which now names
+a `lessons` tile — so the first thing anyone sees at the top of the page was an
+empty state. The empty state was doing its job perfectly; the layout was asking
+a question it had no answer to. It has its own seed now.
+
+**§A, §B and §C passed cheat content their layouts had no tile for.** I added
+`cheat` to the app scopes and the content props, and forgot the tiles — so the
+cheat sheets existed, were correct, and were reachable only by a reader who
+thought to change a tile's application. Unreachable content, exactly like phase
+4's watched nudge, and found the same way: counting what was actually on screen.
+
+```text
+teaching tiles before:  lessons ×4, modules, cheat sheet, brief
+teaching tiles after:   lessons ×3, cheat sheet ×4, modules, brief
+empty states:           0
+```
+
+### What I learned
+
+**A demonstration should be built out of the thing it demonstrates.** The panel
+worked, looked fine, and was quietly arguing against the product. Nobody would
+have filed it as a bug. It took someone reading the page as a *reader* rather
+than as its author, and the correction is the kind that is obvious only once
+said out loud.
+
+The generalisable form: **when a tool is teaching its own model, any part of the
+teaching that sits outside the model is a counter-argument.**
+
+**"Add content" and "add somewhere for content to go" are two changes, and I
+keep doing only the first.** Phase 4: a nudge with no reachable state. Here: a
+cheat sheet with no tile, twice over. The check that catches it is the same
+every time — *count what is on screen, not what is in the source* — and it takes
+one `querySelectorAll`.
+
+**Height belongs to exactly one element.** Passing a dimension into a component
+as a className means two files can disagree about it, and CSS resolves that
+disagreement by rules nobody is thinking about at the call site. A wrapper is
+not a workaround; it is the shape where each element owns what it actually is.
+
+### What was tricky to build
+
+**Deciding where the ⤢ control lives.** The shell had no chrome row when
+`workspaces: false` — a masthead the tour switches off, a workspace strip the
+tour switches off, then straight to the canvas. Options were the mouse-doc line
+(always present, but it is a status line and a button in it reads as an
+accident), a floating overlay (covers a tile corner), or a chrome row that
+exists when either the strip or the control does.
+
+The third, with the row rendering only when something is in it — an empty
+1px-bordered strip above the canvas reads as a rendering fault rather than as
+spare capacity.
+
+**The Escape binding.** Six instances on a page must not add six Escape
+listeners that fight the object menu and the accept protocol for the key. Bound
+only while `fullFrame` is true, so a page of collapsed instances adds none at
+all. This is the kind of thing that works in every test and produces a bug
+report reading "sometimes Escape doesn't cancel the accept".
+
+### What warrants a second pair of eyes
+
+- **`z-index: 50` for the expanded instance.** Chosen to sit below the object
+  menu's 100 and verified against it. Nothing else in the tree uses a z-index
+  between them today, and if something does the failure is silent until
+  someone right-clicks.
+- **Six tiles in §C at 820px.** It fits on a 1719×800 window. On a 1280×720
+  laptop it will be tighter, and the full-frame control is the answer — but I
+  have only checked one viewport.
+- **`TourContentProvider` memoises on six fields.** If a section ever builds its
+  content object with an inline `onReset`, the memo breaks and every tile
+  re-renders per keystroke. It does not today; nothing stops it.
+
+### What should be done in the future
+
+- **Check §C at 1280×720.** The full-frame control makes it survivable, but the
+  default should be usable.
+- The three carried-over items are unchanged: solve the brief by hand, fix
+  `wedgeOf`'s table matching, and test the null persistence key.
+
+### Code review instructions
+
+- `appkit/TourContent.tsx` — the docstring is where the "why not props, why not
+  the store" reasoning lives.
+- `apps/LessonsApp/LessonsApp.tsx` — twenty lines, and the shape all four share.
+- `WorkbenchInstance.module.css` `.expanded` — the paragraph on why not the
+  Fullscreen API. Then verify it: expand a section and right-click a chip.
+- `TourSection.module.css` `.body` — the height, and why it is not on the
+  instance.
+- Open `Applications/Tour/Page → Default`, scroll to §A, and close the lessons
+  tile. Then open a new tile and set it back to `lessons` from the dropdown —
+  the rail returns with its ticks intact, because its state is in the subtree,
+  not in the tile.
+
+### Technical details
+
+The layouts, before and after:
+
+```text
+             before                          after
+hero         (shared §C's seed)              pipeline | chart
+§A   panel | sources/(inspector/watch)       [lessons/cheat] | sources/(inspector/watch)
+§B   panel | chart/table                     [lessons/cheat] | chart/table
+§C   panel | (pipeline/encode)(chart/table)  [lessons/cheat] | (pipeline/encode)(chart/table)
+§D   panel | chart/inspector                 [modules] | chart/cheat
+✦    panel | (pipeline/encode) chart         [brief] | pipeline/chart
+```
+
+The full-frame check, in the browser:
+
+```text
+                 before      expanded    after Escape
+root box      1140 × 820    1709 × 800    1140 × 820
+viewport                    1719 × 800
+position          static        fixed         static
+object menu           —      z 100, visible        —
+```
+
+Heights:
+
+```text
+              before   after
+section          520     720
+§C, the brief    660     820
+hero             380     460
 ```

@@ -87,3 +87,12 @@ Phase 7: the tour page (commit 99f4fb8). Six sandboxed workbenches down one scro
 
 Ticket closed
 
+
+## 2026-07-26
+
+Follow-up (commit f268cc5): the lesson rail, cheat sheet, module rack and brief become TILES rather than a side panel — a tour arguing for tiling from a fixed panel was arguing against itself. Content reaches them through appkit/TourContent, because a tile carries only an app id and a Lesson is not serialisable. Added a full-frame control using position:fixed rather than the Fullscreen API, whose top layer would put the object menu behind the workbench. Sections 520 to 720px, 820 for the crowded two. Three defects found by reading the page: the height fought position:fixed and lost, the hero rendered an empty lessons tile, and three sections had cheat content with no tile to show it in
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/tour/fixtures.ts — Every seeded layout now names its teaching tiles, plus a hero seed that has none
+
