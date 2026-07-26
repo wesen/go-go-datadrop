@@ -1,5 +1,6 @@
 import { useDispatch, useSelector } from "react-redux";
-import { appFor, allApps } from "../../../appkit/registry";
+import { appFor } from "../../../appkit/registry";
+import { useScopedApps } from "../../../appkit/AppScope";
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { layoutActions, type Node } from "../../../store/layout";
@@ -30,6 +31,19 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   });
 
   const { dragging, zone, onGripPointerDown, register } = useDrag(node.id);
+  // The applications this instance offers (DR-53). Every registered app in
+  // the product; a narrower vocabulary in a tour section.
+  //
+  // The tile's OWN application is always in the list even when the scope
+  // excludes it. A select whose value matches no option renders as blank and
+  // silently reassigns on the next change, so a seeded layout naming an
+  // out-of-scope app would lose that tile the first time anyone touched the
+  // dropdown. Showing it is honest: this tile is that, and here is what else
+  // you may make it.
+  const scopedApps = useScopedApps();
+  const options = scopedApps.some((descriptor) => descriptor.id === node.app)
+    ? scopedApps
+    : [...(app ? [app] : []), ...scopedApps];
 
   const title = app ? app.title : node.app;
   const label = docName ? `${title} · ${docName}` : title;
@@ -102,7 +116,7 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
           value={node.app}
           onValueChange={(app) => dispatch(layoutActions.setLeafApp({ nodeId: node.id, app }))}
           onPointerDown={(event) => event.stopPropagation()}
-          options={allApps().map((descriptor) => ({
+          options={options.map((descriptor) => ({
             value: descriptor.id,
             label: descriptor.title,
           }))}

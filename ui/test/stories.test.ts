@@ -144,6 +144,11 @@ describe("story coverage", () => {
         "Component Library/Molecules",
         "Component Library/Organisms",
         "Applications/Workbench",
+        // DATADROP-7: sandboxed instances, and the two-instance story that is
+        // phase 2's acceptance test. A group of its own rather than a story
+        // under Workbench, because what it demonstrates is not the product's
+        // shell but the property that there can be more than one of it.
+        "Applications/Embedding",
       ]).toContain(group);
     }
   });

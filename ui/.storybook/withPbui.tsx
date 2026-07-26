@@ -23,6 +23,20 @@ import { describeVerb } from "../src/pbui";
  * Configure with `parameters.pbui = { table, activeDocId, overrides }`.
  */
 export const withPbui: Decorator = (Story, ctx) => {
+  /**
+   * `parameters: { pbui: false }` — for a story that brings its own.
+   *
+   * Added by DATADROP-7. A `WorkbenchInstance` supplies its own environment and
+   * its own `PbuiProvider`, so wrapping it in the decorator's is not wrong —
+   * React resolves to the nearest provider, and the shell gets the right one —
+   * but it renders a second accept banner, a second mouse-doc line and a verb
+   * log below the story, all of them describing a context nothing is using.
+   *
+   * A reviewer cannot tell those apart from the instance's own chrome, which is
+   * exactly the kind of story that teaches something false.
+   */
+  if (ctx.parameters.pbui === false) return <Story />;
+
   const config = (ctx.parameters.pbui ?? {}) as {
     table?: Table;
     activeDocId?: string;

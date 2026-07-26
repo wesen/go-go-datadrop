@@ -1,7 +1,32 @@
-.shell {
+/*
+ * The application root, which is the only thing here that may claim a viewport.
+ *
+ * `height: 100vh` used to be on `.shell` below, and moving it up one level is
+ * DATADROP-7 DR-51. A container that declares its own height cannot be embedded:
+ * five tutorial sections down a scrolling page would each be a viewport tall.
+ * The shell now *accepts* a height, and the application is the one component
+ * entitled to say what it is.
+ */
+.app {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  min-height: 0;
+}
+
+/*
+ * `flex: 1` and `min-height: 0`, not a height.
+ *
+ * `min-height: 0` is the half that is easy to omit: a flex child defaults to
+ * `min-height: auto`, which refuses to shrink below its content — so the canvas
+ * would grow to fit a 360-row table instead of scrolling it. That is exactly
+ * the defect DATADROP-6 found in `.storybook/withPbui.tsx`, where an unbounded
+ * middle in the decorator chain let a table paint straight out of its tile.
+ */
+.shell {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   min-height: 0;
   background: var(--pbui-paper);
 }

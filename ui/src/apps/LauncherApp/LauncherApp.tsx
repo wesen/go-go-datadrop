@@ -1,5 +1,6 @@
 import { useDispatch } from "react-redux";
-import { allApps, registerApp, type AppProps } from "../../appkit/registry";
+import { registerApp, type AppProps } from "../../appkit/registry";
+import { useScopedApps } from "../../appkit/AppScope";
 import { layoutActions } from "../../store/layout";
 import { AppBody, Stack } from "../../components/layout";
 import { Text } from "../../components/foundation";
@@ -8,6 +9,7 @@ import { Button } from "../../components/atoms";
 /** What an empty tile shows: a button per application. */
 function LauncherApp({ leafId }: AppProps) {
   const dispatch = useDispatch();
+  const apps = useScopedApps();
   return (
     <AppBody>
       <Stack gap={3}>
@@ -17,7 +19,7 @@ function LauncherApp({ leafId }: AppProps) {
           views over the world.
         </Text>
         <Stack direction="row" gap={2} wrap>
-          {allApps()
+          {apps
             .filter((app) => app.id !== "launcher")
             .map((app) => (
               <Button
