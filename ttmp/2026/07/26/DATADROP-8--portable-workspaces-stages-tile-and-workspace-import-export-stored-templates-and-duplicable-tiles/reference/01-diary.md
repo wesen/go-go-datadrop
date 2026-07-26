@@ -16,12 +16,16 @@ Owners: []
 RelatedFiles:
     - Path: repo://ui/src/components/organisms/StageBar/StageBar.tsx
       Note: The switcher; a stage whose chrome hides the bar is not offered by the bar (commit 9dc985c)
+    - Path: repo://ui/src/components/organisms/Tile/options.ts
+      Note: The picker's three rules — own app always listed and never disabled, singletons already open, stage scope (commit da29ec2)
     - Path: repo://ui/src/store/layout.ts
       Note: Stage/StageChrome/stageId, and syncSpacePointer as the only writer of the mirrored space pointer (commit 9dc985c)
     - Path: repo://ui/src/store/persist.ts
       Note: VERSION 2 and migrate(); validate calls migrate first so a migration cannot skip the validator (commit 9dc985c)
     - Path: repo://ui/src/store/stages.ts
       Note: The four pinned stages, mergeStages and defaultLayout — replaces spaces.ts (commit 9dc985c)
+    - Path: repo://ui/test/apps.test.ts
+      Note: duplicable and singleton follow docBound unless a sentence is written into EXCEPTIONS (commit da29ec2)
     - Path: repo://ui/test/fixtures/persisted-v1.json
       Note: A version-1 payload produced by running defaultSpaces() out of commit f53be15 (commit 9dc985c)
     - Path: repo://ui/test/stages.test.ts
@@ -32,6 +36,7 @@ LastUpdated: 2026-07-26T18:18:37.781026543-04:00
 WhatFor: Recording what was built, what failed, and what a reviewer should look at hardest for DATADROP-8.
 WhenToUse: Read before reviewing DATADROP-8, and before touching stages, the bundle format or the clipboard path afterwards.
 ---
+
 
 
 # Diary
@@ -320,3 +325,198 @@ found by opening the application in Playwright after everything was green.
    means that once you are on it there is no switcher to leave by. It is
    somewhere the gate *puts* you, never somewhere you choose to go, so the bar
    no longer offers a stage whose chrome hides the bar.
+
+## Step 2: Tile identity and multiplicity
+
+Four tiles called `TABLE · α` are unhelpful; four called `TABLE · α`,
+`TABLE · β`, `TABLE · γ`, `TABLE · δ` are not, because the derived title is
+already doing the disambiguation the request worried about. So the rename exists
+for the case the derivation cannot reach — two tables on the *same* document
+showing different pipeline stages — and it is an *optional* label with the
+derived title still underneath it. `duplicateLeaf` points the copy at the same
+document rather than a copy of it, because two tiles on one document staying in
+lockstep is exactly what "let me see this two ways" means.
+
+The other half is `duplicable` and `singleton` on all twenty-five application
+descriptors, and the picker that shows a singleton already open — or an
+application the stage does not offer — greyed *with the reason* rather than
+hidden. That closes the second half of a rule the project already had for verbs:
+hiding an unavailable option hides the rule that makes it unavailable.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 2 of the ticket's own plan — the half of the
+request that needs no new UI surface, shipped before the bundle format.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `da29ec2` — "DATADROP-8 phase 2: tile identity and multiplicity"
+
+### What I did
+
+- `ui/src/store/layout.ts`: `label?: string` on a leaf; `renameLeaf`,
+  `duplicateLeaf`.
+- `ui/src/appkit/registry.ts` and 25 application files: `duplicable`,
+  `singleton`, required.
+- `ui/src/components/atoms/SelectInput/`: `SelectOption.reason`, rendered after
+  an em dash and as the `title`.
+- `ui/src/components/organisms/Tile/options.ts` (new): `pickerOptions`, pure.
+- `ui/src/components/organisms/Tile/Tile.tsx`: `label ?? derived`, rename as the
+  title's default verb, the disabled picker.
+- `ui/src/components/molecules/InlineRename/InlineRename.tsx`: `autoFocus`.
+- `ui/src/components/pages/Workbench/Workbench.tsx`: the sign-in stage narrows
+  the instance scope as well as the stage scope.
+- `ui/test/apps.test.ts` (new), `ui/test/picker.test.ts` (new), three cases in
+  `ui/test/store.test.ts`.
+
+### Why
+
+Phase 2 is independent of the bundle format and needs no new component, so it
+puts the two-tables case in front of a user before the harder half lands.
+
+### What worked
+
+The `EXCEPTIONS`-with-a-sentence pattern, copied from `no-raw-controls.test.ts`.
+`duplicable === docBound` and `singleton === !docBound` hold for twenty-four of
+the twenty-five, and the twenty-fifth (`launcher`) has a sentence saying why. A
+new application that disagrees now fails with the file, the field and the two
+ways to fix it.
+
+### What didn't work
+
+**1. Double-click-to-rename never fired, and no test could have seen it.** The
+design says the tile mirrors the workspace strip: double-click the title to
+rename. Implemented that way it does nothing. `Presentation` has a documented
+fallback — "no default verb: the left button opens the menu too. Otherwise chips
+without an obvious primary action are dead to the left hand" — and a tile title
+has no default verb, so the first click of a double-click opened the object
+menu, the second click closed it via the menu's window listener, and the
+`dblclick` handler never won. Confirmed in the browser rather than guessed:
+
+```js
+await page.evaluate(`({
+  menu: !!document.querySelector('[role="menu"]'),
+  rename: !!document.querySelector('input[aria-label="tile name"]'),
+})`)
+// → { menu: true, rename: false }
+```
+
+The workspace strip does not hit this because its left button already means
+"switch to it". Rename is now the tile title's **default verb**, which fixes
+three things at once: the gesture works, the mouse-doc line announces
+`<tile> my keys — L: rename it   R: menu` before the user commits, and Enter on
+the focused presentation renames — the keyboard route the strip's own
+double-click still does not have, and which its `biome-ignore` comment admits to.
+A double-click also still works: its first click enters the field, its second
+lands in it.
+
+**2. `InlineRename` never focused itself.** Invisible while the only route in was
+a double-click on a workspace chip, and immediate once a single click opens it:
+the field appears where a name was and does nothing until clicked again. Worse,
+`onBlur={onCancel}` means an unfocused field cannot be dismissed by clicking away
+either — it sits there until something else re-renders. Now `autoFocus`, with a
+`biome-ignore` explaining that this element only ever mounts as the direct result
+of a rename gesture, so focus is what the gesture asked for.
+
+**3. The reducer-coverage guard fired on my own new reducers**, which is the
+outcome it was written for:
+
+```
++ [
++   "renameLeaf",
++   "duplicateLeaf"
++ ]
+(fail) the space pointer never desynchronises > every reducer in the slice has a representative payload here
+```
+
+### What I learned
+
+`Presentation`'s "no default verb ⇒ left click opens the menu" fallback is a
+much bigger behavioural commitment than it looks. Any gesture a component wants
+to add on top of a presentation is competing with a menu that opens on the first
+click and closes on the second. The lesson generalises: **on a presentation,
+express a gesture as `onActivate` rather than as a DOM handler on the children.**
+
+### What was tricky to build
+
+**Where the singleton rule is evaluated.** It needs the *other* tiles in the
+workspace, which is tree knowledge the tile does not otherwise have. `Tile` now
+selects the workspace's tree — which it needed anyway for `canClose`, replacing
+a duplicated recursive count with `countLeaves` — walks it once in a memo to
+collect the applications held elsewhere, and hands a `Set` to `pickerOptions`.
+The rule that the tile's *own* application is never disabled matters here and is
+easy to miss: a selected `<option disabled>` is legal HTML and displays fine, so
+the mistake is invisible in a screenshot and reads to a user as "this tile is
+showing something it may not show".
+
+### What warrants a second pair of eyes
+
+- **The tile's application picker got wider.** The reasons are inline, so the
+  `<select>` sizes to the longest option — about 210px on the account stage
+  against 82px before. It shrinks in a narrow tile (`min-width: 0` and no
+  `flex-grow`), and `.auto`'s 220px cap holds, but it is a real change to the
+  density of the tile title bar and the alternative — reason in the `title`
+  attribute only — is defensible.
+- **22 of 25 rows are greyed on the account stage.** The design guide asks for
+  exactly this and §19 warns only about applying it to *instance* scope. It is
+  still a lot of grey, and the sign-in stage's escape hatch (narrow the instance
+  scope too) exists precisely because someone judged 23 grey rows to be over the
+  line. Where that line is for `account` is a product call.
+- Rename as the tile title's default verb. It is the right fix for the gesture,
+  and it does mean a stray click on a title opens an edit field. Escape and blur
+  both cancel with no change.
+
+### What should be done in the future
+
+- `splitLeaf` still mints its node ids inside the reducer. `duplicateLeaf` takes
+  both ids in its payload; the two should agree. Out of scope here.
+
+### Code review instructions
+
+`ui/src/components/organisms/Tile/options.ts` first — it is 30 lines and its
+docstring carries all three rules. Then `Tile.tsx`'s title block, then
+`test/apps.test.ts`.
+
+```bash
+bun test --cwd ui                 # 278 pass
+bun run --cwd=ui typecheck && bun run --cwd=ui lint
+```
+
+By hand: switch to the account stage, open a tile's application picker, and
+check that `tokens` reads "already open in this workspace" while `chart` reads
+"not offered by the account stage". Click a tile title and type a name.
+
+### Technical details
+
+**Verifying the `docBound` correspondence by breaking it.** Break: flip
+`duplicable` to `false` on `TableApp`.
+
+```
++ [
++   "apps/TableApp/TableApp.tsx: table.duplicable is false but docBound is true — change it, or add table to EXCEPTIONS with a sentence saying why"
++ ]
+(fail) application descriptors > duplicable and singleton follow docBound unless a reason is written down [3.00ms]
+(fail) application descriptors > the four document-bound applications are exactly the duplicable ones
+```
+
+Restored; 5 pass / 0 fail.
+
+**What the rendered account stage shows**, read out of the DOM after everything
+was green:
+
+```
+value: "profile"
+enabled:  ["new tile", "about / help", "profile"]
+disabled: ["sources — not offered by the account stage",
+           …22 more…,
+           "tokens — already open in this workspace",
+           "upload — already open in this workspace"]
+```
+
+and after clicking the `tokens` tile's title and typing:
+
+```
+READY   <tile> my keys — L: rename it R: menu        3 tiles · 1 workspaces · 1 documents
+```

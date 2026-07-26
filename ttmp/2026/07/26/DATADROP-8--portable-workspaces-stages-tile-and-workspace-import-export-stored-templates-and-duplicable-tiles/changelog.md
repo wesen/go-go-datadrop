@@ -22,3 +22,12 @@ Phase 1: stages above workspaces — Stage/StageChrome, stageId on Workspace, th
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/stages.ts — The pinned stages and the merge asymmetry
 
+
+## 2026-07-26
+
+Phase 2: tile identity — an optional leaf label with renameLeaf and duplicateLeaf, duplicable/singleton required on all 25 application descriptors with a guard test that names the file, and a picker that greys a singleton already open or an application the stage does not offer, with the reason inline. Two defects found by clicking: double-click-to-rename lost a fight with the object menu (rename is now the tile title's default verb, which also gives it a keyboard route), and InlineRename never focused itself. (commit da29ec2)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/organisms/Tile/options.ts — The three picker rules, pure and tested with literals
+
