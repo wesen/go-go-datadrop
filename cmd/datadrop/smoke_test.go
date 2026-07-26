@@ -176,18 +176,24 @@ func TestQuickStartEndToEnd(t *testing.T) {
 	}
 
 	// key=value values must be typed, not stringified.
+	//
+	// The payload is flattened into data.* columns rather than nested, because
+	// the CLI projects events through pkg/tabular — the same projection the
+	// /table endpoint and the web workbench use, so `--fields data.temperature`
+	// and a workbench field chip name one column (DR-83).
 	oldest := events[len(events)-1]
-	data, ok := oldest["data"].(map[string]any)
-	if !ok {
-		t.Fatalf("event has no data object: %+v", oldest)
-	}
-	if _, isNumber := data["temperature"].(float64); !isNumber {
-		t.Fatalf("temperature was stored as %T, want a number", data["temperature"])
+	if _, isNumber := oldest["data.temperature"].(float64); !isNumber {
+		t.Fatalf("temperature was stored as %T, want a number: %+v",
+			oldest["data.temperature"], oldest)
 	}
 
 	// --- tail (non-following) ---------------------------------------------
+	//
+	// The header is lower-case `seq`, because that is what `--fields seq` takes
+	// and what `--output json` emits; a table that shouts SEQ while every other
+	// surface says seq would be a third spelling of one thing.
 	stdout, _ = dd.mustRun("tail", "greenhouse", "--limit", "2")
-	if !strings.Contains(stdout, "SEQ") {
+	if !strings.Contains(stdout, "seq") {
 		t.Fatalf("tail did not print a table header: %s", stdout)
 	}
 
@@ -210,9 +216,22 @@ func TestQuickStartEndToEnd(t *testing.T) {
 	}
 
 	// --- inspect / list ----------------------------------------------------
-	stdout, _ = dd.mustRun("inspect", "greenhouse")
-	if !strings.Contains(stdout, `"event_count": 4`) {
-		t.Fatalf("inspect reports the wrong count: %s", stdout)
+	//
+	// inspect returns one row, so --output json is an array of one rather than
+	// a bare object — which is the point of the conversion: --output json means
+	// the same thing on every verb, and a script no longer has to know which
+	// one it called.
+	stdout, _ = dd.mustRun("inspect", "greenhouse", "--output", "json")
+
+	var inspected []map[string]any
+	if err := json.Unmarshal([]byte(stdout), &inspected); err != nil {
+		t.Fatalf("decode inspect output %q: %v", stdout, err)
+	}
+	if len(inspected) != 1 {
+		t.Fatalf("inspect returned %d rows, want 1", len(inspected))
+	}
+	if inspected[0]["event_count"] != float64(4) {
+		t.Fatalf("inspect reports event_count = %v, want 4", inspected[0]["event_count"])
 	}
 
 	stdout, _ = dd.mustRun("list")

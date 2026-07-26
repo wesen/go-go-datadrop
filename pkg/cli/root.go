@@ -87,16 +87,16 @@ Then, from another shell:
 	root.AddCommand(
 		newServeCmd(opts),
 		newCreateCmd(opts),
-		newInspectCmd(opts),
 		newPushCmd(opts),
-		newQueryCmd(opts),
-		newTailCmd(opts),
-		newExportCmd(opts),
 		newSchemaCmd(opts),
 		newDatasetCmd(opts),
-		newWhoamiCmd(opts),
 		newHealthcheckCmd(),
 	)
+
+	// The verbs this package owns directly, because they have no group.
+	if err := AddCommands(root, NewWhoamiCommand); err != nil {
+		return nil, err
+	}
 
 	// The converted verbs. Both styles coexist on one root while the conversion
 	// runs (DR-84): there is no green point in the middle of a big-bang

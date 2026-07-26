@@ -2,124 +2,81 @@ package cli
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
-	"net/http"
 	"strings"
 
-	"github.com/pkg/errors"
-	"github.com/spf13/cobra"
+	"github.com/go-go-golems/glazed/pkg/cmds"
+	"github.com/go-go-golems/glazed/pkg/middlewares"
+	"github.com/go-go-golems/glazed/pkg/settings"
+
+	"github.com/go-go-golems/glazed/pkg/cmds/values"
 )
 
-// meResponse mirrors server.MeResponse. Duplicated rather than imported so the
-// CLI does not depend on the server package for one struct.
-type meResponse struct {
-	AuthMode      string   `json:"auth_mode"`
-	Authenticated bool     `json:"authenticated"`
-	Kind          string   `json:"kind"`
-	Scopes        []string `json:"scopes"`
-	TokenID       string   `json:"token_id"`
-	User          *struct {
-		ID        string `json:"id"`
-		Email     string `json:"email"`
-		Name      string `json:"name"`
-		CreatedAt string `json:"created_at"`
-	} `json:"user"`
-	Provider *struct {
-		Issuer string `json:"issuer"`
-	} `json:"provider"`
-}
-
-// newWhoamiCmd reports what the configured credential resolves to.
+// WhoamiCommand reports what the configured credential resolves to.
 //
 // Twenty lines, and it is the first thing anyone runs when a credential does
 // not work. Without it the only diagnosis available is a 403 from an endpoint
 // that cannot say which of "wrong token", "wrong user", "missing scope" or
 // "not a member" it meant.
-func newWhoamiCmd(opts *globalOptions) *cobra.Command {
-	cmd := &cobra.Command{
-		Use:   "whoami",
-		Short: "Show who the current credential authenticates as",
-		Long: `Report the identity, kind and scopes of the configured credential.
+//
+// It lives in package cli rather than in a group subpackage because it is the
+// only verb in its group, and a one-file directory that exists to satisfy a
+// naming rule is worse than the rule.
+type WhoamiCommand struct {
+	*cmds.CommandDescription
+}
+
+var _ cmds.GlazeCommand = &WhoamiCommand{}
+
+// NewWhoamiCommand builds `datadrop whoami`.
+func NewWhoamiCommand() (cmds.Command, error) {
+	glazedSection, err := settings.NewGlazedSchema()
+	if err != nil {
+		return nil, err
+	}
+	clientSection, err := NewClientSection()
+	if err != nil {
+		return nil, err
+	}
+
+	return &WhoamiCommand{cmds.NewCommandDescription(
+		"whoami",
+		cmds.WithShort("Show who the current credential authenticates as"),
+		cmds.WithLong(strings.TrimSpace(`
+Report the identity, kind and scopes of the configured credential.
 
 Answers the four questions a 403 cannot distinguish between: is the token
 valid, whose is it, what may it do, and is this server even running with user
-accounts.`,
-		Args: cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runWhoami(cmd.Context(), opts)
-		},
-	}
-	return cmd
+accounts.
+
+    datadrop whoami
+    datadrop whoami --output json
+    datadrop whoami --select user_id
+
+An unauthenticated answer is a row like any other, with authenticated=false —
+not an error. "This server accepted no credential" is information, and a script
+that wants it to be fatal can say so with --jq or by testing the field.
+`)),
+		cmds.WithSections(glazedSection, clientSection),
+	)}, nil
 }
 
-func runWhoami(ctx context.Context, opts *globalOptions) error {
-	base := strings.TrimRight(opts.addr, "/")
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"/v1/me", nil)
+// RunIntoGlazeProcessor emits the one row.
+func (c *WhoamiCommand) RunIntoGlazeProcessor(
+	ctx context.Context, vals *values.Values, gp middlewares.Processor,
+) error {
+	s, err := ClientSettingsFrom(vals)
 	if err != nil {
-		return errors.Wrap(err, "build request")
-	}
-	if opts.token != "" {
-		req.Header.Set("Authorization", "Bearer "+opts.token)
+		return err
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	api, err := ClientFrom(vals)
 	if err != nil {
-		return errors.Wrapf(err, "reach %s", base)
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return errors.Errorf("%s answered %s", base, resp.Status)
+		return err
 	}
 
-	var me meResponse
-	if err := json.NewDecoder(resp.Body).Decode(&me); err != nil {
-		return errors.Wrap(err, "decode response")
+	me, err := api.Whoami(ctx)
+	if err != nil {
+		return err
 	}
-
-	fmt.Printf("server     %s\n", base)
-	fmt.Printf("auth mode  %s\n", me.AuthMode)
-
-	if !me.Authenticated {
-		// Say what to do about it, rather than only what is wrong.
-		fmt.Println("identity   anonymous")
-		switch me.AuthMode {
-		case "oidc":
-			fmt.Println("\nNo credential was accepted. Set DATADROP_TOKEN to an API token")
-			fmt.Println("minted from the tokens tile, or use --token.")
-		case "token":
-			fmt.Println("\nNo credential was accepted. Set DATADROP_TOKEN to the server's token.")
-		}
-		return nil
-	}
-
-	fmt.Printf("kind       %s\n", me.Kind)
-	if me.User != nil {
-		fmt.Printf("user       %s", me.User.ID)
-		if me.User.Name != "" {
-			fmt.Printf("  (%s)", me.User.Name)
-		}
-		fmt.Println()
-		if me.User.Email != "" {
-			fmt.Printf("email      %s\n", me.User.Email)
-		}
-	}
-	if me.TokenID != "" {
-		// The public half of the credential, which is what an audit row
-		// carries — so "which token did this" is answerable from here.
-		fmt.Printf("token      %s\n", me.TokenID)
-	}
-	if len(me.Scopes) > 0 {
-		fmt.Printf("scopes     %s\n", strings.Join(me.Scopes, " "))
-	}
-	if me.Provider != nil && me.Provider.Issuer != "" {
-		fmt.Printf("issuer     %s\n", me.Provider.Issuer)
-	}
-
-	if me.Kind == "root" {
-		fmt.Println("\nThis is the root credential: it bypasses every ownership and")
-		fmt.Println("membership check, and its actions are audited as \"root\".")
-	}
-	return nil
+	return gp.AddRow(ctx, RowForPrincipal(strings.TrimRight(s.Addr, "/"), me))
 }

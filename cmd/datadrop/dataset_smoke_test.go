@@ -263,12 +263,10 @@ func TestDatasetImportEndToEnd(t *testing.T) {
 	}
 
 	// A numeric CSV column must arrive typed, or a schema could never match it.
-	data, ok := events[0]["data"].(map[string]any)
-	if !ok {
-		t.Fatalf("event has no data object: %+v", events[0])
-	}
-	if _, isNumber := data["temperature_c"].(float64); !isNumber {
-		t.Fatalf("temperature_c is %T, want a number", data["temperature_c"])
+	// The payload is flattened into data.* columns; see the note in smoke_test.go.
+	if _, isNumber := events[0]["data.temperature_c"].(float64); !isNumber {
+		t.Fatalf("data.temperature_c is %T, want a number: %+v",
+			events[0]["data.temperature_c"], events[0])
 	}
 
 	// --- re-import must resume, not duplicate ------------------------------

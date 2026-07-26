@@ -20,5 +20,6 @@ import (
 func Register(root *cobra.Command) error {
 	return ddcli.AddCommands(root,
 		NewListCommand,
+		NewInspectCommand,
 	)
 }
