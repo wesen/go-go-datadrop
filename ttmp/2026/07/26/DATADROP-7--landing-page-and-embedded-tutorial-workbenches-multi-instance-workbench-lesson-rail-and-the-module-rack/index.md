@@ -1,7 +1,7 @@
 ---
 Title: 'Landing page and embedded tutorial workbenches: multi-instance workbench, lesson rail, and the module rack'
 Ticket: DATADROP-7
-Status: active
+Status: complete
 Topics:
     - frontend
     - landing-page
@@ -15,11 +15,12 @@ Intent: long-term
 Owners: []
 RelatedFiles: []
 ExternalSources: []
-Summary: "Embed multiple independent workbench instances in one scrolling page, with a lesson rail whose steps complete by observing world state. Removes seven singletons, splits the shell from the application, and adds a fixture data path so the page needs no server."
-LastUpdated: 2026-07-26T11:21:21.962274679-04:00
+Summary: Embed multiple independent workbench instances in one scrolling page, with a lesson rail whose steps complete by observing world state. Removes seven singletons, splits the shell from the application, and adds a fixture data path so the page needs no server.
+LastUpdated: 2026-07-26T12:55:54.752940034-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Landing page and embedded tutorial workbenches: multi-instance workbench, lesson rail, and the module rack
 

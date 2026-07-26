@@ -82,3 +82,8 @@ Phase 7: the tour page (commit 99f4fb8). Six sandboxed workbenches down one scro
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/main.tsx — One bundle, routed by path; the / redirect is deliberately untouched
 
+
+## 2026-07-26
+
+Ticket closed
+
