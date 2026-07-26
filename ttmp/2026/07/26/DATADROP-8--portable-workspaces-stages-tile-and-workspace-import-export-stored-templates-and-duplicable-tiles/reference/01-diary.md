@@ -14,6 +14,12 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://ttmp/2026/07/26/DATADROP-8--portable-workspaces-stages-tile-and-workspace-import-export-stored-templates-and-duplicable-tiles/scripts/smoke-firefox-import.ts
+      Note: The Firefox check the phase calls not optional, and the two defects it found
+    - Path: repo://ui/src/components/organisms/BundleDialog/BundleDialog.tsx
+      Note: Import in three states, with the verdict that keeps the confirm button honest (commit 26b5170)
+    - Path: repo://ui/src/components/organisms/Dialog/Dialog.tsx
+      Note: The only modal; focuses the body rather than its own close button (commit 26b5170)
     - Path: repo://ui/src/components/organisms/StageBar/StageBar.tsx
       Note: The switcher; a stage whose chrome hides the bar is not offered by the bar (commit 9dc985c)
     - Path: repo://ui/src/components/organisms/Tile/options.ts
@@ -50,6 +56,7 @@ LastUpdated: 2026-07-26T18:18:37.781026543-04:00
 WhatFor: Recording what was built, what failed, and what a reviewer should look at hardest for DATADROP-8.
 WhenToUse: Read before reviewing DATADROP-8, and before touching stages, the bundle format or the clipboard path afterwards.
 ---
+
 
 
 
@@ -967,3 +974,226 @@ after `await clipboard.write` resolves) was there. A second export read back 169
 characters correctly. I take that as a harness timing quirk rather than a
 product defect, but it is the kind of thing worth a second look in a real
 browser.
+
+## Step 5: Export and import in the interface
+
+Three new components — `TextArea`, the only multi-line field in the tree;
+`Dialog`, the only modal; and `BundleDialog`, which is import and export in one
+component with a live verdict under the field. Everything beneath them was
+already tested, so the work here was the interface and the two browsers.
+
+The phase's acceptance criterion is the one the design calls "not optional":
+verify the empty path in Firefox. It found two defects in ten minutes, and both
+of them were complete failures of the feature rather than cosmetic — the import
+dialog did not open at all, and once it did, it could not be pasted into. A
+third came from sweeping the rendered page for contrast. All three were green
+under typecheck, lint and 343 tests.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+Mid-turn addition, verbatim: *"save useful scripts for smoke testing in the
+scripts/ folder of the ticket for later reuse, no need to discard useful things.
+Backfill with scripts you find really useful, and add a toplevel docstrings to
+document what they do."*
+
+**Assistant interpretation:** Keep the throwaway browser checks as first-class
+artefacts in the ticket, with docstrings explaining what each proves and what it
+found, so the next person can re-run them.
+
+**Inferred user intent:** The evidence these produce is the expensive part; the
+scripts are cheap and should not be thrown away with the shell history.
+
+**Commit (code):** `26b5170` — "DATADROP-8 phase 5: export and import in the interface"
+
+### What I did
+
+- `ui/src/components/atoms/TextArea/` (new), and one line in the atom barrel.
+- `ui/src/components/organisms/Dialog/` (new): backdrop, focus trap, Escape.
+- `ui/src/components/organisms/BundleDialog/` (new): the three states, the live
+  `describeBundle` verdict, the unknown-application warning.
+- `ui/src/components/pages/Workbench/WorkbenchShell.tsx`: `ImportDialog` and
+  `ExportNotice`, both rendered before `<ObjectMenu />` so the menu stacks over
+  them.
+- `ui/src/store/clipboard.ts`: `READ_TIMEOUT` and the raced read.
+- `ui/src/store/effects.ts` and `layout.ts`: the export confirmation as state.
+- `ui/src/components/atoms/{Button,IconButton}/*.module.css`:
+  `--pbui-ink-on-pane` on every variant that paints its own background.
+- Three stories files, and three smoke scripts in the ticket's `scripts/`.
+
+### Why
+
+Everything beneath this phase was tested; what was left was whether it worked in
+a browser that is not the one on my machine.
+
+### What worked
+
+Writing the empty path first and the prefill second, exactly as the design says.
+The prefill is one `if` in `beginImport`, and it was already correct — what was
+wrong was the thing underneath it, and building the fallback first is why that
+was findable at all.
+
+### What didn't work
+
+**1. Firefox: the import dialog never opened.** The clipboard probe says why:
+
+```
+step: rendered
+step: clipboard probe readText never settled
+step: right-clicked
+TimeoutError: waitForSelector: Timeout 10000ms exceeded.
+Call log:
+  - waiting for locator('[role="dialog"]') to be visible
+```
+
+`navigator.clipboard.readText()` in Firefox **neither resolves nor rejects**.
+`browserClipboard.read()` had a `try/catch`, which guards a rejection and does
+nothing at all for a promise with no outcome, so `beginImport`'s `await` never
+returned and `openImport` was never dispatched. The menu entry looked like a
+dead control. It is now `Promise.race([readText(), timeout(700)])`, with the
+constant exported and the reason written above it.
+
+The same hazard bit the *check* first — my first Firefox script hung on its own
+unguarded `await navigator.clipboard.readText()` and had to be killed:
+
+```
+$ timeout 180 bun run /tmp/ff-check.ts
+Exit code 143
+Command timed out after 2m 0s
+```
+
+**2. Firefox: the dialog opened, and could not be pasted into.**
+
+```json
+"opened": { "prefill": "", "focused": false, "confirmDisabled": true }
+"failures": ["the field should be focused, so ⌘V works with no click first"]
+```
+
+`Dialog` focused `panel.querySelector(FOCUSABLE)`, and a panel's first focusable
+element is the ✕ in its header. On Chromium this is invisible — the field is
+prefilled, so nobody needs to type. On Firefox the focused field *is* the import
+mechanism. `Dialog` now focuses the first focusable thing in the body, with a
+`display: contents` wrapper so naming the region costs no layout.
+
+**3. A contrast sweep found the phase-1 defect again, one control over.**
+
+```json
+{ "what": "button[this stage's verbs]", "ratio": 1.13,
+  "colour": "rgb(255, 255, 255)", "background": "rgb(241, 241, 238)" }
+```
+
+Same composition as the white-on-white select: `color: inherit`, an inverted
+surface re-pointing `--pbui-ink` to paper, and a variant painting
+`--pbui-pane-alt` behind itself. Fixing one atom in phase 1 did not fix the
+class. `Button.framed`, `Button.raised` and `IconButton.framed` all state
+`--pbui-ink-on-pane` now, and the sweep is a script rather than a memory.
+
+**4. Biome refused the backdrop-click dismissal**, and it was right to:
+
+```
+src/components/organisms/Dialog/Dialog.tsx:102:5 lint/a11y/useKeyWithClickEvents
+  × Enforce to have the onClick mouse event with the onKeyUp, the onKeyDown, or the onKeyPress keyboard event.
+```
+
+Rather than suppressing it I removed the behaviour, because the rule prompted a
+better answer: **this dialog holds text the user has pasted, and click-away
+would discard it with no undo.** Escape and the ✕ are the two routes out, both
+aimed at deliberately. The backdrop dims and swallows pointer events and does
+nothing else.
+
+### What I learned
+
+"Verify it in Firefox" was not a compatibility chore. Every defect in this phase
+was a *complete* failure of the feature on that browser and *invisible* on the
+other, and two of the three were in code I had written specifically to handle
+the Firefox case. Guarding a rejection is not the same as guarding a
+non-outcome, and a promise that never settles is a much worse failure than one
+that throws, because there is nothing to catch and nothing to log.
+
+### What was tricky to build
+
+**Deciding where the export confirmation lives.** The design draws it as a
+panel; the question was what holds it. It became `layout.notice`, a third
+transient field, which is *convenient* rather than annoying: the `save()`
+enumeration guard now asserts three fields are excluded rather than one, and
+each new transient field makes that test stronger.
+
+**Getting the smoke scripts to resolve `playwright` from the ticket
+directory.** They live in `ttmp/` and the dependency lives in `ui/node_modules`,
+so a bare import fails:
+
+```
+error: Cannot find package 'playwright' from '…/scripts/smoke-firefox-import.ts'
+```
+
+`scripts/playwright.ts` walks up from the script until it finds the checkout's
+`ui/node_modules` and requires from there, so the scripts run from any
+directory. The alternative — telling people to set `NODE_PATH` — is a thing to
+remember and therefore a thing to forget.
+
+### What warrants a second pair of eyes
+
+- **`READ_TIMEOUT = 700`.** Long enough for a real read anywhere it works,
+  short enough not to be felt. It is a number, and numbers like this are
+  usually wrong for someone: a Safari user facing the paste-confirmation prompt
+  will time out and get the empty dialog, which is correct but not obviously so.
+- **The backdrop does not dismiss.** Defensible and unusual; a reviewer should
+  agree with it rather than discover it.
+- **`ExportNotice` is a modal for a confirmation.** It carries a sentence that
+  matters — what a bundle contains and does not — and a toast would let a user
+  paste before reading it. It is still a modal for a success case.
+
+### What should be done in the future
+
+- The three smoke scripts are not in CI. They need a dev server and two browser
+  downloads, which is a bigger conversation than this ticket.
+
+### Code review instructions
+
+`ui/src/store/clipboard.ts` first, for `READ_TIMEOUT` and why it exists. Then
+`Dialog.tsx`'s effect, then `BundleDialog.tsx`.
+
+```bash
+bun run --cwd=ui dev &
+bun run ttmp/…/DATADROP-8…/scripts/smoke-firefox-import.ts      # the one that matters
+bun run ttmp/…/DATADROP-8…/scripts/smoke-chromium-roundtrip.ts
+bun run ttmp/…/DATADROP-8…/scripts/smoke-contrast.ts
+```
+
+### Technical details
+
+The Firefox run, after both fixes — this is the acceptance evidence for the
+phase:
+
+```json
+{
+  "readText": "never settles",
+  "opened":     { "prefill": "", "focused": true, "confirmDisabled": true },
+  "afterPaste": { "confirmDisabled": false, "verdict": "✓ A tile: table. 1 kB." },
+  "applied":    { "dialogOpen": false, "tiles": ["table", "encoding", "chart", "table"] },
+  "consoleErrors": [],
+  "failures": []
+}
+```
+
+Read the first line against the third: the clipboard cannot be read, and the
+import works anyway.
+
+The Chromium round trip, through the real system clipboard:
+
+```json
+"confirmation": "Copied to the clipboard ✕ A tile: about. 1 kB. It names the sources these
+                 tiles read and the filters you set on them. It contains no rows and no
+                 credentials. OK",
+"copiedBytes": 169,
+"after": { "dialogOpen": false, "tiles": ["about / help", "about / help", "trace"] },
+"failures": []
+```
+
+and the menu it went through, with the disabled entry that is the interesting
+one:
+
+```
+{ "label": "Duplicate — a second about tile would show the same thing", "disabled": true }
+```

@@ -49,3 +49,12 @@ Phase 4: the verb seam widened — actionsForVerb over whole state returning thu
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/pbui/descriptors/tile.ts — The tile's menu — the shortest complete statement of what the ticket does
 
+
+## 2026-07-26
+
+Phase 5: the dialogs — TextArea, Dialog, BundleDialog, a live describeBundle verdict, an export confirmation that says what a bundle does not contain, and three reusable smoke scripts in the ticket. Firefox verification found two complete failures of the import flow that were invisible in Chromium: readText() never settles there (the dialog never opened), and the dialog focused its own close button (the field could not be pasted into). A contrast sweep found the phase-1 white-on-white defect repeated on Button and IconButton. (commit 26b5170)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/clipboard.ts — READ_TIMEOUT — Firefox's readText neither resolves nor rejects
+
