@@ -14,20 +14,37 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
-    - Path: repo://ttmp/2026/07/25/DATADROP-6--design-system-coverage-story-every-primitive-and-split-pbui-and-apps-into-reusable-atoms-molecules-and-organisms/design/01-design-system-coverage-and-decomposition-analysis-design-and-implementation-guide.md
-      Note: the guide this diary records the writing of
     - Path: repo://AGENT.md
       Note: gained a diaryGuidelines block in step 3, at the user's instruction
+    - Path: repo://ttmp/2026/07/25/DATADROP-6--design-system-coverage-story-every-primitive-and-split-pbui-and-apps-into-reusable-atoms-molecules-and-organisms/design/01-design-system-coverage-and-decomposition-analysis-design-and-implementation-guide.md
+      Note: the guide this diary records the writing of
     - Path: repo://ui/src/apps
       Note: the 3 528 lines analysed in step 1
+    - Path: repo://ui/src/apps/AboutApp/AboutApp.tsx
+      Note: The decision not to extract it, written down rather than left implicit (commit 40c4af7)
+    - Path: repo://ui/src/apps/tutorials/Tutorial.tsx
+      Note: DR-43 re-confirmed, with the new evidence from DATADROP-7's tour (commit 40c4af7)
+    - Path: repo://ui/src/components/molecules/SpecDiff/SpecDiff.tsx
+      Note: Difference carried in tone AND weight; colour alone would fail WCAG 1.4.1 (commit 1c42fe4)
+    - Path: repo://ui/src/components/molecules/StepEditor/StepEditor.tsx
+      Note: The five-way switch, extracted from a 293-line application (commit 2312d22)
+    - Path: repo://ui/src/components/organisms/EncodingPanel/EncodingPanel.tsx
+      Note: logUnavailable and staleChannels are props, not computations — both need rows (commit bba6688)
+    - Path: repo://ui/src/components/organisms/PipelinePanel/PipelinePanel.tsx
+      Note: Takes step views rather than a spec, because the per-step available schema needs a table (commit 2312d22)
+    - Path: repo://ui/src/components/organisms/WatchlistPanel/WatchlistPanel.tsx
+      Note: The one panel that reads the pbui registry directly, because it cannot know its own types (commit 40c4af7)
+    - Path: repo://ui/src/model/chart.ts
+      Note: specFacts, and the steps row that lists rather than counts — the regression the ComparePanel story caught (commit 69efba0)
     - Path: repo://ui/test/layers.test.ts
       Note: the graph whose one incidental edge shaped the whole design
 ExternalSources: []
-Summary: "Analysis of the datadrop UI and the rag-evaluation-site reference package, and the writing of the DATADROP-6 design guide."
-LastUpdated: 2026-07-25T15:40:00.000000000-04:00
-WhatFor: "Recording what was found, what was decided and what is still open, step by step."
-WhenToUse: "Before continuing DATADROP-6, and when a decision in the guide needs its reasoning."
+Summary: Analysis of the datadrop UI and the rag-evaluation-site reference package, and the writing of the DATADROP-6 design guide.
+LastUpdated: 2026-07-25T15:40:00-04:00
+WhatFor: Recording what was found, what was decided and what is still open, step by step.
+WhenToUse: Before continuing DATADROP-6, and when a decision in the guide needs its reasoning.
 ---
+
 
 # Diary
 
@@ -2320,3 +2337,187 @@ SourceApp                  181      93
 TableApp                    93      31
 stories                    193     208
 ```
+
+## Step 14: Phases 3 through 6 — the nine inline applications become panels
+
+Phases 3–6 were the remaining extraction work: nine applications, 1 135 lines of
+JSX, none of which had ever been rendered outside a running workbench. They are
+now six organisms and three molecules with 43 stories between them, and the nine
+containers total 554 lines. The two phases that came before this (the render
+path and its guard) are still open and are still independent of these.
+
+The unplanned result is that four of those stories showed something wrong, and
+two of the four were wrong in the component rather than in the story.
+
+### Prompt Context
+
+**User prompt (verbatim):** "ok, do 3, 4, 5, 6"
+
+**Assistant interpretation:** Implement DATADROP-6 phases 3 through 6 — extract
+`PipelinePanel`/`StepEditor`, `EncodingPanel`/`TracePanel`/`InspectorPanel`, the
+snapshot family, and `WatchlistPanel` — and make the two decisions phase 6 asks
+for explicitly.
+
+**Inferred user intent:** Finish the extraction half of DATADROP-6 now that the
+question of whether it was already done or deprecated has been settled, leaving
+only the two performance phases.
+
+**Commits (code):**
+- `2312d22` — phase 3: PipelinePanel and StepEditor
+- `bba6688` — phase 4: EncodingPanel, TracePanel and InspectorPanel
+- `1c42fe4` — phase 5: the snapshot family, designed together
+- `40c4af7` — phase 6: WatchlistPanel, and the two decisions written down
+- `69efba0` — two corrections found by looking at the rendered stories
+
+### What I did
+
+- Read all nine applications and the phase-2 guide's Part II before writing
+  anything, because DR-44 required the three snapshot applications to be
+  designed together and that is not a decision you can make one file at a time.
+- Phase 3: `molecules/StepEditor` (the five-way switch) and
+  `organisms/PipelinePanel`. `PipelineApp` 293 → 106.
+- Phase 4: `EncodingPanel`, `TracePanel`, `InspectorPanel`. 159 → 95, 85 → 24,
+  50 → 24. Three inline style objects became CSS modules.
+- Phase 5: `model/chart.ts` gained `specFacts`; `molecules/SpecSummary` and
+  `molecules/SpecDiff`; `GalleryPanel`, `ChartsPanel`, `ComparePanel`. 118 → 45,
+  117 → 42, 116 → 46.
+- Phase 6: `WatchlistPanel` (89 → 43), and the `AboutApp` and tutorial decisions
+  written into the two files rather than left implicit.
+- Opened Storybook and looked at `PipelinePanel/AChain`, `/DroppedRows`,
+  `EncodingPanel/StaleMapping` and `ComparePanel/BothPinned`.
+
+### Why
+
+The extraction was never about line count. It was about states nobody has ever
+seen: a `log10` derive that hides its right operand, a channel mapped to a
+column a summarize ate, a diff of two specifications that agree. Each needed a
+particular dataset and a particular sequence of clicks to reach, and each is now
+one line of story args.
+
+### What worked
+
+- **`schemaAfter` per step, passed down as a view array.** `PipelinePanel` takes
+  `{step, available, dropped}[]` rather than a spec, so the third step's dropdown
+  offering `mean_data.temp_c` — a column that exists only because the summarize
+  before it produced one — is visible in a story. Confirmed in the browser.
+- **`logUnavailable` and `staleChannels` as props rather than computations.**
+  Both need rows. Making them props is what turns "load a source whose y domain
+  includes a non-positive value" into `logUnavailable: true`.
+- **The story-coverage test caught `SpecSummary` and `SpecDiff` before I did.**
+
+### What didn't work
+
+- **`ComparePanel` shipped a regression I introduced and the story caught.**
+  `specFacts` returned a step *count*. Two snapshots with one step each both read
+  `1`, so a filter compared against a summarize showed the steps row as
+  **matching**. The `CompareApp` this replaced joined `stepLabel`, so this was a
+  loss of information dressed as a refactor. Fixed by carrying the labels in
+  `specFacts` and counting in `SpecSummary`, which has the spec anyway.
+- **The `DroppedRows` story's prose contradicted its own screenshot.** I wrote
+  "dividing by a boolean produces a non-finite result wherever the divisor is
+  false", implying a partial drop. The panel showed 360 dropped, 0 rows out.
+  Probing the engine directly:
+
+  ```text
+  data.temp_c / data.ok         rows=0   dropped={p:360}
+  data.temp_c / data.humidity   rows=360 dropped={}
+  data.ok / data.temp_c         rows=0   dropped={p:360}
+  ```
+
+  `asNumber` returns NaN for a boolean rather than coercing to 0 or 1, so any
+  derive touching one empties the pipeline. The prose now says that.
+- **The first `StepEditor.stories.tsx` did not typecheck.** `satisfies Meta` with
+  partial `args` requires every story to supply the rest; moving `render` up to
+  the meta and giving each story only its `step` fixed it and halved the file.
+
+### What I learned
+
+- **A refactor can lose information while every test passes.** Nothing failed
+  when the compare view stopped distinguishing two pipelines — there is no test
+  over that row, and there was no visual regression because both sides rendered
+  a plausible `1`. The only thing that caught it was reading the rendered diff
+  and noticing that two obviously different charts agreed about their steps.
+- **Which form of a fact belongs where is a real decision.** One-line summary
+  wants a count; a diff wants the labels. Putting the lossy form in the shared
+  function made the shared function useless to one of its two callers.
+- **`Tutorial.tsx` already holds the tutorials' shared machinery**, which
+  changes the DR-43 argument entirely: there is no second extraction available,
+  only a DTO to invent.
+
+### What was tricky to build
+
+The snapshot family, and specifically resisting the shape DR-44 warned about.
+The three cards rhyme strongly — `Surface`, a chip, a summary line, a row of
+buttons — and a `SnapshotList` molecule taking `renderActions` would have felt
+like the tidy answer. It is not: the gallery restores and pins, the manager
+renames and duplicates, and the compare view is not a list at all. What is
+actually shared is the *description of a specification*, which all three were
+building independently out of the same six fields. Finding that meant reading
+all three before writing any of them, which is what DR-44 asks for and is
+otherwise easy to skip.
+
+### What warrants a second pair of eyes
+
+- **`specFacts` is now a contract in two directions.** `SpecDiff` compares its
+  values as strings, so any change to a value's formatting silently changes
+  which rows read as differing.
+- **`WatchlistPanel` calls `usePbui` inside the panel.** Deliberate — the label
+  must resolve against the live environment so a watched field renames itself
+  with its document — but it is the only panel that does, and it makes the
+  component unstorieable without the decorator.
+- **`PipelinePanel` supplies `StepRow`'s `renderKind` presentation.** I read
+  DR-38 as forbidding a component wrapping *itself*, not the rows it draws
+  (`TablePanel` already does the latter with headers). Worth a second opinion.
+
+### What should be done in the future
+
+- **Phases 1 and 2 remain**, and are the user-visible half: `fieldsFor` on the
+  environment, `resolveField` no longer returning a table, and the test
+  forbidding `tableFor` under `components/`.
+- **`asNumber` and booleans** — a derive touching a boolean column silently
+  empties the pipeline. Either coerce, or refuse the step at mint time with a
+  reason. A separate ticket; this one only made it visible.
+- **The four tutorials versus the tour.** DATADROP-7's tour covers the same
+  ground with better machinery. The question is no longer "extract them" but
+  "should they exist", which is a product call.
+
+### Code review instructions
+
+- Start at `components/organisms/PipelinePanel/PipelinePanel.tsx` and its
+  `PipelineStepView`; the `available` field is the whole reason the panel takes
+  views rather than a spec.
+- `model/chart.ts` → `specFacts`, and the comment on the steps row, which is the
+  regression above.
+- Open `ComparePanel/BothPinned` and `PipelinePanel/AChain` in Storybook. Both
+  claims in this entry are visible in those two screens.
+- `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build`.
+  Note the `--cwd=ui` form: the equals sign is mandatory.
+
+### Technical details
+
+```text
+                        before   after
+PipelineApp                293     106
+EncodingApp                159      95
+GalleryApp                 118      45
+ChartsApp                  117      42
+CompareApp                 116      46
+WatchlistApp                89      43
+TraceApp                    85      24
+InspectorApp                50      24
+AboutApp                   108     129   (docstring only; deliberately not extracted)
+                          ----    ----
+                          1 135     554
+
+organisms                   14      22
+story exports              254     308
+```
+
+New decision record:
+
+**DR-85 — the snapshot family stays three panels over two shared molecules.**
+DR-44 required them to be designed together on the suspicion that the answer was
+one list molecule and three thin containers. It is not: the shells rhyme, the
+contents and actions do not, and a shared list taking a config object would be a
+generic solution to three specific instances. What is shared is the description
+of a specification — `specFacts`, `SpecSummary`, `SpecDiff`.

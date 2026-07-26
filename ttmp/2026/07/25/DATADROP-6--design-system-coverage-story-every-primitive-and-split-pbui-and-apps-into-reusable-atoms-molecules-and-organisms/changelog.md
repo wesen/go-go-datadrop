@@ -95,3 +95,12 @@ Design 02: the render path and the remaining applications. FieldChip calls resol
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/pbui/descriptors/field.ts — resolveField reads only table.fields, which is what makes the split possible
 
+
+## 2026-07-26
+
+Phases 3-6: the nine inline applications become six organisms and three molecules. 1 135 lines of JSX in containers becomes 554; 54 new story exports. Two defects found by opening Storybook after the build was green — specFacts counted steps instead of listing them, so ComparePanel showed a filter and a summarize as MATCHING (a regression against the CompareApp it replaced), and the DroppedRows story's prose contradicted its own screenshot because asNumber returns NaN for booleans, so any derive touching one empties the pipeline. DR-85: the snapshot family stays three panels over two shared molecules. AboutApp and the four tutorials deliberately not extracted, with the reasons in the files. Commits 2312d22, bba6688, 1c42fe4, 40c4af7, 69efba0.
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/model/chart.ts — specFacts — one description of a ChartSpec, two renderings
+
