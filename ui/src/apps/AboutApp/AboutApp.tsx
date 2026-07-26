@@ -9,6 +9,27 @@ import { DocChip, FieldChip, SourceChip } from "../../components/atoms";
  * It renders the real components, so it cannot drift from what it documents:
  * change how a field chip looks and this page changes with it. A screenshot
  * walkthrough is wrong within a month and tells nobody.
+ *
+ * ## This one is deliberately NOT extracted into a panel
+ *
+ * DATADROP-6 phase 6 asks for this decision to be made explicitly rather than
+ * by omission, so: it stays an application, and it is the one application with
+ * no story.
+ *
+ * The rule the other extractions follow is "the container keeps the hooks and
+ * the fetches; the panel takes data and callbacks". Applied here it produces a
+ * panel that takes **nothing** — no props, no hooks, no state, no callbacks —
+ * and a container that renders it. The story would show this prose; the page
+ * shows this prose; there is no second state to reach, no empty case, no error
+ * case, and nothing a reader could pass differently.
+ *
+ * Extracting it would satisfy a rule and buy a file. The chips it draws are
+ * already storied where they live, which is where a change to them would need
+ * reviewing.
+ *
+ * If this page ever takes a prop — a version string, a link that differs
+ * between the product and an embedded instance — that is the moment to revisit,
+ * because it is the moment there is a second state.
  */
 function AboutApp(_props: AppProps) {
   return (

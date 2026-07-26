@@ -18,6 +18,32 @@ import { Button, Tick } from "../../components/atoms";
  * It is also why the tutorials are ported early rather than last. They are the
  * cheapest regression test in the project for "do the verbs still do what the
  * prose says they do".
+ *
+ * ## The four tutorials stay inline (DR-43, re-confirmed)
+ *
+ * DATADROP-6 phase 6 asks for this decision to be made explicitly rather than
+ * by omission. DR-43 said "leave them, and revisit if a fifth tutorial is
+ * written", on the grounds that a `Tutorial` organism taking a step DTO would
+ * be a generic solution to four specific instances.
+ *
+ * Two things have happened since, and both support leaving them.
+ *
+ * **The shared part is already extracted — it is this file.** `TutorialHead`
+ * and `TutorialStep` are the machinery; what is left in Tut1 through Tut4 is
+ * 70 to 100 lines each of prose and step content, which is the part that is
+ * genuinely one-off. There is no second extraction to make, only a DTO to
+ * invent.
+ *
+ * **A fifth teaching surface was written, and it did get the treatment.**
+ * DATADROP-7's tour is content in `tour/` behind `LessonRail`, `ModuleRack` and
+ * `BriefChecklist` — exactly the shape DR-43 predicted a fifth would need. But
+ * it was designed that way from the start rather than retrofitted, which means
+ * it is evidence about how to build the *next* teaching surface rather than
+ * evidence that these four should be rebuilt.
+ *
+ * So the four stay. The open question they now raise is not "extract them" but
+ * "should they exist at all, given the tour covers the same ground" — a
+ * product question, and a different ticket.
  */
 
 export interface TutorialContext {
