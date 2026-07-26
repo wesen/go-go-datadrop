@@ -12,6 +12,15 @@ export { PipelinePanel, STEP_KINDS } from "./PipelinePanel";
 export { EncodingPanel } from "./EncodingPanel";
 export { TracePanel } from "./TracePanel";
 export { InspectorPanel } from "./InspectorPanel";
+
+// The snapshot family, designed together per DR-44 and kept as three panels
+// over two shared molecules per DR-85.
+export { GalleryPanel } from "./GalleryPanel";
+export type { SnapshotView } from "./GalleryPanel";
+export { ChartsPanel } from "./ChartsPanel";
+export type { DocView } from "./ChartsPanel";
+export { ComparePanel } from "./ComparePanel";
+export type { CompareSide } from "./ComparePanel";
 export type { PipelineStepView } from "./PipelinePanel";
 export { SignInPanel } from "./SignInPanel";
 export type { SignInMode } from "./SignInPanel";

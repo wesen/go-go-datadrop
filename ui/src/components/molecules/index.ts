@@ -25,6 +25,9 @@ export { StepRow } from "./StepRow";
 // Extracted from PipelineApp by DATADROP-6 phase 3: a five-way switch nothing
 // had ever rendered outside a running pipeline.
 export { StepEditor } from "./StepEditor";
+// One description of a ChartSpec, two renderings of it (DATADROP-6 phase 5).
+export { SpecSummary } from "./SpecSummary";
+export { SpecDiff } from "./SpecDiff";
 
 // The teaching layer (DATADROP-7 phase 4). Presentational: they take a state
 // and callbacks and know nothing about what a lesson means.

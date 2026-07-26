@@ -142,3 +142,43 @@ export function sameSource(a: SourceRef, b: SourceRef): boolean {
     (a.path ?? "") === (b.path ?? "")
   );
 }
+
+/**
+ * A specification as an ordered list of labelled facts.
+ *
+ * The one place that decides what a `ChartSpec` *says*, added by DATADROP-6
+ * phase 5 (DR-85). Three surfaces describe a spec — the snapshot gallery in one
+ * line, the document manager in one line plus a row budget, and the A/B compare
+ * as an aligned table — and before this they each built their own sentence out
+ * of the same six fields. Three copies of one description drift, and the way
+ * you find out is that a snapshot and the document it came from read
+ * differently while being identical.
+ *
+ * Ordered rather than a record, because the compare view walks it top to bottom
+ * and the order is a presentation decision: source first because it is what a
+ * reader checks first, mappings last because they are the part that changes
+ * most often.
+ *
+ * `limit` is optional and appears only when supplied. It is a property of the
+ * document rather than of the drawing, so a caller describing a bare spec has
+ * nothing to say about it.
+ */
+export function specFacts(spec: ChartSpec, limit?: number): Array<[string, string]> {
+  const facts: Array<[string, string]> = [
+    ["source", spec.source.drop ? describeSource(spec.source) : "no source"],
+  ];
+  if (limit !== undefined) facts.push(["row budget", limit.toLocaleString()]);
+  facts.push(
+    ["geom", spec.geom],
+    ["y scale", spec.yScale],
+    // Disabled steps are excluded: the count answers "what is this chart doing",
+    // and a step toggled off is doing nothing.
+    ["steps", String(spec.steps.filter((s) => s.on).length)],
+    ["x", spec.mapping.x ?? "—"],
+    ["y", spec.mapping.y ?? "—"],
+    ["colour", spec.mapping.color ?? "—"],
+    ["size", spec.mapping.size ?? "—"],
+    ["facet", spec.mapping.facet ?? "—"],
+  );
+  return facts;
+}

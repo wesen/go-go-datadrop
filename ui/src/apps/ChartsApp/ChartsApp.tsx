@@ -1,18 +1,16 @@
 import { useDispatch, useSelector } from "react-redux";
-import { describeSource } from "../../model/chart";
 import { registerApp, type AppProps } from "../../appkit/registry";
 import type { RootState } from "../../store";
 import { worldActions } from "../../store/world";
-import { AppBody, Stack, Surface, Toolbar } from "../../components/layout";
-import { Text } from "../../components/foundation";
-import { Button, DocChip, IconButton, TextInput } from "../../components/atoms";
+import { ChartsPanel } from "../../components/organisms";
 
 /**
- * The document manager.
+ * The document manager — the container half.
  *
- * The active document is marked unmissably: ambient verbs — those fired from a
- * chip that names no document — land there, and a user who cannot see which one
- * is active cannot predict where a menu entry will act.
+ * Two of the dispatches take a value the reducer must not compute itself: a
+ * fresh uuid for a duplicate and an ISO instant for a snapshot. A reducer that
+ * called crypto.randomUUID() or Date.now() would not be a pure function of its
+ * inputs, and a state tree that changes when you replay it is not replayable.
  */
 function ChartsApp(_props: AppProps) {
   const dispatch = useDispatch();
@@ -20,91 +18,18 @@ function ChartsApp(_props: AppProps) {
   const activeDocId = useSelector((s: RootState) => s.world.activeDocId);
 
   return (
-    <>
-      <Toolbar tight>
-        <Button variant="framed" size="tiny" onClick={() => dispatch(worldActions.newDoc(null))}>
-          ＋ new document
-        </Button>
-      </Toolbar>
-      <AppBody>
-        <Stack gap={3}>
-          <Text size="tiny" tone="faint" prose>
-            Every card is a live composition with its own pipeline and encoding.
-            Any chart / table / pipeline / encoding tile can be re-pointed at any
-            of them from its DOC strip.
-          </Text>
-          {docs.map((doc) => (
-            <Surface
-              key={doc.id}
-              border={doc.id === activeDocId ? "firm" : "hair"}
-              padding={3}
-            >
-              <Stack gap={2}>
-                <Stack direction="row" gap={2} align="center" wrap>
-                  <DocChip docId={doc.id} />
-                  <TextInput
-                    label="document name"
-                    value={doc.name}
-                    width="narrow"
-                    size="small"
-                    onValueChange={(name) =>
-                      dispatch(worldActions.renameDoc({ docId: doc.id, name }))
-                    }
-                  />
-                </Stack>
-                <Text size="tiny" tone="faint">
-                  {doc.spec.source.drop ? describeSource(doc.spec.source) : "no source"} ⊳{" "}
-                  {doc.spec.steps.filter((s) => s.on).length} steps ⊳ geom_{doc.spec.geom} · x↦
-                  {doc.spec.mapping.x ?? "—"} y↦{doc.spec.mapping.y ?? "—"} ·{" "}
-                  {doc.limit.toLocaleString()} row budget
-                </Text>
-                <Stack direction="row" gap={2} wrap>
-                  {doc.id !== activeDocId && (
-                    <Button
-                      variant="framed"
-                      size="tiny"
-                      onClick={() => dispatch(worldActions.setActiveDoc(doc.id))}
-                    >
-                      set active
-                    </Button>
-                  )}
-                  <Button
-                    variant="framed"
-                    size="tiny"
-                    onClick={() =>
-                      dispatch(
-                        worldActions.duplicateDoc({ docId: doc.id, id: crypto.randomUUID() }),
-                      )
-                    }
-                  >
-                    ⧉ duplicate
-                  </Button>
-                  <Button
-                    variant="framed"
-                    size="tiny"
-                    onClick={() =>
-                      dispatch(worldActions.snapshot(doc.id, new Date().toISOString()))
-                    }
-                  >
-                    ⚑ snapshot
-                  </Button>
-                  <IconButton
-                    variant="framed"
-                    size="tiny"
-                    glyph="✕"
-                    label={
-                      docs.length < 2 ? "the last document cannot be deleted" : "delete document"
-                    }
-                    disabled={docs.length < 2}
-                    onClick={() => dispatch(worldActions.deleteDoc(doc.id))}
-                  />
-                </Stack>
-              </Stack>
-            </Surface>
-          ))}
-        </Stack>
-      </AppBody>
-    </>
+    <ChartsPanel
+      docs={docs}
+      activeDocId={activeDocId}
+      onNew={() => dispatch(worldActions.newDoc(null))}
+      onRename={(docId, name) => dispatch(worldActions.renameDoc({ docId, name }))}
+      onActivate={(docId) => dispatch(worldActions.setActiveDoc(docId))}
+      onDuplicate={(docId) =>
+        dispatch(worldActions.duplicateDoc({ docId, id: crypto.randomUUID() }))
+      }
+      onSnapshot={(docId) => dispatch(worldActions.snapshot(docId, new Date().toISOString()))}
+      onDelete={(docId) => dispatch(worldActions.deleteDoc(docId))}
+    />
   );
 }
 
