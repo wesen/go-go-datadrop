@@ -105,3 +105,8 @@ Follow-up (commit 29f1191): unnested the teaching tiles and removed every drop s
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/layout/Surface/Surface.module.css — raised and floating now differ by border weight, because they differed only by shadow
 
+
+## 2026-07-26
+
+Closed: landing page, six embedded workbench instances, lesson rail and module rack complete; the store-as-instance-boundary and anti-rot lesson tests are the durable output.
+

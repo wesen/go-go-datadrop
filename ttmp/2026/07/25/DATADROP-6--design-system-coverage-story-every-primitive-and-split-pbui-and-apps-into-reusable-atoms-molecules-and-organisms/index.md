@@ -1,7 +1,7 @@
 ---
 Title: 'Design system coverage: story every primitive, and split pbui and apps into reusable atoms, molecules and organisms'
 Ticket: DATADROP-6
-Status: active
+Status: complete
 Topics:
     - design-system
     - storybook
@@ -32,11 +32,12 @@ ExternalSources:
     - https://bradfrost.com/blog/post/atomic-web-design/
     - https://storybook.js.org/docs/writing-stories/play-function
     - https://www.w3.org/WAI/WCAG22/Understanding/use-of-color.html
-Summary: "Raises the workbench from 24 component directories and 5 stories to 57 components each with a story, by extracting the primitives currently inlined across 3 528 lines of application code. Modelled on the rag-evaluation-site package and adapted to datadrop's presentation-based architecture."
-LastUpdated: 2026-07-25T15:45:00.000000000-04:00
-WhatFor: "Finishing a design system that stopped halfway, and making the finished state enforceable rather than aspirational."
-WhenToUse: "Before writing any component under ui/src/components, and before adding UI to any application."
+Summary: Raises the workbench from 24 component directories and 5 stories to 57 components each with a story, by extracting the primitives currently inlined across 3 528 lines of application code. Modelled on the rag-evaluation-site package and adapted to datadrop's presentation-based architecture.
+LastUpdated: 2026-07-26T18:15:53.413450993-04:00
+WhatFor: Finishing a design system that stopped halfway, and making the finished state enforceable rather than aspirational.
+WhenToUse: Before writing any component under ui/src/components, and before adding UI to any application.
 ---
+
 
 # Design system coverage: story every primitive, and split pbui and apps into reusable atoms, molecules and organisms
 

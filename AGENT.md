@@ -47,6 +47,9 @@ Use capture-pane to read the output.
 </libraryGuidelines>
 
 <webGuidelines>
+- The frontend lives in `ui/`. Run its scripts as `bun run --cwd=ui <script>` —
+  the equals sign is mandatory; `bun run --cwd ui X` silently runs in the wrong
+  directory.
 - Use bun, react and rtk-query. Use typescript.
 - Store css, html and js in different files in a static directory.
 - Use go:embed to serve static files.
@@ -74,6 +77,22 @@ what was tried and did not work.
 - Commit at intervals that make `git diff` reviewable: one commit per phase or
   per coherent change, never one commit at the end of a day's work.
 </diaryGuidelines>
+
+<parallelAgentGuidelines>
+Two or more agents may be working in this checkout at the same time, on tickets
+whose file sets are disjoint. The branch is shared, so the git index is shared.
+
+- **Stage explicit paths only.** `git add pkg/cli/rows.go ttmp/...` — never
+  `git add -A`, `git add .` or `git commit -a`. Another agent's half-finished
+  work is very likely sitting in the tree beside yours, and staging it makes a
+  commit that neither of you can review.
+- **`index.lock` contention is expected, not an error.** If a git command fails
+  with `Unable to create '.git/index.lock': File exists`, wait a couple of
+  seconds and retry once. Do not delete the lock file — the other agent is
+  mid-commit and removing it corrupts their index.
+- **Stay inside your ticket's file set.** If you need a change outside it, say so
+  in the diary and in your final report rather than making it.
+</parallelAgentGuidelines>
 
 <debuggingGuidelines>
 If me or you the LLM agent seem to go down too deep in a debugging/fixing rabbit hole in our conversations, remind me to take a breath and think about the bigger picture instead of hacking away. Say: "I think I'm stuck, let's TOUCH GRASS".  IMPORTANT: Don't try to fix errors by yourself more than twice in a row. Then STOP. Don't do anything else.

@@ -18,3 +18,8 @@ Step 1: ticket created, 11 tasks seeded, intern implementation guide written (20
 
 Steps 2-4: pkg/tabular, the table endpoints, and the web workbench (commits 0d4f842, b6cfd61, 04ec836)
 
+
+## 2026-07-26
+
+Closed: grammar-of-graphics workbench complete; superseded in structure by the PBUI shell in DATADROP-4 but its model layer is unchanged and still in use.
+

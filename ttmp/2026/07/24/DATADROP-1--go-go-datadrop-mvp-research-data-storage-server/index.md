@@ -1,7 +1,7 @@
 ---
 Title: 'go-go-datadrop MVP: research data storage server'
 Ticket: DATADROP-1
-Status: active
+Status: complete
 Topics:
     - backend
     - server
@@ -16,11 +16,12 @@ ExternalSources:
     - sources/open-source-wolfram-datadrop-transcript.md
     - sources/opendrop-pod-mvp.zip
     - sources/tinyidp-opendrop-source.tar.gz
-Summary: "Scope and implement the first MVP for go-go-datadrop, a self-hostable CLI-first research-data storage server, starting from the OpenDrop design documents and the tinyidp-opendrop reference slice."
-LastUpdated: 2026-07-24
-WhatFor: "Decide v0.1 scope and build the first runnable datadrop server."
-WhenToUse: "Read before implementing; update as scope or decisions change."
+Summary: Scope and implement the first MVP for go-go-datadrop, a self-hostable CLI-first research-data storage server, starting from the OpenDrop design documents and the tinyidp-opendrop reference slice.
+LastUpdated: 2026-07-26T18:15:52.774741761-04:00
+WhatFor: Decide v0.1 scope and build the first runnable datadrop server.
+WhenToUse: Read before implementing; update as scope or decisions change.
 ---
+
 
 # go-go-datadrop MVP: research data storage server
 

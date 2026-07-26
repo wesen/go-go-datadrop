@@ -1,7 +1,7 @@
 ---
 Title: 'Dataset upload and retrieval: bulk datasets with manifests and schemas'
 Ticket: DATADROP-2
-Status: active
+Status: complete
 Topics:
     - backend
     - server
@@ -12,10 +12,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-07-24T13:54:04.801254116-04:00
+LastUpdated: 2026-07-26T18:15:52.901993317-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Dataset upload and retrieval: bulk datasets with manifests and schemas
 

@@ -1,7 +1,7 @@
 ---
 Title: 'User accounts: Zitadel signup, sessions, API tokens and the account workspace'
 Ticket: DATADROP-5
-Status: review
+Status: complete
 Topics:
     - auth
     - oidc
@@ -35,11 +35,12 @@ ExternalSources:
     - https://zitadel.com/docs/self-hosting/deploy/compose
     - https://zitadel.com/docs/apis/openidoauth/endpoints
     - https://datatracker.ietf.org/doc/html/rfc9700
-Summary: "Adds real user accounts to go-go-datadrop: OIDC sign-in and self-service signup against a self-hosted Zitadel, server-side sessions, user-scoped API tokens, per-drop ownership and membership, a docker compose stack that provisions itself, and four new PBUI tiles in two hardwired workspaces."
-LastUpdated: 2026-07-25T12:00:00.000000000-04:00
+Summary: 'Adds real user accounts to go-go-datadrop: OIDC sign-in and self-service signup against a self-hosted Zitadel, server-side sessions, user-scoped API tokens, per-drop ownership and membership, a docker compose stack that provisions itself, and four new PBUI tiles in two hardwired workspaces.'
+LastUpdated: 2026-07-26T18:15:53.241790885-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # User accounts: Zitadel signup, sessions, API tokens and the account workspace
 

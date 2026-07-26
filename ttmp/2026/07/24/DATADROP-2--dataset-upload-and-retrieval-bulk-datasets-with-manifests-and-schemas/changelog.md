@@ -44,3 +44,8 @@ Tasks 8-11 (commits fad864a, 2e93cab, 59f13ae, 1d4b314): client and CLI with the
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/dataset.go — Dataset CLI
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/server/handlers_import.go — Materialization with provenance
 
+
+## 2026-07-26
+
+Closed: bulk dataset upload, manifests and schemas complete; the dataset verbs are the surface DATADROP-9 now converts to Glazed commands.
+

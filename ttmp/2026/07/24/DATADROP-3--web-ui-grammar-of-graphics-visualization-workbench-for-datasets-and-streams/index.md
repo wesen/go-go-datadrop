@@ -1,7 +1,7 @@
 ---
 Title: 'Web UI: grammar-of-graphics visualization workbench for datasets and streams'
 Ticket: DATADROP-3
-Status: review
+Status: complete
 Topics:
     - frontend
     - web-ui
@@ -15,10 +15,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-07-24T16:16:50.166782556-04:00
+LastUpdated: 2026-07-26T18:15:53.016953101-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 # Web UI: grammar-of-graphics visualization workbench for datasets and streams

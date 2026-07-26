@@ -109,3 +109,8 @@ Phases 3-6: the nine inline applications become six organisms and three molecule
 
 Phases 1 and 2: PbuiEnvironment splits into fieldsFor (render, O(steps)) and tableFor (menu, evaluates). 144 ms to 0.023 ms for a table header's thirteen chips at the 50 000-row budget. test/render-path.test.ts guards it two ways, both verified by breaking them. Biome 2.5.5 added and found three real defects: conditional hooks in the Storybook decorator, and both filter callbacks in pipeline.ts returning nothing on the implicit fifth FilterOp path, which filter reads as false. All six phases now complete. Commits 82f0d55, 33b8d4e.
 
+
+## 2026-07-26
+
+Closed: all 13 tasks done. Design system fully storied, pbui and apps split into atoms/molecules/organisms, and the render-path split (fieldsFor vs tableFor) landed with both a guard test and a Biome plugin.
+

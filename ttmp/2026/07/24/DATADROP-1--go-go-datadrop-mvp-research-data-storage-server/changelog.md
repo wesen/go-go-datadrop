@@ -67,3 +67,8 @@ Step 6: closed the direct-test gap in pkg/datadrop, pkg/client, and pkg/cli (30 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/client/client_test.go — Auth header, problem-document decoding, SSE parsing
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/datadrop/datadrop_test.go — Allowlist and query-normalization boundaries, incl. SQL-injection cases
 
+
+## 2026-07-26
+
+Closed: MVP server complete — storage, ingest, query and the CLI skeleton all landed and in use by every later ticket.
+
