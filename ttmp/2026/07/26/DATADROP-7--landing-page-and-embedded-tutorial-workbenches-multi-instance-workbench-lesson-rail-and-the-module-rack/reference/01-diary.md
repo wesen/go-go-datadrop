@@ -38,6 +38,10 @@ RelatedFiles:
       Note: Line 9 is the only runtime import of the store singleton in the whole frontend — the finding the design rests on
     - Path: repo://ui/src/store/index.ts
       Note: makeStore is now the only way to get a store; the preloadedState comment describes the two defects one store could not reveal (commit 4796da2)
+    - Path: repo://ui/src/tour/fixtures.ts
+      Note: World and layout seeded together, because a tile that should be bound needs the doc id at construction (commit 01eab25)
+    - Path: repo://ui/src/tour/lessons/grammar.tsx
+      Note: C6's predicate, and why the cumulative form silently required C2 (commit 01eab25)
     - Path: repo://ui/src/tour/modules.tsx
       Note: Twenty-one reference cards; nine describe applications nothing had ever described (commit 7fe48c1)
     - Path: repo://ui/test/fixture-query.test.ts
@@ -46,6 +50,8 @@ RelatedFiles:
       Note: Ten tests; both ambient-store guards verified by breaking them (commit 4796da2)
     - Path: repo://ui/test/layers.test.ts
       Note: The tour layer, and the restriction a graph table cannot express (commit 7fe48c1)
+    - Path: repo://ui/test/lessons.test.ts
+      Note: The anti-rot test; it failed twice on its first run and both were real defects (commit 01eab25)
     - Path: repo://ui/test/no-raw-controls.test.ts
       Note: Rule 4 matches a typed const declaration, not an inline style literal, which is why Tutorial.tsx slips through
     - Path: repo://ui/test/tour.test.ts
@@ -56,6 +62,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -1577,3 +1584,230 @@ Of the 21, the prototype covers 12 by concept — its `data` browser is our
 `sources`, and its `spec` tile has no equivalent here. The nine that had never
 been described anywhere: `about`, `tut1`, `tut2`, `tut3`, `tut4`, `signin`,
 `profile`, `tokens`, `upload`.
+
+## Step 7: Phase 6 — the content, and the test that found two broken lessons
+
+Fifteen lessons across three tracks plus a five-goal capstone, retargeted from
+the prototype's fictional seabirds onto our committed fixtures. The components
+were built in phase 4; this is the phase where they got something to render.
+
+The anti-rot test is the phase. It runs every ▶ against a real store and then
+asks that lesson's own predicate whether it worked. It failed twice on its first
+run, and both failures were real defects in lessons I had just written and
+believed were correct.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 6 of the ticket.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** `01eab25` — "DATADROP-7 phase 6: the four tracks, the brief, and the anti-rot test"
+
+### What I did
+
+- `tour/fixtures.ts` — the two sources, the column-name constants, and five
+  per-section seeds.
+- `tour/lessons/{objects,layout,grammar,brief}.tsx` — four A-track lessons, five
+  B-track, six C-track, and the capstone's question, five goals and seven hints.
+- `test/lessons.test.ts` — the anti-rot test plus eight well-formedness checks.
+- `layers.test.ts` — two edges the test caught rather than me declaring.
+
+### Why
+
+**`COLUMNS` exists so no lesson body can name a column that is not there.**
+`readings` is an event stream, so its payload columns are `data.temp_c` and
+`data.station`, not `temp_c` and `station`. A body naming the wrong one reads as
+*our* defect to the reader — the chart says "y ↦ temp_c is not in the pipeline
+output" — rather than as a typo. `src/fixtures/charts.ts` was written for
+exactly this reason after it happened once during DATADROP-6; naming them again
+here, once, is what stops the third time.
+
+**The brief uses the census dataset rather than the stream** because it has a
+genuine question in it: twenty-four stations across three regions, each with a
+population and an area, and "which region has the highest average population per
+station" cannot be answered by looking. A capstone whose answer is visible in
+the raw table is a capstone about clicking.
+
+### What worked
+
+**The anti-rot test earned its place in its first ten seconds.** Two of the
+eleven runnable lessons failed:
+
+```console
+(fail) every ▶ satisfies its own predicate > layout/b3 — Re-point a view at another document
+(fail) every ▶ satisfies its own predicate > grammar/c6 — The picture is an editable surface
+```
+
+Neither is a test artefact. Both are lessons a reader would have followed
+exactly and got no tick for.
+
+**B3 could not be completed at all.** `leaf("chart")` defaults `docId` to
+`null`, which means *follow the ACTIVE document*. So both tiles displayed α, and
+§B's opening sentence — "Both tiles are pointed at document α — look at their
+DOC strips" — was **visually true and structurally false**. Re-pointing one left
+the other still following the active document, so "two different documents are
+visible" was never reached.
+
+The fix restructured the seeds: each section now builds its world and its layout
+together, because a tile that is *supposed* to be bound needs the document id at
+layout-construction time. That is a better shape anyway — phase 7's sections
+want one `preloaded` object rather than two.
+
+**C6's predicate depended on C2 having happened.** I had written
+`filters >= 2`, which is what the prototype uses (`nFilters(w) >= 2`). Run in
+isolation from the section's starting state it counts one filter, not two.
+
+That is not a testing inconvenience. It means the predicate silently required
+C2, so a reader who skipped C2 and went straight to right-clicking a mark —
+doing precisely what C6 asks — would get nothing. The replacement asks for an
+**exclusion**: `op === "!="`, which is what "Exclude …" dispatches from both
+routes the body names (`pbui/descriptors/cat.ts:37` and `datum.ts:53`). It
+describes C6's outcome and nothing else's.
+
+**The "nothing is satisfied by the starting state" test for the brief.** Added
+because phase 4's story shipped a goal that was true on load, and I wanted the
+check to exist before the content did rather than after.
+
+**The layer test caught two undeclared edges** rather than me remembering them:
+`tour → fixtures` and `tour → api`. Both are legitimate, both are now declared
+with their reasons, and finding out this way is strictly better than finding out
+by convincing myself in advance.
+
+### What didn't work
+
+**`op: "≠"` does not exist.** The prototype uses the mathematical character;
+`FilterOp` is `"=" | "!=" | ">" | "<"`. Caught by typecheck immediately, but it
+is a good example of how porting content silently imports the source's
+assumptions — the character is *displayed* as ≠ in our step editor too, so
+reading the UI would have confirmed the wrong thing.
+
+**`cd ui` failed twice more**, same as phases 4 and 5, both times silently
+eating the head of an `&&` chain. I have now done this six times across four
+phases while narrating that I should stop. Absolute paths, every block.
+
+**An unused `active` helper in `brief.tsx`** — copied from `grammar.tsx` and
+never used, caught by `noUnusedLocals`. Trivial, but worth noting as evidence
+that I was writing the third track from muscle memory rather than from the
+requirements.
+
+### What I learned
+
+**"Any route counts" has a corollary I had not thought through: a predicate must
+not depend on the reader having taken the earlier routes either.** A cumulative
+predicate (`>= 2`) looks like it satisfies "any route" — it does not care *how*
+the two filters got there — while quietly requiring a specific history. The
+honest form asks about a state this lesson produces and that no earlier lesson
+does.
+
+The general rule: **write the predicate against the state the step reaches, not
+against a difference from the state before it.** A difference needs a baseline,
+and the baseline is exactly what "any route" refuses to fix.
+
+**A fresh store per lesson is the right test harness, and the discomfort it
+causes is information.** Running the track cumulatively would have made both
+failures disappear, and I briefly considered it. That would have hidden a defect
+readers experience: the rail does not enforce order, so a reader can and will do
+step 6 before step 2.
+
+**Prose can be true about what the screen shows and false about what the state
+is.** §B's opening sentence was the clearest example I have hit. Both tiles
+*displayed* α, correctly, and the sentence describing them was wrong in a way
+that broke the next lesson. Anything a lesson asserts about state has to be
+asserted by the seed, not by what the seed happens to render.
+
+### What was tricky to build
+
+**Deciding what C4's predicate should ask.** "Fix it with the other half" —
+group∑, then re-map x and y so the bar chart draws. A structural check has to
+guess at the produced column's name (`mean_data.temp_c`) and goes stale the
+moment `summarize` changes how it names output. The guide suggested asking the
+engine directly: `buildPlot` returning no problems.
+
+I ended up between the two: the predicate requires a bar geom, an enabled
+summarize step, and both x and y mapped — but not the specific names. Calling
+`buildPlot` would have been stricter and I did not, for one reason I want on the
+record: it needs a `Table`, which means reaching into the RTK Query cache from a
+predicate, and `wedgeOf` already does that with a known weakness (it takes the
+first cached entry with a source, without matching). Adding a second such reach
+before fixing the first seemed like the wrong order.
+
+That is a deliberate weakening and it is worth revisiting once `wedgeOf` matches
+on source.
+
+### What warrants a second pair of eyes
+
+- **C4's predicate**, above. It is looser than the guide's design and the reason
+  is a dependency I chose not to add yet.
+- **The A3 runner calls `accept`, and the test stubs it to resolve
+  immediately.** So the test proves the runner does the right thing *with* an
+  argument, not that the accept protocol delivers one. The protocol has its own
+  coverage in `Pbui.stories.tsx`, but the seam between them is untested.
+- **Whether the brief's question is answerable.** I believe density by region is
+  a real question over `census`, but I have not sat down and solved it as a
+  reader would. Phase 7 should do that before shipping.
+
+### What should be done in the future
+
+- **Solve the brief by hand**, in the browser, by a route the lessons did not
+  teach. That is the only check that it is a question rather than a recipe.
+- `wedgeOf` source matching — now blocking C4's stronger predicate as well.
+- The two long-standing carried-over items: the null-key persistence test and a
+  guard for mistyped CSS custom properties.
+- Phase 7, the page.
+
+### Code review instructions
+
+- `test/lessons.test.ts` first, and specifically `runAndCheck` and the fresh
+  store per lesson. If that harness looks over-strict, read C6's predicate
+  comment before deciding.
+- `src/tour/lessons/grammar.tsx` — C6's `done`, and the docstring above it.
+- `src/tour/fixtures.ts` — the `Seed` type and the comment on why world and
+  layout are built together.
+- Break one: change a lesson's `run` to dispatch something else, and confirm
+  `test/lessons.test.ts` fails with that lesson's title.
+- Validate: `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build && bun run --cwd=ui build-storybook`.
+
+### Technical details
+
+The anti-rot check, in full:
+
+```ts
+async function runAndCheck(lesson: Lesson, store: AppStore, acceptWith: unknown) {
+  await lesson.run?.({
+    dispatch: store.dispatch,
+    getState: () => store.getState(),
+    accept: async (request) => ({ ptype: …, value: acceptWith }),   // resolves, never hangs
+  });
+  return lesson.done?.(store.getState()) ?? null;
+}
+// one FRESH store per lesson: a step must work from the section's starting
+// state, not from whatever the previous step left behind
+```
+
+The two defects, as diffs of intent:
+
+```text
+b3   seed:  leaf("chart")                    →  leaf("chart", firstDocId)
+     why:   null means "follow the active document", so both tiles showed α
+            and the lesson's own premise was unreachable
+
+c6   done:  filters(state).length >= 2       →  filters.some(s => s.op === "!=")
+     why:   the cumulative form silently required C2; the intrinsic form asks
+            what THIS lesson produces
+```
+
+Content, by the numbers:
+
+```text
+track          lessons  runnable  manual  predictions
+objects (§A)         4         2       2            1
+layout  (§B)         5         3       2            1
+grammar (§C)         6         5       1            1
+brief   (✦)     5 goals        —       —            —   7 hints
+
+tests added        17    (11 anti-rot + 4 well-formedness + 3 brief, minus overlap)
+suite             226    (was 209)
+```

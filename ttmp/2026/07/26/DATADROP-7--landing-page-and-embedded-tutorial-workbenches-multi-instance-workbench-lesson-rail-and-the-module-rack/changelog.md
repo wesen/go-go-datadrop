@@ -64,3 +64,12 @@ Phase 5: the module rack and a card for every application (commit 7fe48c1). tour
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/tour/modules.tsx — The vocabulary, in one place, with a test that keeps it complete
 
+
+## 2026-07-26
+
+Phase 6: the four tracks, the brief, and the anti-rot test (commit 01eab25). Fifteen lessons and a five-goal capstone, retargeted onto our committed fixtures. test/lessons.test.ts runs every ▶ and asks its own predicate; it failed twice immediately. B3 was uncompletable because leaf() defaults docId to null, so both tiles followed the active document and the lesson's own premise was unreachable. C6's predicate silently required C2 to have happened. Both fixed; 226 tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/lessons.test.ts — One fresh store per lesson — the discomfort that causes is the information
+
