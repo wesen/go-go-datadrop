@@ -63,6 +63,20 @@ const ALLOWED: Record<string, string[]> = {
    * cycle can form — `organisms` no longer names `apps` at all.
    */
   appkit: ["model", "pbui", "store"],
+  /*
+   * Lesson content: the four tracks, the module cards, the cheat sheets.
+   *
+   * A layer rather than a directory under `components/` because of what it may
+   * and may not see (DATADROP-7 DR-54). It MAY import `store`, because a lesson
+   * predicate takes a `RootState` and a ▶ runner returns actions; it MAY import
+   * `model`, because a predicate may ask whether the engine can draw a spec;
+   * and it MAY import `appkit`, which is where the `Lesson` contract lives.
+   *
+   * It may NOT import `components`. That restriction is the load-bearing one:
+   * it is what keeps a lesson testable with no DOM, and it is why the `Lesson`
+   * type sits in `appkit` rather than beside the rail that renders it.
+   */
+  tour: ["model", "pbui", "store", "appkit"],
   // Components, in dependency order.
   foundation: [],
   layout: ["foundation"],
@@ -94,6 +108,9 @@ const ALLOWED: Record<string, string[]> = {
     "api",
     "apps",
     "appkit",
+    // The landing page names the four lesson tracks and the module cards.
+    // One-way: nothing in `tour` imports `components`, so no cycle can form.
+    "tour",
   ],
   // Applications are containers: they hold the hooks and the fetches and hand
   // DTOs to presentational organisms. `pages` is still absent — an application

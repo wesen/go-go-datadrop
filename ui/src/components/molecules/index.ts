@@ -29,3 +29,5 @@ export { LessonStep } from "./LessonStep";
 export { PredictPrompt } from "./PredictPrompt";
 export { GoalItem } from "./GoalItem";
 export { HintList } from "./HintList";
+export { ModuleCard } from "./ModuleCard";
+export { CheatCard } from "./CheatCard";

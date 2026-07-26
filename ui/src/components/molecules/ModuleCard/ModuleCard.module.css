@@ -1,0 +1,42 @@
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+}
+
+.title {
+  display: block;
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+  border-bottom: var(--pbui-border-firm);
+  padding-bottom: var(--pbui-space-2);
+}
+
+/*
+ * A two-column grid over a <dl>, so the labels form a rule down the left and
+ * the values wrap independently of them. `grid-template-columns: max-content`
+ * on the labels means the widest label sets the gutter — with a fixed width the
+ * longest ("Not to be") either wraps or forces the others too far right.
+ */
+.rows {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--pbui-space-2) var(--pbui-space-3);
+  margin: 0;
+}
+
+.label {
+  margin: 0;
+  padding-top: 2px;
+}
+
+.labelText {
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+  white-space: nowrap;
+}
+
+.value {
+  margin: 0;
+  min-width: 0;
+}
