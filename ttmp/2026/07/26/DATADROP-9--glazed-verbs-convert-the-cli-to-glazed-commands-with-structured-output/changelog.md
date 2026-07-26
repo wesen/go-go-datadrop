@@ -31,3 +31,12 @@ Phase 2: 'list' converted to a GlazeCommand; wiring, short help and env loading 
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/build.go — The parser config every converted verb shares
 
+
+## 2026-07-26
+
+Phase 3: query/tail/inspect/whoami as GlazeCommands, export as a WriterCommand; --stream renamed to --drop-stream after a fatal collision with glazed's flag; tail --follow made to actually stream (commit 55e8b67)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/events/tail.go — Why tail defaults to --stream and --table-format markdown
+

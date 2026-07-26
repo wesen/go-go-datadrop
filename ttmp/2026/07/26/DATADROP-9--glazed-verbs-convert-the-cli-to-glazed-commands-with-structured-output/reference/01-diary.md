@@ -19,6 +19,12 @@ RelatedFiles:
       Note: BuildCobraCommand and AddCommands; the one place the parser config is decided (commit fe5523f)
     - Path: repo://pkg/cli/drops/list.go
       Note: The shape every other verb file copies (commit fe5523f)
+    - Path: repo://pkg/cli/events/export.go
+      Note: The WriterCommand that keeps --format server-side (commit 55e8b67)
+    - Path: repo://pkg/cli/events/range.go
+      Note: StreamFlag; why --stream became --drop-stream (commit 55e8b67)
+    - Path: repo://pkg/cli/events/tail.go
+      Note: The streaming default and the two rounds it took to find it (commit 55e8b67)
     - Path: repo://pkg/cli/exit.go
       Note: ExitOn and WithExitCodes, the local workaround for glazed issue 611 (commit 62e53d4)
     - Path: repo://pkg/cli/rows.go
@@ -35,6 +41,7 @@ LastUpdated: 2026-07-26T18:20:14-04:00
 WhatFor: Recording what was tried, what failed, and why each decision was made while implementing DATADROP-9.
 WhenToUse: Read before continuing DATADROP-9, before touching pkg/cli/exit.go, and when the upstream glazed exit-code hook lands and the workaround can be removed.
 ---
+
 
 
 
@@ -527,3 +534,232 @@ The `<secret>` in that last line is the same `TypeSecret` declaration doing its
 other job: `fields/cobra.go:385` redacts a sensitive flag's *default* in the
 help text, so a token supplied by a config file cannot be read out of `--help`
 either.
+
+## Step 3: The reading verbs, and two things the guide got wrong
+
+`query`, `tail`, `inspect` and `whoami` are Glaze commands now; `export` is a
+Writer command. Doing them in one phase is what makes the `--format` versus
+`--output` distinction concrete instead of theoretical — they sit in one package
+and the rule is checkable by reading it: `export` has `--format` and no
+`--output`, everything else has `--output` and no `--format`, and a command with
+both has been classified wrong.
+
+The phase cost more than it should have because two things in the design guide
+do not survive contact with glazed v1.3.8. The first is a flag-name collision on
+`--stream` that the guide's own compatibility matrix lists as a *new* flag,
+apparently without noticing datadrop already had one. The second is DR-80's fix
+for the follow-that-prints-nothing, which does not work — and does not work
+silently, twice, for two different reasons. Both are written up below with the
+measurements.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** (see Step 1) — this step is phase 3.
+
+**Inferred user intent:** (see Step 1)
+
+**Commit (code):** `55e8b67` — "DATADROP-9 phase 3: the reading verbs"
+
+### What I did
+
+- Added `pkg/cli/events/` — `range.go` (the shared bounds), `query.go`,
+  `tail.go`, `export.go`, `root.go`.
+- Added `pkg/cli/drops/inspect.go`, rewrote `pkg/cli/whoami.go` as a
+  `GlazeCommand` in package `cli`.
+- Renamed the drop-stream flag from `--stream` to `--drop-stream`.
+- Set `tail`'s output defaults to `stream: true` and `table-format: markdown`.
+- Updated the assertions in `cmd/datadrop/smoke_test.go` and
+  `dataset_smoke_test.go` that the conversion legitimately changed.
+- Exercised every verb against a live server on port 18099, including a real
+  `--follow` with concurrent pushes and a SIGINT.
+
+### Why
+
+`inspect` and `whoami` return one row rather than an indented object so that
+`--output json` means the same thing on every verb. Before, `whoami` printed
+prose, `inspect` printed an object and `list` printed an array, and a script had
+to know which. `datadrop whoami --select user_id` is now a thing anyone can
+type.
+
+`export` stays bytes because the CLI never sees a record: it opens a response
+body and copies it. The formatting is `pkg/tabular` on the server, which is also
+what `curl` and the web UI get. The consistency shows up in the output — the CSV
+export's header and `query`'s column list are now character-for-character the
+same set, which is DR-83 paying off across two code paths that never call each
+other.
+
+### What worked
+
+- The whole §11 transcript, on the first run: `--fields seq,time,data.temp_c`,
+  `--output csv`, `--output excel --output-file`, `--jq`, `--select`.
+- Exit codes already work through the phase-1 wrapper: `query` with a bad token
+  exits 3 and `query nosuchdrop` exits 4, both with the `datadrop: ` prefix,
+  with no per-verb code.
+- `RowsForEnvelopes` as the single funnel. Every event in the package goes
+  through `emitEvents` or `RowForEnvelope`, so the "two flatteners" failure mode
+  (§19) is closed structurally rather than by discipline.
+
+### What didn't work
+
+- **`--stream` is already taken by glazed, and the collision takes down the
+  whole binary.** datadrop's `--stream` (string: which stream within the drop)
+  and glazed's `--stream` (bool: emit row at a time) cannot coexist. Built with
+  the old name:
+
+  ```
+  $ datadrop query greenhouse
+  datadrop: building the query command: Flag 'stream' (usage: stream within the
+  drop - <string>) already exists
+  ```
+
+  Note *what* failed: not the query, the tree. `NewRootCmd` returns the error, so
+  every verb including `serve` stops working. glazed's cannot be renamed or
+  dropped — `schema.SectionOption` offers `WithPrefix`, `WithName`,
+  `WithDescription`, `WithDefaults`, `WithFields` and `WithArguments`, none of
+  which removes or renames an existing field, and the settings struct reads the
+  field by its `glazed:"stream"` tag anyway. So datadrop's flag moved to
+  `--drop-stream`. **This is a breaking CLI change the guide does not mention**;
+  its §18 matrix lists `--stream` as one of the *new* flags glazed brings, which
+  is only half true. The same audit turned up one more collision waiting in
+  phase 5: `dataset push --flatten` versus glazed's `--flatten`.
+
+- **DR-80's fix for `--follow` does not work. Round one:** set
+  `stream: true` on the output section, exactly as the guide says. Ran
+  `tail --follow`, pushed twice, waited three seconds: empty terminal. Every row
+  arrived at once on SIGINT. The cause is that `SetupProcessorOutput` asks for a
+  row formatter and **silently** falls back to the buffering table formatter
+  when it cannot get one (`settings/glazed_section.go:582`), and
+  `CreateRowOutputFormatter` refuses `output=table` at the default `ascii`
+  table-format outright (`settings/settings_output.go:176`,
+  `ErrorRowFormatUnsupported`) — an ASCII box cannot be drawn a row at a time
+  because its column widths are a property of the whole set. So the flag was
+  set, was read, and did nothing.
+
+- **Round two:** `table-format: tsv`, which *is* row-capable. Still an empty
+  terminal. The CSV and TSV row formatters write into an `encoding/csv.Writer`
+  and only `Flush()` in `Close()` (`formatters/csv/csv.go:86`); `OutputRow`
+  never flushes. The buffer had moved one layer down.
+
+  Round three was a measurement rather than a guess — run `tail --follow` under
+  each candidate, push once, and count bytes in the pipe after one second:
+
+  ```
+  [--output json --output-as-objects] bytes-while-live=58
+  [--output json]                     bytes-while-live=38
+  [--table-format markdown]           bytes-while-live=48
+  [--output yaml]                     bytes-while-live=38
+  [--table-format tsv]                bytes-while-live=0
+  ```
+
+  `tail` now defaults to `stream: true` **and** `table-format: markdown`, which
+  streams, flushes, and reads as a live log.
+
+- `--order sideways` now prints its message twice and with the wrong prefix:
+
+  ```
+  $ datadrop query greenhouse --order sideways
+  Argument order has invalid choice sideways
+  Error: Argument order has invalid choice sideways
+  ```
+
+  That is glazed's parse failure inside `cmd.Run` before any datadrop code runs
+  (`cobra.go:50-55`: `Fprintln(os.Stderr, err)`, then `cmd.Help()`, then
+  `cobra.CheckErr(err)`). The exit code is 1, which is what it was before, so
+  the contract holds; the presentation does not. `ExitOn` cannot reach it. This
+  is a cost of the workaround and is recorded in step 4.
+
+### What I learned
+
+- `settings.WithOutputSectionOptions(schema.WithDefaults(...))` does work — the
+  defaults show up correctly under `--print-parsed-fields` — so a "the flag had
+  no effect" symptom here is about what the *formatter* does with the value, not
+  about whether the value arrived. Checking `--print-parsed-fields` first saved
+  a round of debugging the wrong layer.
+- glazed's cobra builder wires SIGINT/SIGTERM into the command context itself
+  (`cobra.go:170-173`), and skips `cobra.CheckErr` when the error
+  `errors.Is(err, context.Canceled)`. So `tail --follow` needed no signal
+  handling of its own, and returning nil on a cancelled context is enough for
+  exit 0. Verified: `kill -INT` on a following tail exits 0.
+
+### What was tricky to build
+
+**Making `--follow` visibly stream.** Covered above; the sharp edge is that
+every layer fails *quietly*. The output section accepts a `stream` default that
+the formatter ignores; the formatter selection falls back rather than erroring;
+the TSV writer accepts rows and holds them. Three silent layers between "I set
+the flag" and "nothing appears", and the symptom at the end — a blank terminal —
+is identical to the perfectly ordinary situation of a drop with no new events.
+The way out was to stop reading and start measuring: byte counts in the pipe,
+one second after a known push, for each candidate format.
+
+**The `reverse` then `follow` cursor hand-off.** `tail` fetches the newest page
+descending, emits it ascending, and must resume the SSE cursor from the *last
+emitted* row rather than the last fetched one, or the first live event repeats.
+That was already right in the old code and is preserved; the test for it is
+watching a `--follow` and checking that the boundary row does not appear twice,
+which it does not.
+
+### What warrants a second pair of eyes
+
+- **`--drop-stream` is a breaking rename.** Anyone using a non-default stream
+  has a script to update. The help string says "was --stream before v0.2" and
+  phase 6 documents it, but there is no alias. Adding one is possible (a hidden
+  duplicate flag copied into the section before parse) and was deliberately not
+  done, because a silently-working old name is how a rename never finishes.
+- **`tail`'s default output changed shape**, from a boxed table to markdown
+  rows. It is the only verb whose default rendering is not the ASCII table.
+- **`whoami` on an anonymous credential returns a row with
+  `authenticated=false` and exits 0**, where the old command printed prose
+  advice about setting `DATADROP_TOKEN`. The advice is gone. That may be a
+  regression in helpfulness worth restoring as a stderr note.
+
+### What should be done in the future
+
+- Decide whether `--drop-stream` deserves a deprecation alias.
+- The `dataset push --flatten` collision lands in phase 5; the same rename
+  question applies.
+
+### Code review instructions
+
+- `pkg/cli/events/tail.go`, the comment above `NewTailCommand`, is the densest
+  thing in this phase and explains both failed rounds.
+- `pkg/cli/events/range.go`, the comment above `StreamFlag`, explains the
+  rename.
+- Validate the streaming claim by hand: start a server, run
+  `datadrop tail X --follow` in one shell and `datadrop push X n=1` in another;
+  rows must appear immediately. Then repeat with `--table-format ascii` and
+  watch it hang, which is the behaviour the help warns about.
+- `GOWORK=off go test ./cmd/... ./pkg/cli/... -count=1`.
+
+### Technical details
+
+`query` and `export` agreeing on columns, which is DR-83's whole argument, in
+two commands that share no code path:
+
+```
+$ datadrop query greenhouse --output csv
+id,drop,stream,seq,time,received_at,source,type,subject,data.humidity,data.location.lat,data.temperature
+
+$ datadrop export greenhouse --format csv
+id,drop,stream,seq,time,received_at,source,type,subject,data.humidity,data.location.lat,data.temperature
+```
+
+A live `tail --follow` with the new defaults, captured while the process was
+still running:
+
+```
+| time | data.temperature |
+| --- | --- |
+| 2026-07-26T22:41:13.259Z | 31.5 |
+| 2026-07-26T22:41:51.141Z | 40.1 |
+exit after SIGINT = 0
+```
+
+Exit codes through the phase-1 wrapper, with no code in the verbs:
+
+```
+bad token    -> 3 : datadrop: Unauthorized: a valid credential is required
+missing drop -> 4 : datadrop: NotFound: drop "nosuchdrop" does not exist
+```
