@@ -72,11 +72,21 @@ const ALLOWED: Record<string, string[]> = {
    * `model`, because a predicate may ask whether the engine can draw a spec;
    * and it MAY import `appkit`, which is where the `Lesson` contract lives.
    *
+   * It also imports `fixtures` and `api`, both added after this test caught
+   * them. `fixtures` is where the committed tables live and the tour's data IS
+   * those tables — a second copy for the tour would be a second thing to keep
+   * true. `api` supplies `FixtureData` and `fixturesFrom`, because "answer
+   * these sources from memory" is a transport concern and the type belongs
+   * beside the base query that reads it. Neither can cycle: nothing in `api`
+   * or `fixtures` names `tour`.
+   *
    * It may NOT import `components`. That restriction is the load-bearing one:
    * it is what keeps a lesson testable with no DOM, and it is why the `Lesson`
    * type sits in `appkit` rather than beside the rail that renders it.
+   * `test/tour.test.ts` states it separately, because a permission table can
+   * express what is allowed but not which prohibition is the point.
    */
-  tour: ["model", "pbui", "store", "appkit"],
+  tour: ["model", "pbui", "store", "appkit", "api", "fixtures"],
   // Components, in dependency order.
   foundation: [],
   layout: ["foundation"],
