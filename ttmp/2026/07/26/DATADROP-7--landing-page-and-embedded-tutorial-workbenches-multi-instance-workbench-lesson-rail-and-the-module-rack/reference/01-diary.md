@@ -22,8 +22,14 @@ RelatedFiles:
       Note: The interception point; its docstring names its own fragility (commit 8302e2c)
     - Path: repo://ui/src/appkit/AppScope.tsx
       Note: DR-53; the registry stays global and only the visible set is per instance (commit 24d0a07)
+    - Path: repo://ui/src/appkit/lessons.ts
+      Note: The Lesson contract, in appkit for DR-33's reason — both organisms and tour already depend on it (commit f7b4261)
     - Path: repo://ui/src/appkit/usePersistence.ts
       Note: The debounced write, or nothing at all when the key is null (commit 4796da2)
+    - Path: repo://ui/src/components/atoms/Tick/Tick.tsx
+      Note: Extracted from Tutorial.tsx, where it was an inline style object and aria-hidden (commit f7b4261)
+    - Path: repo://ui/src/components/organisms/LessonRail/LessonRail.tsx
+      Note: The completion loop, and the auto-advance whose exception the browser found (commit f7b4261)
     - Path: repo://ui/src/components/pages/Workbench/WorkbenchProviders.tsx
       Note: Separate so the lesson rail can be a sibling of the shell inside one PbuiProvider — DR-55 (commit 24d0a07)
     - Path: repo://ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.tsx
@@ -44,6 +50,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -1099,4 +1106,269 @@ before        177      14
 phase 1       187      15   instances.test.ts
 phase 2       187      15
 phase 3       204      16   fixture-query.test.ts
+```
+
+## Step 5: Phase 4 — the rail, and three things only the browser found
+
+The first phase that is mostly new components rather than moved ones: one atom,
+four molecules, two organisms, seven story files. The mechanism at the centre is
+small — a step completes when a predicate over `RootState` says so — and
+everything else in the teaching layer follows from it.
+
+The step is worth recording mostly for what happened after the build went
+green. Typecheck passed, 204 tests passed, both bundles built, and then opening
+the rail in a browser found three separate defects in about four minutes. One
+of them was a sentence I had written that no reader could ever reach.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 4 of the ticket.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** `f7b4261` — "DATADROP-7 phase 4: the lesson rail, and completion by predicate"
+
+### What I did
+
+- `atoms/Tick` — three states, and adopted in the four tutorial tiles in the
+  same commit.
+- `appkit/lessons.ts` — the `Lesson`, `Prediction`, `LessonContext`, `Goal` and
+  `ModuleEntry` contract.
+- `molecules/LessonStep`, `PredictPrompt`, `GoalItem`, `HintList`.
+- `organisms/LessonRail` (with `RailHeader` and `wedge.ts`), `BriefChecklist`.
+- `tokens.css` gains `--pbui-selected-wash`.
+- Seven story files; the two organism stories run against a real store, so ▶
+  dispatches real actions and the predicates see real state.
+
+### Why
+
+**`Lesson` went in `appkit`, and the reasoning is DR-33's, reused.** It is not
+content and it is not a component — it is the interface the two agree on,
+exactly as `AppDescriptor` is the interface applications and the shell agree on.
+Both `organisms` and (per DR-54) `tour` already depend on `appkit`, so the
+placement adds no edge. The two alternatives each force one: putting it in
+`tour/` makes `organisms → tour` necessary, and putting it in `organisms/` makes
+`tour → components` necessary, which DR-54 forbids outright.
+
+**`Tick` was adopted in the same commit it was created in.** DATADROP-6 built
+`InlineRename` in phase 4 and adopted it in phase 6, which meant a component and
+the code it was meant to replace sat side by side for two phases. The rule I am
+following now: an extraction that has a call site adopts it immediately, or it
+is not an extraction, it is a second copy.
+
+**`useSelector((s) => s)` in the rail, with the cost stated in a comment rather
+than hidden.** It re-renders on every store change, including keystrokes in a
+step editor. Acceptable for five to seven collapsed rows and it is the honest
+way to support arbitrary predicates; unacceptable in a tile, and no tile does
+it.
+
+### What worked
+
+**The guard test forced the right conversation, which is what its docstring
+says it is for.** `no-raw-controls.test.ts` failed on two hand-written
+`<button>` elements — the disclosure header and the prediction options:
+
+```text
++ "components/molecules/LessonStep/LessonStep.tsx:28 — use Button or IconButton"
++ "components/molecules/PredictPrompt/PredictPrompt.tsx:38 — use Button or IconButton"
+```
+
+Both became `Button`, and both were better for it. `Button` spreads `...rest`,
+so `aria-expanded` and `aria-controls` pass straight through, and `framed`
+turned out to be exactly what a prediction option should look like — hairline
+border, alt fill, bold — so `PredictPrompt.module.css` lost half its rules.
+
+**Verifying the whole mechanism end to end in a browser rather than reasoning
+about it.** Pressing ▶ in `LessonRail → Default`:
+
+```text
+aria-label   "step 2, complete — watched"
+background   rgb(217, 217, 212)   = #d9d9d4 = --pbui-line, NOT --pbui-ok
+progress     1/4
+WATCHED      present
+```
+
+The grey is the check that matters. Green would have meant the `ranRef` was not
+being consulted, and nothing in the type system or the tests would have said so.
+
+### What didn't work
+
+**The watched follow-up was unreachable.** The same browser check reported
+`followUp: false` — the sentence *"you watched this one. try the same move by
+hand in the panel."* was not on screen. It renders in the step's body, and
+completing a step auto-advanced to the next one, closing it.
+
+So the nudge was written, rendered, and never read. Worse than that: pressing ▶
+gave the reader a tick *and* a fresh step, which feels like progress — the exact
+incentive the whole watched/self distinction exists to remove. The fix is one
+line, `if (done[open] !== "self") return`, and the comment explaining it is
+longer than the change because the reason is not obvious from the code.
+
+**A predicate satisfied by the empty case.** The brief's fourth goal — "a table
+and a chart, on one document, at once" — showed as **already met** the moment
+the story loaded, at 1/4 before the reader had touched anything. The predicate
+was:
+
+```ts
+leaves.some((table) => table.app === "table" &&
+  leaves.some((chart) => chart.app === "chart" && chart.docId === table.docId))
+```
+
+and `defaultSpaces()`'s `build` workspace opens with a chart tile and a table
+tile *both unbound*, so `chart.docId === table.docId` was `null === null`.
+
+**`null` in a leaf means "follow the ACTIVE document", not "nothing".** Two
+nulls are not evidence of agreement. `table.docId != null` fixes it, and the
+comment in the story now says so, because this is the first of a class: every
+goal that compares two ids has to decide what the absent case means before it
+compares them.
+
+**A wrong `Text` size and a shadowed variable, both caught by typecheck.**
+`size="body"` — the scale is `micro | tiny | small | base | title`. And I named
+a local `state` inside the rail's map, shadowing the `useSelector` result; TS
+reported it as a comparison with no overlap, which is a confusing message for a
+shadowing bug but a true one.
+
+The underlying cause of the second is worth keeping: `Record<string, "self" |
+"watched">` tells TypeScript every key is present, so `done[id] ?? "pending"`
+narrows away the fallback and the later `=== "pending"` is unreachable.
+`Record<string, "self" | "watched" | undefined>` is the honest type and makes
+the `??` mean something.
+
+**A chained `cd ui` failed and silently ate two heredocs.** The command was
+`cd ui && sed … && cat > PredictPrompt.tsx <<TSX …`, run from a directory that
+was already `ui`. The `cd` failed, `&&` short-circuited the first line, and the
+*later* lines in the same block ran anyway — so the CSS module and the barrel
+were written and the component was not. Typecheck caught it as
+`Cannot find module './PredictPrompt'`, which is a good error, but the shape of
+the mistake is worth naming: **a failed `cd` at the head of an `&&` chain
+partially executes a multi-line block.**
+
+### What I learned
+
+**A green suite plus a clean build is not evidence that the thing works; it is
+evidence that it compiles.** Three defects in four minutes of browsing, and none
+of the three was findable by any test I would plausibly have written. The
+unreachable sentence in particular: there is no assertion that would have
+caught it, because the string is present in the source and present in the DOM
+*of a state the reader cannot get to*.
+
+DATADROP-6 arrived at this lesson via a chart story that rendered "Nothing to
+draw yet". This is the second time, and the rule is now firm enough to state:
+**a phase that adds a component is not done until the component has been opened
+and used.**
+
+**Auto-advance is a reward, and rewards teach.** I wrote the auto-advance as a
+convenience — nobody wants to click the next step open — without noticing it was
+also the thing that made ▶ feel productive. Any interface that advances on
+completion is telling the reader what counts as completion. That is worth
+thinking about before writing the convenience, not after.
+
+### What was tricky to build
+
+**Overriding an atom's styles from a molecule, without relying on stylesheet
+order.** `Button`'s `.bare` sets `padding: 0; background: none`, and
+`.root:disabled` fades to 0.55. Both are single-class selectors, and so were
+mine, so which won depended on CSS module import order — which happens to work
+today and is not something anyone is watching.
+
+The fix is the doubled selector, `.header.header`, raising specificity to
+(0,2,0) explicitly. Two characters, one comment, and it stops being a question.
+For the disabled fade I needed `.right.right:disabled` to beat `.root:disabled`,
+which is the same trick one level up.
+
+The interesting part was noticing the disabled fade at all. Every prediction
+option becomes `disabled` once the reader commits — correctly, they cannot be
+pressed again — and `Button` fades disabled controls to 0.55. Which would have
+faded *the correct answer*, at exactly the moment the reader is comparing it
+against their guess. `.other` keeps the fade; the two that have to be read do
+not.
+
+### What warrants a second pair of eyes
+
+- **`wedgeOf` finds the table by scanning the RTK Query cache for the first
+  entry with a `source`.** That is the same shape `useTableFor` uses, but
+  without its source-matching — so with two documents on two different sources
+  the wedge could compute against the wrong table. It is only used to decide
+  whether to show a hint, so the failure is a wrong hint rather than a wrong
+  chart, but it should probably match on source before phase 6 ships real
+  content.
+- **The rail's whole-state selector.** Named as a cost; if a section's rail
+  turns out to be expensive the fix is per-lesson selectors, not memoising the
+  whole-state read.
+- **`--pbui-selected-wash`.** A new token, and new tokens are how palettes
+  drift. The argument for it is that nothing is *selected* when a step is open,
+  it is merely expanded, and reusing `--pbui-selected` would be too loud under a
+  paragraph of prose. If that argument is wrong the token should go.
+
+### What should be done in the future
+
+- **A green tick has no story.** `LessonStep → Self` shows the visual, but the
+  *path* — satisfy a predicate without pressing ▶ — needs a workbench beside the
+  rail, which is phase 7. Worth an explicit check there rather than assuming.
+- **`wedgeOf` source matching**, above.
+- The two carried-over items: the null-key persistence test (phases 1–3), and a
+  guard for mistyped CSS custom properties (phase 2). Neither has an owner.
+- Phase 5, the module rack.
+
+### Code review instructions
+
+- `appkit/lessons.ts` first — it is the contract, and its docstring is where
+  DR-50's reasoning lives.
+- `organisms/LessonRail/LessonRail.tsx`, the completion effect and the
+  auto-advance beneath it. The comment on the auto-advance describes a defect
+  that is invisible in the code.
+- `molecules/LessonStep/LessonStep.module.css` and
+  `PredictPrompt.module.css` — the doubled selectors. If they look like
+  superstition, delete one and reorder an import.
+- Open `Component Library/Organisms/LessonRail → Default`, press ▶ on step 2,
+  and confirm: grey tick, WATCHED label, the follow-up line visible, and the
+  step still open.
+- Validate: `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build && bun run --cwd=ui build-storybook`.
+
+### Technical details
+
+The completion loop, which is DR-50 in eleven lines:
+
+```tsx
+const state = useSelector((s: RootState) => s);   // whole state: predicates read either slice
+
+useEffect(() => {
+  setDone((prev) => {
+    let next = prev;
+    for (const lesson of lessons) {
+      if (next[lesson.id] || !lesson.done) continue;   // monotonic: never un-ticks
+      let ok = false;
+      try { ok = lesson.done(state); } catch { ok = false; }   // a throw is false, not a crash
+      if (ok) next = { ...next, [lesson.id]: ranRef.current[lesson.id] ? "watched" : "self" };
+    }
+    return next;                                       // identity return ends the update
+  });
+}, [state, lessons]);
+```
+
+The browser check, before and after the auto-advance fix:
+
+```text
+                    before        after
+tick background     #d9d9d4       #d9d9d4     line-grey, not ok-green ✓
+aria-label          watched       watched     ✓
+progress            1/4           1/4         ✓
+step still open     no            YES         ← the fix
+follow-up visible   NO            yes         ← the defect
+```
+
+Components added, and the two the guard test rejected on the way:
+
+```text
+atoms        Tick                                   3 states, 4 stories
+molecules    LessonStep      raw <button> → Button  6 stories
+             PredictPrompt   raw <button> → Button  3 stories
+             GoalItem                               3 stories
+             HintList                               4 stories
+organisms    LessonRail      + RailHeader, wedge    3 stories
+             BriefChecklist                         3 stories
+appkit       lessons.ts      the contract           —
 ```

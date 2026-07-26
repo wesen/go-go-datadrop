@@ -46,3 +46,12 @@ Phase 3: fixtures answer instead of the network (commit 8302e2c). Interception a
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/api/fixtures.ts — Listings derived from the sources, so a tour cannot name a drop it has no table for
 
+
+## 2026-07-26
+
+Phase 4: the lesson rail and completion by predicate (commit f7b4261). One atom, four molecules, two organisms, seven story files. Three defects found in a browser that a green suite and a clean build did not: auto-advance made the watched follow-up unreachable and made pressing the run button feel like progress; a brief goal was satisfied by null === null when two tiles were both unbound; and the raw-controls guard rejected two hand-written buttons, both of which were better as Button
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/organisms/LessonRail/LessonRail.tsx — Only a self completion advances — a watched step stays open so its nudge is reachable
+
