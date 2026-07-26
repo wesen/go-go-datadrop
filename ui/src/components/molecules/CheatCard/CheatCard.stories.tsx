@@ -14,7 +14,7 @@ const meta = {
   title: "Component Library/Molecules/CheatCard",
   component: CheatCard,
   parameters: { tile: false },
-  args: { title: "Cheat sheet · objects", rows: [] },
+  args: { title: "Objects", rows: [] },
 } satisfies Meta<typeof CheatCard>;
 
 export default meta;
@@ -44,7 +44,7 @@ export const Objects: Story = {
  */
 export const Shell: Story = {
   args: {
-    title: "Cheat sheet · shell",
+    title: "Shell",
     rows: [
       ["⠿ drag", "centre swaps two applications · edge docks the tile there"],
       [
@@ -61,10 +61,21 @@ export const Shell: Story = {
   },
 };
 
+/**
+ * With a frame.
+ *
+ * Off by default, because the only place this ships is inside a tile and the
+ * tile already draws a border and a title. This story exists so the default
+ * reads as a choice rather than as an omission.
+ */
+export const Framed: Story = {
+  args: { ...Objects.args, framed: true },
+};
+
 /** Two rows, to check the card does not need filling to look deliberate. */
 export const Short: Story = {
   args: {
-    title: "Cheat sheet · grammar",
+    title: "Grammar",
     rows: [
       ["the spec", "source ⊳ steps ↦ mapping · geom · scale"],
       ["steps", "filter · derive · group∑ · sort · limit — order is semantics"],

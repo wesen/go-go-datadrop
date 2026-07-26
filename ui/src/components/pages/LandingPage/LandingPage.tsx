@@ -168,7 +168,7 @@ export function LandingPage() {
           }}
           lessons={objectsLessons}
           cheat={{
-            title: "Cheat sheet · objects",
+            title: "Objects",
             rows: [
               ["hover", "the doc line names the object and what L and R will do"],
               ["left-click", "the default verb — or the menu, if the object has none"],
@@ -202,7 +202,7 @@ export function LandingPage() {
           }}
           lessons={layoutLessons}
           cheat={{
-            title: "Cheat sheet · shell",
+            title: "Shell",
             rows: [
               ["⠿ drag", "centre swaps two applications · edge docks the tile there"],
               ["⬌ ⬍ ✕", "split right · split below · close (the document survives)"],
@@ -234,7 +234,7 @@ export function LandingPage() {
           }}
           lessons={grammarLessons}
           cheat={{
-            title: "Cheat sheet · grammar",
+            title: "Grammar",
             rows: [
               ["the spec", "source ⊳ steps ↦ mapping · geom · scale"],
               ["steps", "filter · derive · group∑ · sort · limit — order is semantics"],
@@ -251,7 +251,7 @@ export function LandingPage() {
           title="The modules"
           blurb={
             <>
-              Twenty-one applications share one world. The distinction that makes them legible: if a
+              Twenty-five applications share one world. The distinction that makes them legible: if a
               tile carries a <strong>DOC strip</strong> it is a view of a single chart document and
               can be re-pointed; if it does not, it is the whole world and there is only one of it.
               Pick any module to swap the large tile to it and read what it emits, what it accepts,
@@ -262,7 +262,7 @@ export function LandingPage() {
           modules={MODULES}
           rackTarget={rackTarget}
           cheat={{
-            title: "Cheat sheet · modules",
+            title: "Modules",
             rows: [
               ["doc-bound", "chart · table · pipeline · encoding"],
               ["singletons", "sources · charts · snapshots · compare · watchlist · inspector · trace"],

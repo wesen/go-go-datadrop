@@ -7,7 +7,7 @@ import "../../../apps/all";
 /**
  * The whole application vocabulary, one card at a time.
  *
- * **These are the real cards** — `tour/modules.tsx`, all twenty-one of them,
+ * **These are the real cards** — `tour/modules.tsx`, all twenty-five of them,
  * the same content §D of the tour renders. `test/tour.test.ts` asserts the ids
  * here and the registry's are the same set, so a new application cannot ship
  * without appearing in this story.

@@ -41,14 +41,20 @@
 }
 
 /*
- * The treatment tokens.css named and nothing implemented: `--pbui-shadow-hard`
- * carries the comment "buttons". The default fill is the alt surface, so a
- * raised button with no `fill` still reads as a control rather than as an
- * unfilled box.
+ * The heaviest of the three: a firm border, roomier padding, and a tone fill.
+ *
+ * It carried `--pbui-shadow-hard` as well, which is what originally
+ * distinguished it from `framed`. The offset shadows are off across the whole
+ * interface now (tokens.css says why), so `raised` is border weight and padding
+ * against `framed`'s hairline — still two clearly different controls, and
+ * without every button in a tile title bar casting a black rectangle onto the
+ * one beside it.
+ *
+ * The default fill is the alt surface, so a raised button with no `fill` still
+ * reads as a control rather than as an unfilled box.
  */
 .raised {
   border: var(--pbui-border-firm);
-  box-shadow: var(--pbui-shadow-hard);
   background: var(--pbui-pane-alt);
   padding: 0 var(--pbui-space-4);
   font-weight: 700;

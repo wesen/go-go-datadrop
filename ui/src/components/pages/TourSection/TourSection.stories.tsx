@@ -68,7 +68,7 @@ export const WithRail: Story = {
     },
     lessons: objectsLessons,
     cheat: {
-      title: "Cheat sheet · objects",
+      title: "Objects",
       rows: [
         ["hover", "the doc line names the object and what L and R will do"],
         ["right-click", "every verb this type has"],
@@ -104,11 +104,11 @@ export const WithRack: Story = {
     tag: "D",
     title: "The modules",
     blurb:
-      "Twenty-one applications share one world. If a tile carries a DOC strip it is a view of a single document; if it does not, it is the whole world.",
+      "Twenty-five applications share one world. If a tile carries a DOC strip it is a view of a single document; if it does not, it is the whole world.",
     config: { fixtures: TOUR_FIXTURES, preloaded: rackSeed(), workspaces: false },
     modules: MODULES,
     cheat: {
-      title: "Cheat sheet · modules",
+      title: "Modules",
       rows: [
         ["doc-bound", "chart · table · pipeline · encoding"],
         ["emits", "which presentation types are born in this tile"],

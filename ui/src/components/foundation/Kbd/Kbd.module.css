@@ -11,6 +11,5 @@
   background: var(--pbui-pane-alt);
   border: var(--pbui-border-hair);
   border-radius: var(--pbui-radius);
-  box-shadow: 1px 1px 0 var(--pbui-ink);
   white-space: nowrap;
 }

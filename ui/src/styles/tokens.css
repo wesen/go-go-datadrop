@@ -138,8 +138,25 @@
   --pbui-border-grid: 1px solid var(--pbui-line);
   --pbui-tone-edge: 4px; /* the chip left-border width */
   --pbui-radius: 0; /* everywhere. a deliberate exception must name itself */
-  --pbui-shadow-hard: 2px 2px 0 var(--pbui-ink); /* buttons */
-  --pbui-shadow-menu: 4px 4px 0 var(--pbui-ink); /* menus, floating panels */
+  /*
+   * The offset shadows are OFF.
+   *
+   * They were 2px and 4px hard black rectangles behind buttons, tiles, menus
+   * and panels — no blur, in the style of the prototype. At one or two elements
+   * that reads as deliberate; at the density this interface actually reaches —
+   * fifteen tiles, each with six framed buttons in its title bar, inside a page
+   * of six workbenches — every panel casts a black rectangle onto the one
+   * behind it and the hairline borders stop being the thing that separates
+   * them.
+   *
+   * The tokens keep their names and resolve to `none` rather than being
+   * deleted, for two reasons: `test/tokens-used.test.ts` would fail on any
+   * reference left behind, which is the wrong failure for a purely visual
+   * decision; and turning them back on is a one-line experiment rather than an
+   * archaeology exercise.
+   */
+  --pbui-shadow-hard: none;
+  --pbui-shadow-menu: none;
 
   /* ---- focus: ours to define, because there is no framework ------------- *
    * Deliberately distinct from the red accept outline, so "this has keyboard

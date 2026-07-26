@@ -132,7 +132,6 @@
   background: var(--pbui-pane);
   border: var(--pbui-border-firm);
   border-radius: var(--pbui-radius);
-  box-shadow: var(--pbui-shadow-menu);
 }
 
 .menuHeader {

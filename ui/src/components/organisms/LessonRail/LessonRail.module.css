@@ -1,6 +1,12 @@
 /*
- * The rail sits beside a workbench and has to be able to scroll independently
- * of it, so it is a bounded flex column like a tile is.
+ * A bounded flex column that scrolls inside whatever holds it.
+ *
+ * NO border, NO shadow, NO background of its own. The rail is a tile now, and
+ * the tile draws the frame — a rail that framed itself produced a box inside a
+ * box with the same word written across both.
+ *
+ * The general rule this belongs to: an organism rendered as an application
+ * describes its contents and nothing about its container.
  */
 .rail {
   display: flex;
@@ -8,24 +14,6 @@
   flex: 1;
   min-height: 0;
   min-width: 0;
-  border: var(--pbui-border-firm);
-  box-shadow: var(--pbui-shadow-menu);
-  background: var(--pbui-pane);
-}
-
-.header {
-  display: flex;
-  align-items: center;
-  gap: var(--pbui-space-3);
-  padding: var(--pbui-space-2) var(--pbui-space-4);
-  background: var(--pbui-ink);
-  color: var(--pbui-paper);
-  flex-shrink: 0;
-}
-
-.headerTitle {
-  letter-spacing: var(--pbui-track-label);
-  text-transform: uppercase;
 }
 
 .spacer {
@@ -33,22 +21,23 @@
 }
 
 /*
- * Chart-tone while in progress, geom-tone (mint) when finished.
+ * The count, on a PALE surface now that the header is a light toolbar.
  *
- * Both are chosen for the INK background, not the pane: --pbui-ok is #317a53,
- * which is tuned to clear 4.5:1 on a pale surface and is nearly invisible on a
- * dark one. The tone palette is where the light-on-dark values live.
+ * It was tone-chart and tone-geom, both chosen for an inverted bar. On the pane
+ * those measure 1.9:1 and 1.7:1 — unreadable. The semantic pair is tuned for
+ * exactly this surface: --pbui-faint clears 4.5:1 and --pbui-ok clears it too.
  *
  * The colour change is the ONLY visual difference between the two states,
  * which is exactly why the visually-hidden "N of M complete" beside it is not
  * optional — colour alone is never the signal (WCAG 1.4.1).
  */
 .progress {
-  color: var(--pbui-tone-chart);
+  color: var(--pbui-faint);
 }
 
 .finished {
-  color: var(--pbui-tone-geom);
+  color: var(--pbui-ok);
+  font-weight: 700;
 }
 
 .srOnly {

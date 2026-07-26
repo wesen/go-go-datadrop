@@ -139,7 +139,7 @@ export const Default: Story = {
 /**
  * A narrowed vocabulary (DR-53).
  *
- * The tile dropdown offers six applications rather than twenty-one, because a
+ * The tile dropdown offers six applications rather than all twenty-five, because a
  * section teaching the grammar of graphics has no business offering the token
  * manager. Open a tile's application picker to see it.
  */

@@ -48,7 +48,6 @@
 .zoneLabel {
   background: var(--pbui-pane);
   border: var(--pbui-border-firm);
-  box-shadow: var(--pbui-shadow-hard);
   padding: 0 var(--pbui-space-4);
   font-size: var(--pbui-fs-small);
   font-weight: 700;

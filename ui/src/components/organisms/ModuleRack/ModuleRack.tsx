@@ -2,7 +2,7 @@ import { useState } from "react";
 import type { ModuleEntry } from "../../../appkit/lessons";
 import { appFor } from "../../../appkit/registry";
 import { Button } from "../../atoms";
-import { SectionLabel, Text } from "../../foundation";
+import { SectionLabel } from "../../foundation";
 import { ModuleCard } from "../../molecules";
 import styles from "./ModuleRack.module.css";
 
@@ -58,12 +58,6 @@ export function ModuleRack({
 
   return (
     <div className={styles.rack}>
-      <div className={styles.header}>
-        <Text size="tiny" strong>
-          <span className={styles.headerTitle}>Module rack</span>
-        </Text>
-      </div>
-
       <div className={styles.groups}>
         <SectionLabel>Doc-bound views — carry a DOC strip; several tiles on one document stay in sync</SectionLabel>
         <div className={styles.chips}>

@@ -41,11 +41,9 @@ import { wedgeOf } from "./wedge";
  */
 export function LessonRail({
   lessons,
-  title = "Lessons",
   onReset,
 }: {
   lessons: Lesson[];
-  title?: string;
   onReset?: () => void;
 }) {
   const dispatch = useDispatch<AppDispatch>();
@@ -140,7 +138,7 @@ export function LessonRail({
 
   return (
     <div className={styles.rail}>
-      <RailHeader title={title} completed={completed} total={lessons.length} onReset={onReset} />
+      <RailHeader completed={completed} total={lessons.length} onReset={onReset} />
 
       {wedge && (
         <div className={styles.wedge}>

@@ -18,12 +18,26 @@ import styles from "./CheatCard.module.css";
 export function CheatCard({
   title,
   rows,
+  framed = false,
 }: {
   title: string;
   rows: Array<[string, ReactNode]>;
+  /**
+   * Draw a box around it.
+   *
+   * **False by default**, because the only place this ships is inside a tile,
+   * and a tile already draws a border and writes CHEAT SHEET across the top of
+   * it. The framed version rendered a second bordered box with a second header
+   * immediately inside the first — a box in a box, with the title twice.
+   *
+   * The prop exists at all because a page that printed one of these outside a
+   * tile would want the frame back, and because a story showing the unframed
+   * version alone cannot show that the frame is a choice.
+   */
+  framed?: boolean;
 }) {
   return (
-    <div className={styles.card}>
+    <div className={framed ? `${styles.card} ${styles.framed}` : styles.card}>
       <div className={styles.head}>
         <SectionLabel>{title}</SectionLabel>
       </div>

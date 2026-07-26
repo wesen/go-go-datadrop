@@ -1,24 +1,14 @@
+/*
+ * No border, no shadow, no header. The tile draws the frame and writes
+ * "MODULES" across the top of it; a rack that did the same produced a box
+ * inside a box with the title twice.
+ */
 .rack {
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
   min-width: 0;
-  border: var(--pbui-border-firm);
-  box-shadow: var(--pbui-shadow-menu);
-  background: var(--pbui-pane);
-}
-
-.header {
-  padding: var(--pbui-space-2) var(--pbui-space-4);
-  background: var(--pbui-ink);
-  color: var(--pbui-paper);
-  flex-shrink: 0;
-}
-
-.headerTitle {
-  letter-spacing: var(--pbui-track-label);
-  text-transform: uppercase;
 }
 
 .groups {

@@ -38,8 +38,15 @@
 .firm { border: var(--pbui-border-firm); }
 .none { border: 0; }
 
-.raised { box-shadow: var(--pbui-shadow-hard); }
-.floating { box-shadow: var(--pbui-shadow-menu); }
+/*
+ * `raised` and `floating` used to differ from a plain surface by a hard offset
+ * shadow. The shadows are gone (see tokens.css), so both are now carried by the
+ * border weight alone — which is what the rest of the language does, and what
+ * makes fifteen tiles on a screen read as fifteen panels rather than fifteen
+ * panels each casting a 4px black rectangle onto its neighbour.
+ */
+.raised { border: var(--pbui-border-hair); }
+.floating { border: var(--pbui-border-firm); }
 
 .pad-0 { padding: 0; }
 .pad-2 { padding: var(--pbui-space-2); }

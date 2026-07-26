@@ -1,14 +1,25 @@
+/*
+ * No frame by default. The tile that holds this already has one.
+ */
 .card {
-  border: var(--pbui-border-firm);
-  background: var(--pbui-pane);
-  box-shadow: var(--pbui-shadow-hard);
   max-width: 560px;
 }
 
+.framed {
+  border: var(--pbui-border-firm);
+  background: var(--pbui-pane);
+}
+
+/*
+ * A rule under the label rather than a filled bar.
+ *
+ * The selected-yellow bar was reading as a second title bar directly beneath
+ * the tile's own, which is the doubling this component was corrected for. A
+ * hairline rule says "heading" without competing.
+ */
 .head {
-  background: var(--pbui-selected);
-  border-bottom: var(--pbui-border-firm);
-  padding: var(--pbui-space-2) var(--pbui-space-4);
+  border-bottom: var(--pbui-border-hair);
+  padding: var(--pbui-space-2) var(--pbui-space-4) var(--pbui-space-1);
 }
 
 .rows {

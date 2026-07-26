@@ -1,39 +1,40 @@
 import { Button } from "../../atoms";
 import { Text } from "../../foundation";
+import { Toolbar } from "../../layout";
 import styles from "./LessonRail.module.css";
 
 /**
- * The bar across the top of a rail or a brief: a name, a count, and ↺.
+ * The progress count and the reset control. No title.
  *
- * Shared by `LessonRail` and `BriefChecklist` because they are the same bar,
- * and a second copy is how two of them end up different (DATADROP-6 §7.2 found
- * six copies of one style object split 9.5px/10.5px, a divergence nobody
- * chose).
+ * The title used to be here, in an inverted bar, back when a rail was a panel
+ * beside the workbench and had to name itself. It is a **tile** now, and a tile
+ * already has a title bar — so the panel was drawing a second one directly
+ * beneath the first, saying the same word. The frame it drew inside the tile's
+ * frame was the same mistake in the other axis.
+ *
+ * What is left is what has no other home: how far through you are, and ↺. A
+ * light toolbar rather than an inverted bar, because the tile's title bar is
+ * the loud element and two competing for that role is what made the nesting
+ * obvious in the first place.
  *
  * ↺ resets by *remount*: the section changes the instance's `key` and React
  * throws the subtree away, taking the store with it. There is no `reset()` and
- * there should not be — a reset that walks state back is a reset that can leave
- * a fragment behind, and the fragment is always in the thing you did not think
- * to walk back.
+ * there should not be — a reset that walks state back can leave a fragment
+ * behind, and the fragment is always in the thing you did not think to walk
+ * back.
  */
 export function RailHeader({
-  title,
   completed,
   total,
   onReset,
 }: {
-  title: string;
   completed: number;
   total: number;
   onReset?: () => void;
 }) {
   const finished = completed === total && total > 0;
   return (
-    <div className={styles.header}>
-      <Text size="tiny" strong>
-        <span className={styles.headerTitle}>{title}</span>
-      </Text>
-      <span className={styles.spacer} />
+    <Toolbar tight bordered>
       <Text size="tiny" strong>
         {/*
           The count is announced as prose rather than left as "3/5", which a
@@ -46,11 +47,17 @@ export function RailHeader({
           {completed} of {total} complete
         </span>
       </Text>
+      <span className={styles.spacer} />
       {onReset && (
-        <Button variant="framed" size="tiny" onClick={onReset} title="reset this panel to how it started">
+        <Button
+          variant="framed"
+          size="tiny"
+          onClick={onReset}
+          title="reset this panel to how it started"
+        >
           ↺ reset
         </Button>
       )}
-    </div>
+    </Toolbar>
   );
 }

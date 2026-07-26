@@ -34,7 +34,7 @@ const meta = {
       </div>
     ),
   ],
-  args: { lessons: [], title: "Lessons" },
+  args: { lessons: [] },
 } satisfies Meta<typeof LessonRail>;
 
 export default meta;
@@ -122,5 +122,5 @@ export const WithReset: Story = {
 
 /** A single manual step: the smallest rail that is still a rail. */
 export const OneStep: Story = {
-  args: { lessons: [LESSONS[0] as Lesson], title: "Read this first" },
+  args: { lessons: [LESSONS[0] as Lesson] },
 };

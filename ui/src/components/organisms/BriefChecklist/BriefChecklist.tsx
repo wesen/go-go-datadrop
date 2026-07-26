@@ -19,7 +19,8 @@ import styles from "../LessonRail/LessonRail.module.css";
  *
  * It shares `RailHeader` and the stylesheet with `LessonRail` rather than
  * copying either, because they are visibly the same panel and two copies is how
- * they end up differing by half a pixel of tracking that nobody chose.
+ * they end up differing by half a pixel of tracking that nobody chose. Neither
+ * draws a frame or a title: both are tiles, and the tile owns both.
  *
  * The completion message is deliberately the last thing a reader sees, and it
  * says the thing the whole tour has been building to: *nothing above was a
@@ -63,7 +64,7 @@ export function BriefChecklist({
 
   return (
     <div className={styles.rail}>
-      <RailHeader title="The brief" completed={met} total={goals.length} onReset={onReset} />
+      <RailHeader completed={met} total={goals.length} onReset={onReset} />
 
       <div className={styles.question}>
         <Text size="base" prose>

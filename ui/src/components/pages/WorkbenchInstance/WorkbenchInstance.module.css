@@ -33,7 +33,6 @@
   min-height: 0;
   min-width: 0;
   border: var(--pbui-border-firm);
-  box-shadow: var(--pbui-shadow-menu);
   background: var(--pbui-paper);
 }
 
