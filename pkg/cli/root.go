@@ -8,7 +8,6 @@
 package cli
 
 import (
-	"net/http"
 	"os"
 	"strings"
 
@@ -18,20 +17,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/cobra"
 
-	"github.com/go-go-golems/go-go-datadrop/pkg/client"
 	"github.com/go-go-golems/go-go-datadrop/pkg/doc"
 )
 
-// ExitCode values are part of the CLI contract (guide §11.4). Scripts depend
-// on them, so they must not be renumbered.
-const (
-	ExitOK         = 0
-	ExitError      = 1
-	ExitUsage      = 2
-	ExitAuth       = 3
-	ExitNotFound   = 4
-	ExitValidation = 5
-)
+// The exit codes and their mapping live in exit.go, next to the helper that
+// has to apply them from inside a command because glazed's cobra builder never
+// returns the error here.
 
 // globalOptions are the flags shared by every subcommand.
 //
@@ -163,28 +154,15 @@ func Execute() int {
 	}
 	if err := root.Execute(); err != nil {
 		// Diagnostics go to stderr so `datadrop query … | jq` keeps working.
-		_, _ = os.Stderr.WriteString("datadrop: " + err.Error() + "\n")
+		//
+		// Converted verbs never arrive here: ExitOn has already reported and
+		// exited. What is left for this path is cobra's own errors — an unknown
+		// flag, an unknown subcommand — which is why the prefix has to be the
+		// same one ExitOn uses.
+		_, _ = os.Stderr.WriteString(ErrorPrefix + err.Error() + "\n")
 		return exitCodeFor(err)
 	}
 	return ExitOK
-}
-
-// exitCodeFor maps an error onto the documented exit codes, so a script can
-// branch on why a command failed without parsing its stderr.
-func exitCodeFor(err error) int {
-	var apiErr *client.APIError
-	if errors.As(err, &apiErr) {
-		switch apiErr.Status {
-		case http.StatusUnauthorized, http.StatusForbidden:
-			return ExitAuth
-		case http.StatusNotFound:
-			return ExitNotFound
-		case http.StatusBadRequest, http.StatusUnprocessableEntity,
-			http.StatusConflict, http.StatusRequestEntityTooLarge:
-			return ExitValidation
-		}
-	}
-	return ExitError
 }
 
 func envOr(key, fallback string) string {
