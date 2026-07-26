@@ -27,6 +27,7 @@ export const BUDGETS = [500, 2000, 10000, 50000] as const;
  */
 export function SourcePanel({
   token,
+  showToken = true,
   drops,
   chosenDrop,
   streams,
@@ -42,6 +43,16 @@ export function SourcePanel({
   onLimitChange,
 }: {
   token: string;
+  /**
+   * Offer a bearer-token field.
+   *
+   * False when the server reports `auth_mode: "none"` — there is nothing to
+   * authenticate to, so a password field is at best noise and at worst a
+   * prompt to paste a credential somewhere it will not be used. A tour panel
+   * answering from fixtures is the same case, which is why one rule covers
+   * both (DATADROP-7 phase 7).
+   */
+  showToken?: boolean;
   drops: readonly DropOption[];
   chosenDrop: string;
   streams: readonly string[];
@@ -63,18 +74,20 @@ export function SourcePanel({
 
   return (
     <>
-      <Toolbar tight bordered>
-        <SectionLabel>Token</SectionLabel>
-        <TextInput
-          type="password"
-          label="bearer token"
-          placeholder="bearer token (public-read drops need none)"
-          value={token}
-          width="fill"
-          size="tiny"
-          onValueChange={onTokenChange}
-        />
-      </Toolbar>
+      {showToken && (
+        <Toolbar tight bordered>
+          <SectionLabel>Token</SectionLabel>
+          <TextInput
+            type="password"
+            label="bearer token"
+            placeholder="bearer token (public-read drops need none)"
+            value={token}
+            width="fill"
+            size="tiny"
+            onValueChange={onTokenChange}
+          />
+        </Toolbar>
+      )}
 
       <AppBody>
         <Stack gap={4}>

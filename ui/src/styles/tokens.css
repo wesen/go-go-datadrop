@@ -18,6 +18,15 @@
 :root {
   /* ---- surfaces (pbui-gog.jsx:29-35) ------------------------------------ */
   --pbui-paper: #ffffff; /* the page behind the tiles */
+  /*
+   * The page behind the WORKBENCH — one step darker than --pbui-paper.
+   *
+   * Added by DATADROP-7 for the tour, which is a document with workbenches set
+   * into it rather than a workbench filling the viewport. The panels need to
+   * read as objects ON a page, and paper-on-paper leaves their 2px borders
+   * doing that work alone.
+   */
+  --pbui-wash: #f7f7f4;
   --pbui-pane: #ffffff; /* a tile body */
   --pbui-pane-alt: #f1f1ee; /* zebra rows, inset toolbars, disabled fills */
   --pbui-ink: #23262b; /* every border, all body text, the dark bars */

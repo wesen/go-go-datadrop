@@ -116,13 +116,27 @@ export function WorkbenchInstance({
   return (
     <Provider store={storeRef.current}>
       <AppScope apps={config.apps}>
-        <div className={className ? `${styles.instance} ${className}` : styles.instance}>
+        {/*
+          `children` sit OUTSIDE the framed box and INSIDE the providers.
+          
+          Both halves of that matter. Inside the providers is DR-55 — a lesson
+          rail has to reach `accept()`. Outside the frame is layout: a tour
+          section wants a rail beside a bordered workbench with a gap between
+          them, and a rail sharing the workbench's border would read as part of
+          the application rather than as commentary on it.
+          
+          `.root` is a column by default, which is what the product wants; a
+          caller lays them out differently by passing a className.
+        */}
+        <div className={className ? `${styles.root} ${className}` : styles.root}>
           <WorkbenchProviders>
             {children}
-            <WorkbenchShell
-              masthead={config.masthead ?? false}
-              workspaces={config.workspaces ?? true}
-            />
+            <div className={styles.instance}>
+              <WorkbenchShell
+                masthead={config.masthead ?? false}
+                workspaces={config.workspaces ?? true}
+              />
+            </div>
           </WorkbenchProviders>
         </div>
         <InstancePersistence persistKey={config.persistKey ?? null} />

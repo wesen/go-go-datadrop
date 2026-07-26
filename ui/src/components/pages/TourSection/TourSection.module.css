@@ -1,0 +1,99 @@
+.section {
+  padding: var(--pbui-space-6, 44px) 0 var(--pbui-space-4);
+  border-top: var(--pbui-border-grid);
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pbui-space-4);
+  margin-bottom: var(--pbui-space-3);
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  padding: 3px 12px;
+  font-size: var(--pbui-fs-small);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-banner);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--pbui-fs-title);
+  font-weight: 700;
+}
+
+.blurb {
+  max-width: 900px;
+  margin-bottom: var(--pbui-space-4);
+}
+
+.body {
+  display: flex;
+}
+
+.panel {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+}
+
+/*
+ * The rail beside the workbench.
+ *
+ * Passed to `WorkbenchInstance` as its `className`, so it overrides `.root`'s
+ * default column. The rail is the first flex child and the framed workbench the
+ * second; `min-width: 0` on both is what stops a wide table from pushing the
+ * rail off the page instead of scrolling inside its own tile.
+ *
+ * The height is fixed here and NOT inside the workbench — DR-51. A section
+ * knows how much room its layout needs (§C opens on a four-way split and wants
+ * more than §A's two tiles); the shell has no business guessing.
+ */
+.instance.instance {
+  flex-direction: row;
+  gap: var(--pbui-space-5);
+  height: 520px;
+}
+
+.instance.instance > :first-child {
+  flex: 0 1 340px;
+  min-width: 0;
+  display: flex;
+}
+
+.tall {
+  height: 660px;
+}
+
+.cheat {
+  margin-top: var(--pbui-space-5);
+}
+
+/*
+ * Below 900px the two stack, and the workbench keeps most of the height.
+ *
+ * A media query rather than the prototype's `useNarrow` resize listener
+ * (pbui-landing.jsx:2076): the decision is a layout one, CSS can make it, and a
+ * JS listener re-renders the whole section on every resize frame to do what one
+ * rule does for free.
+ */
+@media (max-width: 900px) {
+  .instance.instance {
+    flex-direction: column;
+    height: auto;
+  }
+
+  .instance.instance > :first-child {
+    flex: 0 0 auto;
+    max-height: 260px;
+  }
+
+  .instance.instance > :last-child {
+    height: 480px;
+  }
+}

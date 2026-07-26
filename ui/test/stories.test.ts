@@ -149,6 +149,8 @@ describe("story coverage", () => {
         // under Workbench, because what it demonstrates is not the product's
         // shell but the property that there can be more than one of it.
         "Applications/Embedding",
+        // DATADROP-7 phase 7: the tour section and the whole page.
+        "Applications/Tour",
       ]).toContain(group);
     }
   });

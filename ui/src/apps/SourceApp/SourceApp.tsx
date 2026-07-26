@@ -6,6 +6,7 @@ import {
   useListDatasetsQuery,
   useListDropsQuery,
   useListStreamsQuery,
+  useMeQuery,
   readToken,
   writeToken,
 } from "../../api/client";
@@ -36,6 +37,7 @@ function SourceApp(_props: AppProps) {
     s.world.activeDocId ? (s.world.docs[s.world.activeDocId]?.limit ?? 2000) : 2000,
   );
 
+  const { data: me } = useMeQuery();
   const drops = useListDropsQuery();
   const chosen = drop || drops.data?.drops?.[0]?.name || "";
   const streams = useListStreamsQuery(chosen, { skip: !chosen });
@@ -56,6 +58,11 @@ function SourceApp(_props: AppProps) {
   return (
     <SourcePanel
       token={token}
+      // A server with no authentication has nothing to authenticate to, so
+      // asking for a bearer token is noise. `fixtureMe()` reports the same
+      // mode, which is what keeps a tour panel from showing a password field
+      // on a page with no server behind it.
+      showToken={me?.auth_mode !== "none"}
       drops={(drops.data?.drops ?? []).map((d) => ({
         name: d.name,
         public_read: d.public_read ?? false,
