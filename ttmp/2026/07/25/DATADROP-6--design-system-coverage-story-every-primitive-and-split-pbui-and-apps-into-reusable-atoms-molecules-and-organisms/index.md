@@ -1,7 +1,7 @@
 ---
 Title: 'Design system coverage: story every primitive, and split pbui and apps into reusable atoms, molecules and organisms'
 Ticket: DATADROP-6
-Status: review
+Status: active
 Topics:
     - design-system
     - storybook
@@ -99,6 +99,10 @@ that is what lets fifteen tiles fit on a screen and stay readable.
 - **Design guide**: [design/01-design-system-coverage-and-decomposition-analysis-design-and-implementation-guide.md](./design/01-design-system-coverage-and-decomposition-analysis-design-and-implementation-guide.md)
   — 1 745 lines in four parts. §7 is the evidence and the acceptance criteria.
   §12 and §16 are the two sections to read twice.
+- **Follow-up design**: [design/02-the-render-path-the-row-budget-and-the-nine-applications-still-inline.md](./design/02-the-render-path-the-row-budget-and-the-nine-applications-still-inline.md)
+  — 445 lines. A measured performance defect (158 ms per table-header render at
+  the 50 000-row budget, fixed by splitting `PbuiEnvironment`), and the nine
+  applications still holding their UI inline. DR-40 to DR-44.
 - **Diary**: [reference/01-diary.md](./reference/01-diary.md)
 - **Preceding tickets**: DATADROP-4 (the shell and the design system this ticket
   finishes), DATADROP-5 (the four account applications that supplied most of the
@@ -120,10 +124,15 @@ Full statements with alternatives and costs are in guide §22.
 | DR-37 | No Widget IR, no palette provider, no publishing apparatus |
 | DR-38 | Extracted components never wrap themselves in `Presentation` |
 | DR-39 | `ui/GUIDELINES.md` becomes the single home for UI policy |
+| DR-40 | The render path resolves a schema; only the inspector resolves rows |
+| DR-41 | `resolveField` stops returning a table |
+| DR-42 | A test forbids `tableFor` under `components/` |
+| DR-43 | The tutorials stay inline until there is a fifth |
+| DR-44 | The three snapshot applications are designed together or not at all |
 
 ## Status
 
-Current status: **review**
+Current status: **active**
 
 ## Topics
 

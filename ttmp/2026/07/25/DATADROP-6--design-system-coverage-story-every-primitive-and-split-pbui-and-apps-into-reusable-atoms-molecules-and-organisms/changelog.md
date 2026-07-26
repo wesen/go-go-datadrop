@@ -86,3 +86,12 @@ Follow-ups: v0.5 project report pushed to the go-go-parc vault (72590db), and GU
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/GUIDELINES.md — section 8 is the authoring procedure, built from the ticket's own mistakes
 
+
+## 2026-07-25
+
+Design 02: the render path and the remaining applications. FieldChip calls resolveField in its render body, so the tableFor fix costs 158 ms per table-header render at the 50 000-row budget; measured, and fixed by splitting PbuiEnvironment so the render path gets schemaAfter (12 000x cheaper, flat in row count). Plus the nine unextracted applications with an order and DR-40 to DR-44
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/pbui/descriptors/field.ts — resolveField reads only table.fields, which is what makes the split possible
+

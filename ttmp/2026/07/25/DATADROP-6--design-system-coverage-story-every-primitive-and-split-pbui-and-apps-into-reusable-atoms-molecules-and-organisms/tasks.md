@@ -9,3 +9,9 @@
 - [x] Phase 4 — The remaining 4 atoms, 1 foundation primitive, 3 layout primitives and all 14 molecules, each with the states required by section 18 <!-- t:04b3 -->
 - [x] Phase 5 — DR-33: move apps/registry.ts to src/appkit, delete the organisms to apps edge, and extract the five organisms so the account applications become thin containers <!-- t:g881 -->
 - [x] Phase 6 — ui/GUIDELINES.md, the no-raw-controls anti-regression test, the Button disabled-contrast fix deferred from phase 1, and the final acceptance numbers <!-- t:j1yn -->
+- [ ] Phase 1 — Split PbuiEnvironment: add fieldsFor and useFieldsFor, move resolveField onto the schema, and benchmark before and after <!-- t:50xs -->
+- [ ] Phase 2 — Guard it: a test forbidding tableFor under components, plus a development-mode counter that warns when it is called from a render path <!-- t:8jn8 -->
+- [ ] Phase 3 — PipelinePanel and StepEditor, with a story for each of the five step kinds and for the dropped-rows and summarize warnings <!-- t:6rey -->
+- [ ] Phase 4 — EncodingPanel, TracePanel and InspectorPanel <!-- t:w1nz -->
+- [ ] Phase 5 — The snapshot family: design GalleryApp, CompareApp and ChartsApp together before extracting any of them <!-- t:1oyy -->
+- [ ] Phase 6 — WatchlistPanel, and decide AboutApp and the tutorials explicitly rather than by omission <!-- t:c5uh -->
