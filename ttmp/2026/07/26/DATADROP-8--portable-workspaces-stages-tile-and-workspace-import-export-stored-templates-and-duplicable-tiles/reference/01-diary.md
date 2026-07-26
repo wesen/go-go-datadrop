@@ -24,6 +24,10 @@ RelatedFiles:
       Note: findSecrets, now guarding three doors rather than one (commit e80ec0c)
     - Path: repo://ui/src/store/bundles.ts
       Note: State to bundle and back; DocCollector and hydrateTree are the two halves of the round trip (commit e80ec0c)
+    - Path: repo://ui/src/store/clipboard.ts
+      Note: ClipboardPort, and why read and write are not symmetric (commit 88ec889)
+    - Path: repo://ui/src/store/effects.ts
+      Note: The thunks; the only impure steps in the export/import path, and both are parameters (commit 88ec889)
     - Path: repo://ui/src/store/layout.ts
       Note: Stage/StageChrome/stageId, and syncSpacePointer as the only writer of the mirrored space pointer (commit 9dc985c)
     - Path: repo://ui/src/store/persist.ts
@@ -32,6 +36,8 @@ RelatedFiles:
       Note: The four pinned stages, mergeStages and defaultLayout — replaces spaces.ts (commit 9dc985c)
     - Path: repo://ui/test/apps.test.ts
       Note: duplicable and singleton follow docBound unless a sentence is written into EXCEPTIONS (commit da29ec2)
+    - Path: repo://ui/test/effects.test.ts
+      Note: The whole export path with no DOM, and the save()-excludes-a-dialog guard (commit 88ec889)
     - Path: repo://ui/test/fixtures/persisted-v1.json
       Note: A version-1 payload produced by running defaultSpaces() out of commit f53be15 (commit 9dc985c)
     - Path: repo://ui/test/portable.test.ts
@@ -44,6 +50,7 @@ LastUpdated: 2026-07-26T18:18:37.781026543-04:00
 WhatFor: Recording what was built, what failed, and what a reviewer should look at hardest for DATADROP-8.
 WhenToUse: Read before reviewing DATADROP-8, and before touching stages, the bundle format or the clipboard path afterwards.
 ---
+
 
 
 
@@ -733,3 +740,230 @@ Received: true
 ```
 
 All three restored; 324 pass across the suite.
+
+## Step 4: The verb seam widened, and three descriptors
+
+The phase that connects the format to the objects. `tile`, `workspace` and
+`stage` get descriptors, so right-clicking a tile stops saying "no verbs for
+this object yet" and the workspace strip's twenty-month-old promise of "R for
+duplicate / delete" becomes true. The interface for all of it already existed —
+those types were declared, and `Tile.tsx` and `WorkspaceStrip.tsx` were already
+wrapping their titles in real `<Presentation>` elements — so what landed is
+three files in `pbui/descriptors/`, three lines in a map, and the cases behind
+them.
+
+`actionsForVerb` now takes the whole state and may return a thunk, with the
+layout cases in their own file. The clipboard rides the thunk extra argument, so
+the entire export path is testable with no DOM. And `pendingImport` joins the
+layout slice, which is what forces `save()` to enumerate the layout fields it
+writes rather than passing the slice whole.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 4 — widen the seam, add the descriptors, and
+make the object menus real.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `88ec889` — "DATADROP-8 phase 4: the verb seam widened, and three descriptors"
+
+### What I did
+
+- `ui/src/pbui/types.ts`: the `stage` presentation type; `TileRef`,
+  `WorkspaceRef`, `StageRef`, and `PresentationValues` re-pointed at them.
+- `ui/src/pbui/verbs.ts`: seventeen new verbs, `BundleSource`, `ImportTarget`,
+  and a `describeVerb` case for each.
+- `ui/src/pbui/descriptors/{tile,workspace,stage}.ts` (new) and three entries in
+  `registry.ts`.
+- `ui/src/store/clipboard.ts` (new): `ClipboardPort`, `browserClipboard`,
+  `noClipboard`.
+- `ui/src/store/index.ts`: `clipboard` on `MakeStoreOptions` and on the extra
+  argument; `ThunkExtra` and `AppThunk`.
+- `ui/src/store/effects.ts` (new): the export thunks, `beginImport`,
+  `commitImport`.
+- `ui/src/store/applyLayoutVerb.ts` (new) and `applyVerb.ts` widened.
+- `ui/src/store/layout.ts`: `PendingImport`, `renamingId`, and the four
+  bundle-application reducers.
+- `ui/src/store/persist.ts`: `save()` enumerates the layout fields.
+- `ui/src/store/world.ts`: `addDocs`, `noteExport`.
+- Components: `Tile` and `WorkspaceStrip` mint refs and take their rename flag
+  from the store; `StageBar` gets a `▾` that opens the same menu.
+- `ui/test/effects.test.ts` (new, 11 tests) and a `layout descriptors` block in
+  `descriptors.test.ts`.
+
+### Why
+
+The format existed and the objects existed; this is what connects them. It is
+also the phase that repays the "keyhole" observation the design guide opens
+with — that the whole feature list fits through three missing descriptor files.
+
+### What worked
+
+The purity claim has a one-line assertion now, and it is the assertion that
+makes DR-68 checkable rather than asserted:
+
+```ts
+const [effect] = perform(store, { kind: "exportTile", nodeId });
+expect(clipboard.written).toEqual([]);      // nothing has happened yet
+await store.dispatch(effect as AppThunk<Promise<{ ok: boolean }>>);
+```
+
+### What didn't work
+
+**1. The `▾` button opened the stage menu and closed it again in the same
+event.** Clicking it while any other object menu was open produced nothing at
+all. The cause is a two-listener race that is invisible in the source of either
+file: `ObjectMenu` installs a window-level `click` listener to close on
+click-away, and that listener runs *after* React's root handler — so the click
+that calls `openMenu` also reaches the closer. `Presentation.onClick` has always
+called `event.stopPropagation()` with a comment about *nested presentations*;
+the real reason it matters is broader, and the `▾` button now does the same with
+a comment saying so. The general rule, worth writing down: **anything that opens
+an object menu from a DOM handler must stop propagation.**
+
+**2. The `chart` presentation is now the only undescribed type.**
+`descriptors.test.ts` used `tile` as its example of "an unknown presentation
+type degrades rather than throws", which this phase invalidated:
+
+```
+error: expect(received).toEqual(expected)
+- Expected  - 1
++ Received  + 63
+(fail) an unknown presentation type degrades rather than throws > no descriptor means no verbs, not a crash
+```
+
+Switched to `chart` with a comment. A test whose fixture is "the thing this
+ticket is about to build" is a test that will keep failing usefully.
+
+**3. `VerbResult` typed as `ReturnType<typeof worldActions.setMapping>` did not
+survive contact with a second slice.** That is a *specific* action type, so
+every layout action failed to assign:
+
+```
+src/store/applyLayoutVerb.ts(26,15): error TS2322: Type '{ payload: { nodeId: string; label: string; }; type: "layout/renameLeaf"; }' is not assignable to type 'VerbResult'.
+  Types of property 'payload' are incompatible.
+      Type '{ nodeId: string; label: string; }' is missing the following properties from type '{ docId: string | null; channel: Channel; field: string | null; }': docId, channel, field
+```
+
+It is `UnknownAction | AppThunk<unknown>` now, which is what the design record
+said and what I should have written first.
+
+**4. The rename verb could not open a rename.** The menu entry is data and the
+inline editor was `useState` inside `Tile`, three components away from anything
+a verb can reach. Solved by moving the flag into the layout slice as
+`renamingId` — a second transient field, which is *convenient*, because it makes
+the `save()` enumeration guard test assert two fields rather than one. The
+commit is a separate verb (`renameTile` carries the text) so the trace records
+what the user typed rather than only that they started typing.
+
+### What I learned
+
+Adding a transient field to a persisted slice is a two-line change with a
+one-reload consequence, and the only thing standing between them is whether
+`save()` spreads or enumerates. Enumeration turns "someone remembers" into "the
+compiler asks", and the comment beside it is what tells the next person which
+side of the line their new field is on.
+
+### What was tricky to build
+
+**Keeping `actionsForVerb` a pure function while half its results are effects.**
+The shape that works: `applyLayoutVerb` returns `VerbResult[] | null`, `null`
+meaning "not mine", so `applyVerb` falls through to the world switch with no
+second list of verb kinds anywhere. Thunks are *values* until dispatched, so the
+seam stays assertable — and the test asserts exactly that by checking the fake
+clipboard is untouched between the call and the dispatch.
+
+**`commitImport` had to be a thunk and the reducers had to stay pure.** It mints
+one id per document plus one per node, so it reads `idsNeeded(bundle)`, mints
+that many with `newId()`, and hands fully-formed nodes to reducers that only
+place them. The reducers are then replayable, which is the property
+`applyVerb.ts` already argues for about `Date.now()`.
+
+### What warrants a second pair of eyes
+
+- `replaceLeafFromBundle` keeps the **target's** node id rather than the
+  hydrated leaf's, so a tile that is re-pointed stays the same tile. That is
+  what makes a drag in flight and a focus survive an import, and it means the
+  hydrated leaf's minted id is discarded — one wasted id per tile import.
+- `exportBundle` distinguishes "cannot be described" (the credential audit) from
+  "the platform refused" and reports both as `ExportOutcome`. **Nothing consumes
+  that outcome yet** — phase 5's dialog is its reader — so today a failed export
+  is silent. That is the one place in the phase where the failure mode the
+  design warns about ("the button appears to do nothing") is still live.
+- `Workbench.tsx` narrows the instance scope on the sign-in stage only. It reads
+  the current stage id to do it, which is the only place a page component
+  consults a stage directly.
+
+### What should be done in the future
+
+- The `storeTemplate` verb exists in the union with no producer, because the
+  "Save as a template …" entries were deliberately left out of the three
+  descriptors until phase 6 builds the library. It is dead weight until then.
+
+### Code review instructions
+
+`ui/src/pbui/descriptors/tile.ts` first — it is the shortest complete statement
+of what the ticket does. Then `store/applyLayoutVerb.ts`, then
+`store/effects.ts`'s `exportBundle` and `beginImport`.
+
+```bash
+bun test --cwd ui test/effects.test.ts     # 11 pass, no DOM
+bun test --cwd ui                          # 343 pass
+```
+
+By hand: right-click a tile title, a workspace chip and the masthead's `▾`.
+
+### Technical details
+
+**Breaking the `save()` guard.** Break: `persist.save()` passes `layout` whole
+again instead of enumerating four fields.
+
+```
+Expected to not contain: "pendingImport"
+Received: "{\"version\":2,…,\"currentSpaceId\":\"5ee1f633…\",\"pendingImport\":{\"target\":{\"kind\":\"tile\",\"nodeId\":\"f294c4ea…\"},\"prefill\":\"{\\\"format\\\":\\\"datadrop.layout\\\"}\",\"from\":\"clipboard\"},\"renamingId\":\"f294c4ea…\"}}"
+(fail) a dialog is never persisted (DR-69) > save() writes no pendingImport and no renamingId, however open they are
+```
+
+**What the rendered menus show.** The tile menu, read out of the accessibility
+tree after right-clicking a `profile` tile:
+
+```
+menu "tile profile"
+  <tile> profile
+  menuitem "Rename this tile …"
+  menuitem "Duplicate — a second profile tile would show the same thing" [disabled]
+  menuitem "Split right"
+  menuitem "Split below"
+  menuitem "Copy this tile to the clipboard"
+  menuitem "Replace this tile from the clipboard …"
+  menuitem "Inspect"
+  menuitem "Close"
+```
+
+Clicking **Copy this tile to the clipboard** and reading the clipboard back:
+
+```json
+{
+  "format": "datadrop.layout",
+  "version": 1,
+  "kind": "tile",
+  "exportedAt": "2026-07-26T23:31:21.793Z",
+  "name": …
+```
+
+and the trace, which is the security-relevant half — the kind and the name, and
+nothing of the payload:
+
+```
+1  exported  tile “profile”  · to the clipboard
+2  exported  tile “about”    · to the clipboard
+```
+
+One thing to note about that session: the *first* clipboard read after an export
+came back empty in headless Chromium even though the trace entry (written only
+after `await clipboard.write` resolves) was there. A second export read back 169
+characters correctly. I take that as a harness timing quirk rather than a
+product defect, but it is the kind of thing worth a second look in a real
+browser.

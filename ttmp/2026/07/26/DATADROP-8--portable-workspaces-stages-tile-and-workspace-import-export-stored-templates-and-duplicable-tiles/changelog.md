@@ -40,3 +40,12 @@ Phase 3: the portable format — model/portable.ts (envelope, PortableNode index
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/model/portable.ts — The bundle format and its validator
 
+
+## 2026-07-26
+
+Phase 4: the verb seam widened — actionsForVerb over whole state returning thunks, applyLayoutVerb.ts, ClipboardPort on the thunk extra argument, effects.ts, TileRef/WorkspaceRef/StageRef and the tile/workspace/stage descriptors, pendingImport and renamingId with save() enumerating layout fields. Right-clicking a tile now produces a menu; the workspace strip's 'R for duplicate / delete' is true. Found by clicking: the stage bar's menu button opened and closed its own menu in one event. (commit 88ec889)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/pbui/descriptors/tile.ts — The tile's menu — the shortest complete statement of what the ticket does
+
