@@ -67,3 +67,8 @@ Phase 6: --output ndjson deprecation shim, the cli-output help page, and the REA
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/doc/topics/06-cli-output.md — The help page a script author reads
 
+
+## 2026-07-26
+
+Hand-off: three breaking flag renames collected; ui/src/store/spaces.ts was carried into commit 62e53d4 from the shared git index (cosmetic, not repaired); pkg/tabular fixture failure is pre-existing and belongs to ui/
+

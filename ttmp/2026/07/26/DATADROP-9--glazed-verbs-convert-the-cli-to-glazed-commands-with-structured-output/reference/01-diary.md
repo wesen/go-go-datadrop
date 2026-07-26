@@ -1399,3 +1399,95 @@ $ datadrop export greenhouse --format ndjson | cat -A | head -2
 {"specversion":"1.0","id":"01KYGAJCSYJDP0ECPRG8V794AS","type":"io.datadrop.event",...
 {"specversion":"1.0","id":"01KYGAJCV1N857FY6D0XGHCC0V","type":"io.datadrop.event",...
 ```
+
+## Step 7: Two things to hand over, one of them a mistake I made
+
+Closing note. Everything DATADROP-9 asked for is done and committed, the full
+suite is green apart from one pre-existing failure that belongs to another
+ticket, and `golangci-lint run ./pkg/... ./cmd/...` reports zero issues. Two
+things need a human's attention rather than more work from me, and one of them
+is a parallel-work mistake I made in the first commit.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** (see Step 1) — this is the hand-off note.
+
+**Inferred user intent:** (see Step 1)
+
+**Commit (code):** none; this step is documentation.
+
+### What didn't work
+
+- **I committed one of the other agent's files.** `62e53d4`, the phase-1
+  commit, contains `ui/src/store/spaces.ts` as a deletion. I staged explicit
+  paths as `AGENT.md`'s `<parallelAgentGuidelines>` requires — the `git add`
+  line names only `pkg/cli/*` and `pkg/client/me.go` — but the DATADROP-8 agent
+  had *already staged* that deletion (`git status` showed it as `D ` with the
+  status in the **index** column, not the worktree one), and `git commit`
+  commits the whole index, not just what the preceding `git add` touched.
+
+  Staging explicit paths is not sufficient protection on a shared index. The
+  rule that would have caught it is to check `git diff --cached --name-only`
+  immediately before committing, and either `git restore --staged` the foreign
+  entries or use `git commit -- <paths>` to restrict the commit to them.
+
+  **Impact: none to the code.** The file is deleted, which is what DATADROP-8
+  intended; nothing references it; their later commits (`9dc985c`, `da29ec2`,
+  `e80ec0c`) landed cleanly on top. Only the attribution is wrong — one of their
+  deletions is recorded in one of my commits. I did **not** try to fix it by
+  rewriting history, because rewriting a shared branch while another agent is
+  actively committing to it would turn a cosmetic problem into a real one.
+
+- **`pkg/tabular`'s `TestWriteLiveProjectionFixture` still fails**, as it did
+  before I started (step 1 has the diagnosis and the exact diff). It is a
+  Go-version JSON-indent artifact in `ui/test/fixtures/envelope-projection.json`,
+  fixed by one `-update` run, and the file is inside DATADROP-8's file set so I
+  left it alone.
+
+### What warrants a second pair of eyes
+
+The three breaking flag renames, collected in one place because they are the
+only thing in this ticket that will reach a user as a broken script:
+
+| Before | After | Forced? |
+|---|---|---|
+| `--stream NAME` on `query`, `tail`, `export`, `push`, `schema put/show`, `dataset import` | `--drop-stream NAME` | Yes — glazed's output section owns `--stream` |
+| `dataset push --flatten` | `dataset push --flatten-paths` | Yes — glazed's fields-filters section owns `--flatten` |
+| `dataset import --format` | `dataset import --row-format` | No — chosen, so that no verb has both `--format` and `--output` |
+
+`--stream` is the dangerous one, because the old spelling still parses: it is a
+boolean now, so `--stream temps` reads as `--stream=true` plus a stray
+positional. The failure a user sees is about something else.
+
+### What should be done in the future
+
+1. Regenerate `ui/test/fixtures/envelope-projection.json` (DATADROP-8's file
+   set).
+2. Decide whether `--drop-stream` needs a deprecation alias for the old
+   `--stream`.
+3. Report `--output template` producing no output to glazed, separately from
+   issue 611. I was instructed not to send anything upstream.
+4. Remove `pkg/cli/ndjson.go`, `TestNdjsonDeprecation` and the `ndjson` value
+   next release.
+5. Remove `pkg/cli/exit.go` and `WithExitCodes` when
+   https://github.com/go-go-golems/glazed/issues/611 lands, and move the mapping
+   back into `Execute()`.
+
+### Code review instructions
+
+Read in this order, which is roughly increasing subtlety:
+
+1. `cmd/datadrop/tree_test.go` — the whole surface and its invariants, in one
+   file.
+2. `pkg/cli/rows.go` + `rows_test.go` — the column names, which are the part
+   users will depend on longest.
+3. `pkg/cli/exit.go` — the workaround, and step 4 for what it costs.
+4. `pkg/cli/events/tail.go` and `pkg/cli/fields.go` — the two comments that
+   explain flag decisions made under duress from the framework.
+5. `datadrop help cli-output` — what a user is told.
+
+Validate with `GOWORK=off go test ./... -count=1` (one expected failure,
+`pkg/tabular`, pre-existing) and
+`GOWORK=off golangci-lint run ./pkg/... ./cmd/...` (clean).
