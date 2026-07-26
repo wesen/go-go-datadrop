@@ -13,3 +13,12 @@ Created DATADROP-9 and wrote the design guide: nineteen CLI verbs classified int
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ttmp/2026/07/26/DATADROP-9--glazed-verbs-convert-the-cli-to-glazed-commands-with-structured-output/design/01-rows-instead-of-renderers-analysis-design-and-implementation-guide-for-converting-the-datadrop-cli-to-glazed-commands.md — The guide
 
+
+## 2026-07-26
+
+Phase 1: client section, exit-code helper, row projections and their guard test (commit 62e53d4)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/rows.go — The row shapes DR-79 makes a public API
+
