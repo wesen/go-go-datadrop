@@ -49,3 +49,12 @@ Phase 4: exit-code contract pinned by pkg/cli/exit_test.go and verified by remov
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/cli/exit_test.go — The fast proof of the exit-code mapping
 
+
+## 2026-07-26
+
+Phase 5: the remaining fourteen verbs converted; read.go/push.go/dataset.go/output.go deleted; --flatten and dataset import --format renamed; tree guard tests added (commit 34b9ce4)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/cmd/datadrop/tree_test.go — Guards the command surface and the --format/--output rule
+

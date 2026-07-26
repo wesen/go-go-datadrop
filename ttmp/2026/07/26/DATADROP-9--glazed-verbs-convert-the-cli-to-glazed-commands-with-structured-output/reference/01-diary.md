@@ -15,6 +15,8 @@ Owners: []
 RelatedFiles:
     - Path: repo://cmd/datadrop/main.go
       Note: Names the group registrars; the inverted edge that avoids an import cycle (commit fe5523f)
+    - Path: repo://cmd/datadrop/tree_test.go
+      Note: Assembles the real tree; caught the dataset import --format/--output clash (commit 34b9ce4)
     - Path: repo://pkg/cli/build.go
       Note: BuildCobraCommand and AddCommands; the one place the parser config is decided (commit fe5523f)
     - Path: repo://pkg/cli/drops/list.go
@@ -29,12 +31,16 @@ RelatedFiles:
       Note: ExitOn and WithExitCodes, the local workaround for glazed issue 611 (commit 62e53d4)
     - Path: repo://pkg/cli/exit_test.go
       Note: Pins every documented exit code, the prefix, and the two pass-through errors (commit c759e77)
+    - Path: repo://pkg/cli/fields.go
+      Note: DropStreamField, ReadSpec and HumanBytes, shared by four packages (commit 34b9ce4)
     - Path: repo://pkg/cli/rows.go
       Note: One projection per response type; event payloads flattened through tabular.FromEvents (commit 62e53d4)
     - Path: repo://pkg/cli/rows_test.go
       Note: Pins the row key sets; verified by breaking it (commit 62e53d4)
     - Path: repo://pkg/cli/section.go
       Note: The client section; --token is TypeSecret so --print-parsed-fields redacts it (commit 62e53d4)
+    - Path: repo://pkg/cli/serve.go
+      Note: BareCommand; built without the DATADROP_ prefix so DATADROP_ADDR cannot become a listen address (commit 34b9ce4)
     - Path: repo://pkg/client/me.go
       Note: Typed /v1/me response so whoami errors map like every other verb (commit 62e53d4)
 ExternalSources: []
@@ -43,6 +49,7 @@ LastUpdated: 2026-07-26T18:20:14-04:00
 WhatFor: Recording what was tried, what failed, and why each decision was made while implementing DATADROP-9.
 WhenToUse: Read before continuing DATADROP-9, before touching pkg/cli/exit.go, and when the upstream glazed exit-code hook lands and the workaround can be removed.
 ---
+
 
 
 
@@ -958,4 +965,227 @@ The break applied was one line in `pkg/cli/build.go`:
  	cobraCmd, err := cli.BuildCobraCommandFromCommand(
 -		WithExitCodes(command),
 +		command, // BREAK: WithExitCodes removed
+```
+
+## Step 5: The remaining fourteen verbs, and three guard tests that earned their keep
+
+This is the mechanical phase — `create`, `push`, `schema put/show`, the seven
+`dataset` verbs, `serve` and `healthcheck` — and it was mechanical, except for
+one design hazard that only showed up because `serve` stopped being a plain
+cobra command, and three new guard tests that found real defects the moment they
+ran. `pkg/cli/read.go`, `push.go`, `dataset.go` and `output.go` are gone. Every
+verb is a file named after it in a directory named after its group.
+
+The guard tests are the part worth reading. `TestTheCommandSurfaceIsComplete`
+and `TestNoVerbHasBothFormatAndOutput` both failed on their first run, and one
+of the failures was a genuine design mistake rather than a typo.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** (see Step 1) — this step is phase 5.
+
+**Inferred user intent:** (see Step 1)
+
+**Commit (code):** `34b9ce4` — "DATADROP-9 phase 5: writes, datasets, serve and healthcheck"
+
+### What I did
+
+- `pkg/cli/drops/`: `create.go`, `push.go` (and moved `push_test.go` here).
+- `pkg/cli/schemacmd/`: `root.go`, `put.go`, `show.go`.
+- `pkg/cli/dataset/`: `root.go` plus `push`, `list`, `show`, `get`, `rm`,
+  `import`, `gc`.
+- Rewrote `pkg/cli/serve.go` and `pkg/cli/healthcheck.go` as BareCommands.
+- Added `pkg/cli/fields.go` for the three things four packages share:
+  `DropStreamFlag`/`DropStreamField`, `ReadSpec`, `HumanBytes`.
+- Deleted `pkg/cli/read.go`, `push.go`, `dataset.go`, `output.go`.
+- Added `cmd/datadrop/tree_test.go` and a `TestClientTokenIsASecret` in
+  `pkg/cli/rows_test.go`.
+- Ran all nineteen verbs against a live server, including exit code 5.
+
+### Why
+
+`fields.go` exists because seven verbs carry the drop-stream flag and three read
+a document from a file-or-stdin. Copying either would have been the "two
+flatteners" mistake in a different costume.
+
+`tree_test.go` lives in `package main` because that is the only package that
+imports every group — which is also precisely why a forgotten group is possible
+at all. A test in `pkg/cli` cannot see the tree it does not import.
+
+### What worked
+
+- Everything ran on the first live pass: nineteen verbs, tables everywhere,
+  `--select seq` on an NDJSON push emitting one sequence per line, `dataset get`
+  writing files, `healthcheck` exiting 0 and 1.
+- Exit code 5 through a converted `push`:
+  `datadrop: SchemaValidationFailed: payload does not satisfy schema version 1`,
+  exit 5. That closes the last of the three codes that phase 4's break test
+  could only partially exercise.
+- Eleven verbs that never had a table now have one, which is the ticket's
+  headline and is visible in `dataset list`, `dataset show`, `schema show`,
+  `dataset gc` and the rest.
+
+### What didn't work
+
+- **`TestNoVerbHasBothFormatAndOutput` failed, and it was right.**
+
+  ```
+  tree_test.go:163: these verbs have both --format and --output:
+        dataset import
+        help export
+  ```
+
+  `help export` is glazed's own help subcommand and is now exempted. `dataset
+  import` was mine: its `--format` selects how `pkg/tabular` reads the dataset
+  file's rows (csv or ndjson), and it sat next to `--output`, which selects how
+  the result summary is rendered. Two flags that both read as "what shape is the
+  data". Renamed to `--row-format`, which is also what the help text already
+  said it was. This is the guide's own reviewer rule catching a verb I had
+  written twenty minutes earlier.
+
+- **`TestTokenFlagsAreSecret` failed on all eighteen verbs, and it was wrong.**
+
+  ```
+  tree_test.go:113: --token is not a secret on these verbs, so --print-parsed-fields will print it:
+        create (--token is string)
+        ... eighteen lines ...
+  ```
+
+  The premise was wrong, not the code. glazed registers `TypeString` and
+  `TypeSecret` through the same `flagSet.String(...)` call
+  (`fields/cobra.go:183`), so the cobra flag reports `string` either way; the
+  distinction exists only in the field definition. The test was rewritten as
+  `TestClientTokenIsASecret` in `pkg/cli/rows_test.go`, asserting
+  `token.Type.IsSensitive()` on the section itself — which is the layer where
+  the property actually lives, and which combined with
+  `TestEveryClientVerbHasTheClientSection` covers the same ground.
+
+- **`TestTableAndUIEndToEnd` failed on the `--stream` rename**, and the failure
+  is worth recording because it is the rename's worst case:
+
+  ```
+  [push lab --stdin --stream temps] exited 1
+  stderr: datadrop: --stdin cannot be combined with key=value arguments
+  ```
+
+  `--stream` still *exists* — it is glazed's boolean now — so `--stream temps`
+  parses as `--stream=true` plus a positional `temps`, and the error the user
+  sees is about something else entirely. An old script does not get "unknown
+  flag"; it gets a confusing message or, worse on a verb without that check,
+  silently wrong behaviour. That is a real cost of the rename and belongs in the
+  release note.
+
+### What I learned
+
+- **`serve --addr` and `DATADROP_ADDR` mean opposite things, and the section
+  machinery would have connected them.** `DATADROP_ADDR` is the client's "which
+  server do I talk to"; `serve --addr` is "which socket do I bind". With
+  `AppName: "datadrop"` on the parser config, glazed's env source maps
+  `DATADROP_ADDR` onto any field named `addr` — so a developer with the ordinary
+  client environment exported would find `datadrop serve` trying to listen on
+  `http://localhost:8080`. Before this ticket, cobra's flag shadowing hid it:
+  serve's local `--addr` simply won over the root's persistent one, and the env
+  fallback lived on the root's flag. The fix is `buildOperatorCommand`, which
+  builds `serve` and `healthcheck` with no `AppName` at all; their own
+  fallbacks (`DATADROP_AUTH`, `DATADROP_OIDC_*`, `DATADROP_HEALTH_URL`) stay in
+  the field defaults via `envOr`, where they read the variable each verb
+  actually means.
+- `time.Duration` is not one of the field types, so `--session-lifetime` and
+  `--timeout` are strings parsed in `Run`. The parse error names the flag, which
+  is as good as what pflag's duration flag gives.
+
+### What was tricky to build
+
+**Deciding whether `dataset import --format` had to move.** Two forced renames
+were already in the ticket, and a third that was merely *desirable* is the kind
+of thing that turns a conversion into a redesign. What settled it: the guide
+states "a command with both flags is a command that has been classified wrong"
+as a rule a reviewer applies, and `dataset import` is correctly classified — it
+returns a summary record and is a GlazeCommand. So either the rule needed an
+exception with a paragraph explaining it, or the flag needed a better name. The
+flag's own help text already said "row format", the flag is normally inferred
+from the filename and rarely typed, and `--row-format` makes the rule hold with
+no exception to remember. Renamed.
+
+**Converting `serve` without changing what it does.** It has eighteen flags,
+six of them with environment fallbacks and two of them durations, and its
+`resolveAuth` refuses to start on a misconfiguration that would fail open —
+which is the most safety-relevant code in the repository. The conversion was
+done as a mechanical field-by-field transliteration with the body untouched, and
+the `serveOptions` struct became `serveSettings` with `glazed` tags so that the
+diff on `runServe` and `resolveAuth` is only the field names.
+
+### What warrants a second pair of eyes
+
+- **`serve`'s env handling.** The `buildOperatorCommand` split is correct as far
+  as I can test it, but it is a negative property — "this verb does *not* read
+  these variables" — and no test asserts it. Worth adding.
+- **Three breaking flag renames** in one release: `--stream` → `--drop-stream`,
+  `--flatten` → `--flatten-paths`, `--format` → `--row-format` (on `dataset
+  import` only; `export --format` is unchanged). The first two were forced; the
+  third was chosen.
+- **`push` now emits a row per event.** For an NDJSON push of ten thousand
+  lines that is ten thousand rows on stdout where there used to be one summary
+  line on stderr. `--output json > /dev/null` or `--select seq` is the answer,
+  but the default changed for a verb people run in loops.
+- **`dataset show` without `--version` emits one row per version** where it used
+  to emit one nested object containing all of them. That is more useful and it
+  is a shape change.
+
+### What should be done in the future
+
+- A test that `serve` ignores `DATADROP_ADDR`.
+- Consider whether `push` should default to `--output none`-ish behaviour for
+  bulk stdin pushes.
+
+### Code review instructions
+
+- Start with `cmd/datadrop/tree_test.go`: it is the shortest description of the
+  whole surface and of the two invariants that hold across it.
+- Then `pkg/cli/build.go`, `buildOperatorCommand`, for the env hazard.
+- Then `pkg/cli/serve.go`, diffing `runServe`/`resolveAuth` against the previous
+  revision — they should differ only in field names.
+- `GOWORK=off go test ./... -count=1`. The only failure should be
+  `pkg/tabular`'s `TestWriteLiveProjectionFixture`, which is pre-existing and
+  belongs to `ui/` (see step 1).
+
+### Technical details
+
+The full surface after the conversion, as `TestTheCommandSurfaceIsComplete`
+pins it:
+
+```
+create, dataset gc, dataset get, dataset import, dataset list, dataset push,
+dataset rm, dataset show, export, healthcheck, inspect, list, push, query,
+schema put, schema show, serve, tail, whoami
+```
+
+Eleven of those never had a table before. `dataset list` now:
+
+```
++------------+----------+--------------------------+----------+----------------+--------------+--------------+
+| drop       | name     | created_at               | versions | latest_version | latest_files | latest_bytes |
++------------+----------+--------------------------+----------+----------------+--------------+--------------+
+| greenhouse | readings | 2026-07-26T22:58:28.565Z | 1        | 1              | 1            | 12           |
++------------+----------+--------------------------+----------+----------------+--------------+--------------+
+```
+
+An NDJSON push reporting every sequence it allocated, which was not expressible
+before:
+
+```
+$ printf '{"t":1}\n{"t":2}\n' | datadrop push greenhouse --stdin --ndjson --select seq
+pushed 2 events        # stderr
+2                      # stdout
+3
+```
+
+The last of the three exit codes, now through a converted verb:
+
+```
+$ datadrop push strictdrop temperature=warm ; echo $?
+datadrop: SchemaValidationFailed: payload does not satisfy schema version 1
+5
 ```
