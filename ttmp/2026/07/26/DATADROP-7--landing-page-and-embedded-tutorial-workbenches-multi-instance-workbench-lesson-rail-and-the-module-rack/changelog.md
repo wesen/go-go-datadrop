@@ -73,3 +73,12 @@ Phase 6: the four tracks, the brief, and the anti-rot test (commit 01eab25). Fif
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/test/lessons.test.ts — One fresh store per lesson — the discomfort that causes is the information
 
+
+## 2026-07-26
+
+Phase 7: the tour page (commit 99f4fb8). Six sandboxed workbenches down one scrolling page; main.tsx routes /ui/tour without a server change. Verified in a browser with no server: 6 shells, 1825 marks, zero requests to /v1/, and §A at 1/4 while §B, §C and the brief stay at 0. Found two defects — SourcePanel offered a bearer token with nothing to authenticate to, which was also a --auth=none product bug since DATADROP-5, and Product() built a store in a render body. Closes the CSS token guard deferred since phase 2. All seven phases done; 229 tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/main.tsx — One bundle, routed by path; the / redirect is deliberately untouched
+

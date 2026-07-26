@@ -119,25 +119,62 @@ Five things the prototype has that we deliberately do **not** build: `Btn`,
 
 ## Progress
 
-**Phase 1 is done** (commit `4796da2`). The store is a factory and only a
-factory; `persistKey` is a parameter defaulting to null; `test/instances.test.ts`
-holds ten guards, two of them verified by breaking them. 187 tests pass.
+**All seven phases are done.** 229 tests, typecheck clean, both builds clean.
 
-Phase 1 also found two defects that one store could not reveal: `layoutSlice`'s
-`initialState` is evaluated once at module load, so every unpreloaded store
-began with the same workspace id; and the fallback layout was a single launcher
-tile rather than `defaultSpaces()`, which means the shell's own Storybook story
-had been rendering an empty workbench since it was written.
+| Phase | Commit | What landed |
+|---|---|---|
+| 1 | `4796da2` | The store is a factory and only a factory |
+| 2 | `24d0a07` | The shell splits from the application; `WorkbenchInstance` |
+| 3 | `8302e2c` | Fixtures answer instead of the network |
+| 4 | `f7b4261` | The lesson rail, and completion by predicate |
+| 5 | `7fe48c1` | The module rack, and a card for every application |
+| 6 | `01eab25` | The four tracks, the brief, and the anti-rot test |
+| 7 | `99f4fb8` | The tour page |
 
-**The guide's largest open risk is settled** (DR-57). `appkit → components`
-would not have failed `layers.test.ts` — the test does no cycle detection, it
-checks declared edges — so the edge would have been accepted while leaving the
-table asserting `appkit → pages` and `pages → appkit` at once.
-`WorkbenchInstance` goes in `components/pages/` instead, needing no new edge.
+Verified in a browser against the static build with **no server running**: six
+shells, 1825 chart marks, fifteen rail steps, zero requests to `/v1/`, and §A at
+1/4 while §B, §C and the brief stay at 0.
 
-That gap in `layers.test.ts` is real and is recorded in guide §27. It is not
-fixed here: the one edge that would have needed it is gone, and adding cycle
-detection is a larger change than this ticket wants.
+### What the browser found that a green suite did not
+
+Seven defects across the ticket, none of which any test would plausibly have
+caught:
+
+- **Auto-advance skipped the watched nudge**, so "try the same move by hand" was
+  written, rendered and unreachable — and pressing ▶ felt like progress, the
+  exact incentive the watched state exists to remove.
+- **A goal satisfied by `null === null`**, ticking before the reader had done
+  anything, because two unbound tiles both follow the active document.
+- **Two password fields on a page with no server.** Also a product bug: a
+  `--auth=none` deployment had it too, since DATADROP-5.
+- **A store built in a render body**, which StrictMode would have doubled.
+- Plus two lessons the anti-rot test rejected and one Storybook decorator
+  rendering a second accept banner nothing was using.
+
+### Two defects that were already in `main`
+
+- `layoutSlice`'s `initialState` is evaluated once at module load, so every
+  unpreloaded store began with the same workspace id.
+- The fallback layout was a single launcher tile rather than `defaultSpaces()`,
+  which means `Applications/Workbench` — the one page-level story in the tree —
+  had been rendering an empty workbench since DATADROP-4.
+
+### Debts closed on the way
+
+- `test/tokens-used.test.ts`: a mistyped `var(--pbui-…)` makes the whole
+  declaration invalid and renders *nothing*, invisibly. The ticket produced
+  three. Deferred three times, then written.
+- `atoms/Tick`: an eleven-property inline style object in `Tutorial.tsx` since
+  DATADROP-4, and `aria-hidden`, so a screen-reader user got no step number and
+  no completion state at all.
+
+### Still open
+
+- The brief has not been solved by hand, by a route the lessons did not teach.
+- `wedgeOf` matches the first cached table rather than the document's own
+  source; this also blocks a stronger predicate for lesson C4.
+- The null-key persistence case has no test.
+- Whether `/` should redirect to the tour — a product decision, left open.
 
 ## Key Links
 

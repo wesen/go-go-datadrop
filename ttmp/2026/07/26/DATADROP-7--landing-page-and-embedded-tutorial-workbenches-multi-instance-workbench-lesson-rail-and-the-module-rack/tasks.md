@@ -8,4 +8,4 @@
 - [x] Phase 4 — The rail components: Tick (adopted by the four tutorial tiles in the same commit), LessonStep, PredictPrompt, HintList, GoalItem, LessonRail, BriefChecklist <!-- t:6q7n -->
 - [x] Phase 5 — The module rack: ModuleCard, CheatCard, ModuleRack, and a five-row card for every one of the 21 registered applications <!-- t:gc0c -->
 - [x] Phase 6 — The four tracks and the brief, retargeted onto our committed fixtures; wedgeOf; and the anti-rot test that every run satisfies its own done <!-- t:y1ar -->
-- [ ] Phase 7 — The page: TourSection, LandingPage, reset-by-remount, sticky nav, and a render with the API returning 500 <!-- t:xqnm -->
+- [x] Phase 7 — The page: TourSection, LandingPage, reset-by-remount, sticky nav, and a render with the API returning 500 <!-- t:xqnm -->

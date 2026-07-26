@@ -30,6 +30,12 @@ RelatedFiles:
       Note: Extracted from Tutorial.tsx, where it was an inline style object and aria-hidden (commit f7b4261)
     - Path: repo://ui/src/components/organisms/LessonRail/LessonRail.tsx
       Note: The completion loop, and the auto-advance whose exception the browser found (commit f7b4261)
+    - Path: repo://ui/src/components/organisms/SourcePanel/SourcePanel.tsx
+      Note: showToken — a server with no authentication should not ask for a credential (commit 99f4fb8)
+    - Path: repo://ui/src/components/pages/LandingPage/LandingPage.tsx
+      Note: 'The tour: six sandboxed workbenches down one page (commit 99f4fb8)'
+    - Path: repo://ui/src/components/pages/TourSection/TourSection.tsx
+      Note: Reset is remount; the key discards the store and the rail's ticks together (commit 99f4fb8)
     - Path: repo://ui/src/components/pages/Workbench/WorkbenchProviders.tsx
       Note: Separate so the lesson rail can be a sibling of the shell inside one PbuiProvider — DR-55 (commit 24d0a07)
     - Path: repo://ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.tsx
@@ -54,6 +60,8 @@ RelatedFiles:
       Note: The anti-rot test; it failed twice on its first run and both were real defects (commit 01eab25)
     - Path: repo://ui/test/no-raw-controls.test.ts
       Note: Rule 4 matches a typed const declaration, not an inline style literal, which is why Tutorial.tsx slips through
+    - Path: repo://ui/test/tokens-used.test.ts
+      Note: The CSS custom-property guard, deferred three times and finally written (commit 99f4fb8)
     - Path: repo://ui/test/tour.test.ts
       Note: Coverage in both directions, verified by deleting a card (commit 7fe48c1)
 ExternalSources: []
@@ -62,6 +70,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -1810,4 +1819,259 @@ brief   (✦)     5 goals        —       —            —   7 hints
 
 tests added        17    (11 anti-rot + 4 well-formedness + 3 brief, minus overlap)
 suite             226    (was 209)
+```
+
+## Step 8: Phase 7 — the page, and two more things only a browser could say
+
+The last phase. Two page components, a path-based route, and the composition of
+everything the previous six built: six sandboxed workbenches down one scrolling
+page, each with its own store, sharing a module graph and nothing else.
+
+The pattern of the whole ticket held to the end. The build went green, and then
+opening the page found two defects — one of which was a product bug that had
+nothing to do with the tour and had been there since DATADROP-5.
+
+This step also closes a debt I had recorded three times and deferred three
+times.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Second user prompt (verbatim):** "did you keep a frequent diary so far (look at skill for the format)? if not, backfill and be diligent about it"
+
+**Assistant interpretation:** Finish phase 7; and verify — rather than assert —
+that the diary has been kept at the cadence and in the format the skill
+specifies.
+
+**Inferred user intent:** They have been burned by diaries written at the end
+and want confirmation this one was not. A summary loses exactly the failures
+that make a diary worth keeping.
+
+**Commit (code):** `99f4fb8` — "DATADROP-7 phase 7: the tour page"
+
+### What I did
+
+- `pages/TourSection` — heading, blurb, panel beside workbench, cheat card,
+  reset-by-remount; three panel shapes over one layout.
+- `pages/LandingPage` — masthead, sticky index, hero, five sections, closing.
+- `WorkbenchInstance` split into `.root` and `.instance`, so children are a flex
+  sibling of the framed workbench rather than a child of it.
+- `main.tsx` routes by path.
+- `test/tokens-used.test.ts` — the CSS custom-property guard.
+- Audited the diary against the skill's checklist programmatically.
+
+### Why
+
+**Children had to move outside the frame but stay inside the providers.** DR-55
+puts the rail inside the instance's `PbuiProvider`; the layout wants it beside a
+bordered workbench with a gap, not sharing its border. Those were the same div.
+Splitting them is four lines and it is the difference between a rail that reads
+as commentary on the application and one that reads as part of it.
+
+**One bundle, routed by path.** A second Vite entry doubles what
+`pkg/webui/dist` embeds and `go:embed` carries into the binary, and saves almost
+nothing — the two pages share the entire component tree. The only
+landing-page-only payload is the lesson prose, and if the bundle ever becomes a
+problem the split to make is a lazy `import()` of `tour/`.
+
+**The `/` → `/ui/` redirect is untouched.** Whether the tour becomes the front
+door is a product decision, and building at `/ui/tour` means this ticket can
+land without changing what any existing user sees.
+
+### What worked
+
+**The whole page, verified in a browser against the static build with no server
+running anywhere:**
+
+```text
+shells            6      six independent stores
+svg marks      1825
+rail steps       15
+sections          5      objects · layout · grammar · modules · brief
+page height    4855px
+v1 requests      []
+```
+
+and then the property the page exists to demonstrate, exercised by hand:
+
+```text
+§A step 2 ▶  →  "step 2, complete — watched"     grey, not green
+progress     →  §A 1/4 · §B 0/5 · §C 0/6 · ✦ 0/5
+```
+
+§A advancing while the other three sit at zero *is* the ticket. Six stores, one
+page, no bleed.
+
+**The diary audit.** The user asked whether I had kept it; rather than assert
+so, I wrote a check against the skill's required sections and ran it:
+
+```text
+has '# Diary': True    has '## Goal': True    steps: 7
+ok 1..7   prose=2   commit=OK   (all 11 sections present in each)
+```
+
+Answering a process question with evidence took two minutes and is worth more
+than my word for it.
+
+### What didn't work
+
+**Two password fields on a page with no server.** `SourcePanel` offered a
+bearer-token input unconditionally, so §A and §D each rendered one — asking a
+reader with no account to paste a credential into a page that has nothing to
+authenticate to.
+
+The fix is not a tour flag. `SourcePanel` now takes `showToken`, and `SourceApp`
+passes `me?.auth_mode !== "none"`. That is a real product bug: **a
+`--auth=none` deployment had exactly the same defect**, and has had it since
+DATADROP-5. The tour surfaced it because a tour panel is the first thing we
+have built that runs against an unauthenticated backend by construction.
+
+**`Product()` built a store in a render body.** I wrote it to keep the tour from
+constructing a workbench store it never uses — right instinct, wrong
+implementation: a bare `makeStore()` in a component runs on every render, and
+StrictMode double-invokes the first one. The symptom would have been a workbench
+that resets itself at random, which is the kind of bug that gets reported as
+"sometimes it loses my layout" and never reproduces.
+
+`WorkbenchInstance` already documents the ref-with-null-check and why it is not
+`useState`'s initialiser. I had written that comment two phases earlier and
+still made the mistake, which is worth noting honestly: **a comment explaining a
+trap does not stop you falling into it somewhere else.**
+
+**I misread my own screenshot and nearly chased a phantom.** The hero chart's
+marks looked bunched into a narrow band. I measured instead of squinting:
+
+```text
+plot frame   849 → 1278 px
+marks        865 → 1255 px
+```
+
+The chart fills its axes correctly; the downscaled screenshot made one bright
+line look like the whole series. Measuring took thirty seconds and would have
+saved an hour of "fixing" a working plot engine.
+
+### What I learned
+
+**Building a tour is a way of testing the product against an audience it has
+never had.** The token field had been wrong for two tickets. It took a context
+where the visitor is anonymous *by construction* for anyone to look at it. The
+general form: **a new deployment shape is a free audit of every assumption the
+old shape let you skip.**
+
+**A guard I keep deferring is a guard I keep needing.** I recorded the CSS
+custom-property gap in phase 2, again in phase 5, again in phase 6, and produced
+three mistyped tokens across the ticket. Writing it took twenty minutes,
+including the part where my first rule was wrong. The rule of thumb: **the third
+time something goes in "what should be done in the future", do it instead.**
+
+**The first version of a structural test being wrong is useful.** My token guard
+initially forbade any component from declaring a `--pbui-` name, and failed
+immediately on `Surface`'s `.inverted` — which re-points three tokens for its
+subtree, correctly, with a comment explaining why. The failure taught me the
+distinction the test actually needed: re-pointing an existing token is a
+technique, inventing a name is a defect. A test that passes on its first run has
+told you nothing about where its boundary is.
+
+### What was tricky to build
+
+**Getting the rail and the workbench to lay out side by side without breaking
+the product's column.** `WorkbenchInstance` renders children then shell inside
+one flex column. The tour wants a row, a gap, and the frame around only the
+second item.
+
+I tried three shapes before the right one: overriding flex-direction through the
+`className` (put both inside one border, which reads as the rail being part of
+the application); stripping the border from the instance (left the shell with no
+frame at all, because the frame lived on the container); and finally splitting
+`.root` from `.instance`, which is the version where each thing owns what it
+actually is — `.root` is a layout box, `.instance` is a framed workbench, and
+children are siblings of the frame.
+
+The tell that the third was right: the CSS got shorter, and the doubled-selector
+override in `TourSection.module.css` needs only `flex-direction`, `gap` and a
+height.
+
+### What warrants a second pair of eyes
+
+- **`showToken` on `SourcePanel`.** It changes product behaviour for
+  `--auth=none` deployments, not just the tour. I believe hiding the field is
+  right — there is nothing to authenticate to — but someone who has run that
+  configuration should confirm nobody was using the field to paste a token that
+  the server ignores anyway.
+- **The brief has not been solved by hand.** Flagged in step 7 and still true. I
+  believe "which region has the highest average population per station" is a real
+  question over `census`, but I have not sat down and answered it as a reader.
+- **The sticky index is `aria-hidden` and `tabIndex={-1}` while collapsed.**
+  Correct as far as I can tell — a strip of zero-height buttons should not be
+  tabbable — but hiding something from assistive technology is the direction
+  that is usually wrong, and it deserves a second look.
+
+### What should be done in the future
+
+- **Solve the brief by hand in a browser**, by a route the lessons did not
+  teach. It is the only check that it is a question rather than a recipe.
+- **`wedgeOf` matches the first cached table rather than the document's own
+  source.** Recorded in phase 4, still open, and now also blocking a stronger
+  predicate for lesson C4.
+- **The null-key persistence test**, carried since phase 1. The two-instance
+  story exercises the mount path but neither instance opts in, so nothing proves
+  the key is honoured. A third instance with a key would close it.
+- Whether `/` should redirect to the tour. A product decision, deliberately left
+  open.
+
+### Code review instructions
+
+- `pages/TourSection/TourSection.tsx` — the `key` on `SectionBody` and the
+  comment on it. That one prop is the entire reset mechanism.
+- `pages/WorkbenchInstance/WorkbenchInstance.tsx` — the `.root` / `.instance`
+  split and why children sit between them.
+- `src/main.tsx` — `Product()`'s ref, and the paragraph on one bundle.
+- `test/tokens-used.test.ts` — then break it: change any `var(--pbui-border-firm)`
+  to `--pbui-border-heavy` and watch it fail.
+- Open `Applications/Tour/Page → Default` **with the API server stopped** and
+  work down it. Press ▶ in §A; do the same move by hand elsewhere and confirm
+  the tick is green rather than grey; press ↺ and confirm both the world and the
+  ticks reset.
+- Validate: `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build && bun run --cwd=ui build-storybook`.
+
+### Technical details
+
+The composition, top to bottom:
+
+```text
+LandingPage
+ ├─ masthead
+ ├─ nav            IntersectionObserver on the hero
+ ├─ hero           WorkbenchInstance  (grammar seed, 6 apps, no strip)
+ ├─ §A objects     TourSection → LessonRail      4 lessons
+ ├─ §B layout      TourSection → LessonRail      5 lessons
+ ├─ §C grammar     TourSection → LessonRail      6 lessons
+ ├─ §D modules     TourSection → ModuleRack     21 cards
+ ├─ ✦  brief       TourSection → BriefChecklist  5 goals, 7 hints
+ └─ closing
+```
+
+The instance split that made the layout honest:
+
+```text
+before                          after
+.instance                       .root        layout box, column by default
+  ├─ children                     ├─ children
+  └─ WorkbenchShell               └─ .instance   framed, holds the shell
+  (border + shadow here)               └─ WorkbenchShell
+```
+
+The suite across the whole ticket:
+
+```text
+            tests  files   added
+before        177     14
+phase 1       187     15    instances.test.ts
+phase 2       187     15
+phase 3       204     16    fixture-query.test.ts
+phase 4       204     16
+phase 5       209     17    tour.test.ts
+phase 6       226     18    lessons.test.ts
+phase 7       229     19    tokens-used.test.ts
 ```
