@@ -1,8 +1,12 @@
 export { Tile } from "./Tile";
 export { NodeView } from "./SplitView";
 export { WorkspaceStrip } from "./WorkspaceStrip";
-// DATADROP-8: the layer above workspaces (DR-58).
+// DATADROP-8: the layer above workspaces (DR-58), and the import dialogs.
 export { StageBar } from "./StageBar";
+export { Dialog } from "./Dialog";
+export type { DialogProps } from "./Dialog";
+export { BundleDialog } from "./BundleDialog";
+export type { BundleDialogProps } from "./BundleDialog";
 
 // Presentational panels. Added by DATADROP-6 phase 5, which is when they became
 // legal: apps may import organisms only because DR-33 deleted the reverse edge.

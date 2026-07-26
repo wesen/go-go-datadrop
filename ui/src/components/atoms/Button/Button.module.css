@@ -33,7 +33,10 @@
   padding: 0;
 }
 
+/* `color` before the background, and see `.raised` below for why it is stated
+ * rather than inherited. */
 .framed {
+  color: var(--pbui-ink-on-pane);
   border: var(--pbui-border-hair);
   background: var(--pbui-pane-alt);
   padding: 0 var(--pbui-space-3);
@@ -53,7 +56,19 @@
  * The default fill is the alt surface, so a raised button with no `fill` still
  * reads as a control rather than as an unfilled box.
  */
+/*
+ * A control that paints its OWN pale background must state its own ink.
+ *
+ * `color: inherit` on `.root` is right on a pale surface and catastrophic on an
+ * inverted one: `Surface`'s `.inverted` re-points `--pbui-ink` to paper for
+ * every descendant, so the inherited colour is white and the background is
+ * `--pbui-pane-alt` — 1.13:1, found by a contrast sweep over the rendered page
+ * after DATADROP-8 put the first controls on the masthead.
+ *
+ * `--pbui-ink-on-pane` exists to be excluded from that re-point.
+ */
 .raised {
+  color: var(--pbui-ink-on-pane);
   border: var(--pbui-border-firm);
   background: var(--pbui-pane-alt);
   padding: 0 var(--pbui-space-4);

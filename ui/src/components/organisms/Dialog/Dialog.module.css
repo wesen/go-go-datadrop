@@ -1,0 +1,73 @@
+/*
+ * The backdrop, and the panel it centres.
+ *
+ * `z-index: 60`, which is BELOW `pbui.module.css`'s menu at 100 and above
+ * `WorkbenchInstance`'s full-frame at 50. That ordering is the whole reason
+ * this is not `<dialog showModal()>`: the native element renders in the top
+ * layer, where the object menu could not reach over it, and a right-click
+ * inside a dialog would open a menu the user cannot see.
+ *
+ * It is INERT as an affordance — it dims and it swallows pointer events aimed
+ * at the workbench, and it does not dismiss. Click-away is the usual behaviour
+ * and is wrong for a dialog holding text the user has pasted: one stray click
+ * and the paste is gone with no undo.
+ */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pbui-space-5);
+  /* Dark enough to say "the rest is not live", pale enough to keep the layout
+   * behind it legible — a user is often importing a tile to replace one they
+   * can still see. */
+  background: rgba(35, 38, 43, 0.42);
+}
+
+/*
+ * A column that can grow to the content and stops before the viewport.
+ *
+ * `max-height` with the panel's own scroll rather than the backdrop's: a
+ * backdrop that scrolls moves the panel out from under the cursor.
+ */
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: min(680px, 100%);
+  max-height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+}
+
+.spacer {
+  flex: 1;
+}
+
+/*
+ * The content region, named so `Dialog` can find the first focusable thing IN
+ * IT rather than in the panel — whose first focusable thing is the ✕, and
+ * focusing that sends a paste nowhere.
+ *
+ * `display: contents` so naming the region costs no layout: the children still
+ * participate in the Stack above them exactly as they did.
+ */
+.body {
+  display: contents;
+}
+
+/* Right-aligned, because the confirming action is the rightmost thing on the
+ * path the eye takes out of a form. */
+.footer {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  justify-content: flex-end;
+}

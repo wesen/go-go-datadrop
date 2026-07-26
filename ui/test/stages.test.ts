@@ -149,6 +149,8 @@ describe("the space pointer never desynchronises", () => {
     beginRename: "s1-a",
     openImport: { target: { kind: "stage" }, prefill: "", from: null },
     closeImport: undefined,
+    showNotice: { ok: true, title: "Copied", body: "…" },
+    dismissNotice: undefined,
     replaceLeafFromBundle: {
       nodeId: "n",
       leaf: { id: "x", type: "leaf", app: "chart", docId: null },

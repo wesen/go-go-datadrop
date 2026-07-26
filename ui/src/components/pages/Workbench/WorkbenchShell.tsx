@@ -1,10 +1,13 @@
-import { useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useCallback, useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
 import { AcceptBanner, MouseDocLine, ObjectMenu } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves } from "../../../store/layout";
-import { NodeView, StageBar, WorkspaceStrip } from "../../organisms";
-import { IconButton } from "../../atoms";
+import { allApps } from "../../../appkit/registry";
+import { commitImport, kindFor } from "../../../store/effects";
+import { layoutActions } from "../../../store/layout";
+import { BundleDialog, Dialog, NodeView, StageBar, WorkspaceStrip } from "../../organisms";
+import { Button, IconButton } from "../../atoms";
 import { Surface, Toolbar } from "../../layout";
 import { Text } from "../../foundation";
 import styles from "./Workbench.module.css";
@@ -72,6 +75,90 @@ export interface WorkbenchShellProps {
    */
   fullFrame?: boolean;
   onToggleFullFrame?: () => void;
+}
+
+/**
+ * The import dialog, rendered by the shell because it is modal over the whole
+ * workbench and opened from a menu three components down.
+ *
+ * A separate component so the shell does not re-render on every keystroke in
+ * the text area: `BundleDialog` holds the text, and only `pendingImport`
+ * becoming non-null crosses this boundary.
+ *
+ * Rendered BEFORE `<ObjectMenu />` so the menu's stacking context wins — it is
+ * `z-index: 100` against the dialog's 60, which is what makes right-clicking
+ * inside a dialog work at all.
+ */
+function ImportDialog() {
+  const dispatch = useDispatch();
+  const pending = useSelector((state: RootState) => state.layout.pendingImport ?? null);
+  const [error, setError] = useState<string | null>(null);
+
+  const close = useCallback(() => {
+    setError(null);
+    dispatch(layoutActions.closeImport());
+  }, [dispatch]);
+
+  if (!pending) return null;
+
+  return (
+    <BundleDialog
+      kind={kindFor(pending.target)}
+      initial={pending.prefill}
+      from={pending.from}
+      // The registry, not the scope: a bundle naming an application this BUILD
+      // lacks is the warning. An application the stage merely does not offer is
+      // still installed, and warning about it would be wrong.
+      knownApps={new Set(allApps().map((app) => app.id))}
+      error={error}
+      onCancel={close}
+      onConfirm={(text) => {
+        const result = (dispatch as (action: unknown) => { ok: boolean; reason?: string })(
+          commitImport(text),
+        );
+        // The dialog already refuses text that will not parse, so reaching here
+        // means the caller refused for a reason the dialog could not know —
+        // the target vanished while it was open, say. Shown rather than
+        // swallowed; the reducer closes the dialog itself on success.
+        if (!result.ok) setError(result.reason ?? "that import did not apply");
+      }}
+    />
+  );
+}
+
+/**
+ * What an export did, stated once, at the moment the user is about to paste.
+ *
+ * The sentence about what a bundle contains and what it does not is the whole
+ * of §7.6 in the interface: it names sources and filter values, which may
+ * themselves be sensitive, and it holds no rows and no credentials. Both halves
+ * matter and neither is obvious from a JSON blob on a clipboard.
+ *
+ * The failure case is why this exists at all. The one clipboard write that
+ * predates this ticket is `navigator.clipboard?.writeText(secret)` — correct,
+ * minimal, and silent — so a browser that refuses leaves the user believing the
+ * copy worked.
+ */
+function ExportNotice() {
+  const dispatch = useDispatch();
+  const notice = useSelector((state: RootState) => state.layout.notice ?? null);
+  const close = useCallback(() => dispatch(layoutActions.dismissNotice()), [dispatch]);
+  if (!notice) return null;
+  return (
+    <Dialog
+      title={notice.title}
+      onClose={close}
+      footer={
+        <Button variant="raised" fill="var(--pbui-tone-source)" onClick={close}>
+          OK
+        </Button>
+      }
+    >
+      <Text size="small" tone={notice.ok ? "default" : "danger"} prose>
+        {notice.body}
+      </Text>
+    </Dialog>
+  );
 }
 
 export function WorkbenchShell({
@@ -176,6 +263,8 @@ export function WorkbenchShell({
 
         <MouseDocLine ambient={ambient ? `${counts} · ${ambient}` : counts} />
       </div>
+      <ImportDialog />
+      <ExportNotice />
       <ObjectMenu />
     </>
   );

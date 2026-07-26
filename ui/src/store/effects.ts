@@ -1,4 +1,10 @@
-import { parseBundle, type Bundle, type BundleKind } from "../model/portable";
+import {
+  describeBundle,
+  measureBundle,
+  parseBundle,
+  type Bundle,
+  type BundleKind,
+} from "../model/portable";
 import type { ImportTarget } from "../pbui/verbs";
 import type { AppThunk } from "./index";
 import {
@@ -46,20 +52,36 @@ function exportBundle(build: (at: string) => Bundle): AppThunk<Promise<ExportOut
       // pure builder — the same rule `applyVerb`'s snapshot case follows.
       bundle = build(new Date().toISOString());
     } catch (error) {
-      return { ok: false, reason: error instanceof Error ? error.message : "could not export" };
+      const reason = error instanceof Error ? error.message : "could not export";
+      dispatch(layoutActions.showNotice({ ok: false, title: "Nothing was copied", body: reason }));
+      return { ok: false, reason };
     }
     try {
       await clipboard.write(JSON.stringify(bundle, null, 2));
     } catch (error) {
-      return {
-        ok: false,
-        reason:
-          error instanceof Error
-            ? `the copy did not happen — ${error.message}`
-            : "the copy did not happen",
-      };
+      const reason =
+        error instanceof Error
+          ? `the copy did not happen — ${error.message}`
+          : "the copy did not happen";
+      dispatch(layoutActions.showNotice({ ok: false, title: "Nothing was copied", body: reason }));
+      return { ok: false, reason };
     }
     dispatch(worldActions.noteExport(bundle.kind, bundle.name));
+    // The confirmation states what a bundle contains AND what it does not, once,
+    // at the moment the user is about to paste it somewhere. It names sources
+    // and filter values — which may themselves be sensitive — and it contains no
+    // rows and no credentials, and the user should be told both.
+    const measured = measureBundle(bundle);
+    dispatch(
+      layoutActions.showNotice({
+        ok: true,
+        title: "Copied to the clipboard",
+        body:
+          `${describeBundle(bundle)} ${Math.max(1, Math.round(measured.bytes / 1024))} kB. ` +
+          "It names the sources these tiles read and the filters you set on them. " +
+          "It contains no rows and no credentials.",
+      }),
+    );
     return { ok: true, bundle };
   };
 }

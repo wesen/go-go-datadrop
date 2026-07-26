@@ -33,9 +33,30 @@
  */
 export interface ClipboardPort {
   write(text: string): Promise<void>;
-  /** Resolves null when the platform will not allow a read. Never throws. */
+  /**
+   * Resolves null when the platform will not allow a read. Never throws, and
+   * — the part that is easy to miss — **always settles**. See `READ_TIMEOUT`.
+   */
   read(): Promise<string | null>;
 }
+
+/**
+ * How long to wait for a clipboard read before giving up on it.
+ *
+ * **Firefox's `readText()` neither resolves nor rejects for web content.** Not
+ * "rejects with a permission error", which is what the guard below was
+ * originally written for — it simply never settles. Found by opening the
+ * application in Firefox, where the import dialog therefore never appeared at
+ * all: `beginImport` awaited a promise that had no outcome, and the menu entry
+ * looked like a dead control. Typecheck, lint and 343 tests were green, and
+ * Chromium was fine.
+ *
+ * 700 ms is longer than a real read takes anywhere it works — Chromium answers
+ * an already-granted permission in single-digit milliseconds — and short enough
+ * that a user who clicked "Replace this tile from the clipboard …" does not
+ * notice the wait before the dialog opens empty and focused.
+ */
+export const READ_TIMEOUT = 700;
 
 export const browserClipboard: ClipboardPort = {
   async write(text) {
@@ -45,10 +66,14 @@ export const browserClipboard: ClipboardPort = {
   async read() {
     // Everything here is allowed to fail, and failing is not an error: the
     // dialog opens empty and focused, which is the path rather than a degraded
-    // version of one.
+    // version of one. A read that never answers is a failure like any other,
+    // and is raced rather than awaited.
     try {
       if (!navigator.clipboard?.readText) return null;
-      return await navigator.clipboard.readText();
+      return await Promise.race([
+        navigator.clipboard.readText(),
+        new Promise<null>((resolve) => setTimeout(() => resolve(null), READ_TIMEOUT)),
+      ]);
     } catch {
       return null;
     }

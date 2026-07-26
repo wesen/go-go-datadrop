@@ -21,6 +21,8 @@ export { TextInput } from "./TextInput";
 export type { TextInputProps } from "./TextInput";
 export { SelectInput } from "./SelectInput";
 export type { SelectInputProps, SelectOption } from "./SelectInput";
+export { TextArea } from "./TextArea";
+export type { TextAreaProps } from "./TextArea";
 export { CheckboxRow } from "./CheckboxRow";
 export type { CheckboxRowProps } from "./CheckboxRow";
 export { LinkAction } from "./LinkAction";

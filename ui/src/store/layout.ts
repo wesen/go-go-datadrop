@@ -147,6 +147,16 @@ export interface LayoutState {
   /** Non-null while an import dialog is open. Never persisted. */
   pendingImport?: PendingImport | null;
   /**
+   * The result of the last export, until it is dismissed. Never persisted.
+   *
+   * An export ends in a promise against a browser API that can refuse, so it
+   * has to *report*. `navigator.clipboard?.writeText(x)` — the one clipboard
+   * write that existed before this ticket — reports nothing at all, so a user
+   * whose browser refused is told the copy worked and pastes an empty clipboard
+   * into a chat message.
+   */
+  notice?: { ok: boolean; title: string; body: string } | null;
+  /**
    * The tile or workspace whose name is being edited, or null.
    *
    * In the store rather than in the component, because the *menu* has to be
@@ -631,6 +641,14 @@ export const layoutSlice = createSlice({
     /** Start (or, with null, stop) editing a tile's or workspace's name. */
     beginRename(state, action: PayloadAction<string | null>) {
       state.renamingId = action.payload;
+    },
+
+    showNotice(state, action: PayloadAction<{ ok: boolean; title: string; body: string }>) {
+      state.notice = action.payload;
+    },
+
+    dismissNotice(state) {
+      state.notice = null;
     },
 
     openImport(state, action: PayloadAction<PendingImport>) {
