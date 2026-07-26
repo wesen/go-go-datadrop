@@ -1,6 +1,10 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"os/exec"
+	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -140,5 +144,84 @@ func TestNoVerbHasBothFormatAndOutput(t *testing.T) {
 	if len(confused) > 0 {
 		t.Fatalf("these verbs have both --format and --output:\n  %s",
 			strings.Join(confused, "\n  "))
+	}
+}
+
+// The --output ndjson shim has to do two things and it is easy to keep only
+// one of them: map the value onto its replacement, and say so. A silent
+// mapping is worse than no mapping, because ndjson's replacement is a stream of
+// concatenated JSON values rather than one object per line, and a script that
+// reads lines breaks quietly.
+func TestNdjsonDeprecation(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping end-to-end smoke test in -short mode")
+	}
+
+	binary := buildBinary(t)
+	port := freePort(t)
+	const token = "smoke-token"
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	server := exec.CommandContext(ctx, binary, "serve",
+		"--addr", "127.0.0.1:"+port,
+		"--db", filepath.Join(t.TempDir(), "datadrop.db"),
+		"--token", token)
+	if err := server.Start(); err != nil {
+		t.Fatalf("start server: %v", err)
+	}
+	t.Cleanup(func() {
+		cancel()
+		_ = server.Wait()
+	})
+
+	base := "http://127.0.0.1:" + port
+	waitForHealth(t, base)
+
+	dd := cliRunner{t: t, binary: binary,
+		env: []string{"DATADROP_ADDR=" + base, "DATADROP_TOKEN=" + token}}
+
+	dd.mustRun("create", "greenhouse")
+	dd.mustRun("push", "greenhouse", "t=1")
+	dd.mustRun("push", "greenhouse", "t=2")
+
+	stdout, stderr := dd.mustRun("query", "greenhouse", "--output", "ndjson", "--fields", "seq")
+
+	// The warning names the replacement, on stderr so that a pipe into jq keeps
+	// working while the person running it is still told.
+	if !strings.Contains(stderr, "--output ndjson is deprecated") {
+		t.Errorf("no deprecation warning on stderr: %q", stderr)
+	}
+	if !strings.Contains(stderr, "--output json --output-as-objects") {
+		t.Errorf("the warning does not name its jq-compatible replacement: %q", stderr)
+	}
+	if !strings.Contains(stderr, "export --format ndjson") {
+		t.Errorf("the warning does not name the line-oriented replacement: %q", stderr)
+	}
+
+	// The mapping: a stream of concatenated JSON objects, not an array.
+	if strings.HasPrefix(strings.TrimSpace(stdout), "[") {
+		t.Errorf("--output ndjson produced a JSON array, so it was not mapped onto "+
+			"--output-as-objects: %q", stdout)
+	}
+
+	decoder := json.NewDecoder(strings.NewReader(stdout))
+	rows := 0
+	for {
+		var row map[string]any
+		err := decoder.Decode(&row)
+		if err != nil {
+			break
+		}
+		rows++
+	}
+	if rows != 2 {
+		t.Errorf("--output ndjson emitted %d decodable objects, want 2: %q", rows, stdout)
+	}
+
+	// Nothing on stdout, so the warning cannot corrupt a pipe.
+	if strings.Contains(stdout, "deprecated") {
+		t.Errorf("the deprecation warning leaked into stdout: %q", stdout)
 	}
 }

@@ -20,18 +20,21 @@ import (
 
 // captureExit runs ExitOn with the process-ending parts stubbed out, and
 // reports what it would have done.
-func captureExit(t *testing.T, err error) (code int, stderr string, returned error) {
+func captureExit(t *testing.T, err error) (int, string, error) {
 	t.Helper()
 
 	var buf bytes.Buffer
-	code = -1
+	// -1 rather than 0, so that "did not exit" is distinguishable from
+	// "exited successfully" — which matters for the two errors ExitOn must
+	// pass through untouched.
+	code := -1
 
 	originalExit, originalSink := exitFunc, errSink
 	exitFunc = func(c int) { code = c }
 	errSink = &buf
 	t.Cleanup(func() { exitFunc, errSink = originalExit, originalSink })
 
-	returned = ExitOn(err)
+	returned := ExitOn(err)
 	return code, buf.String(), returned
 }
 

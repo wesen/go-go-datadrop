@@ -83,10 +83,74 @@ Use `--string k=v` to force a string.
 | `datadrop dataset get DROP DATASET` | Download, verifying digests |
 | `datadrop dataset import DROP DATASET` | Materialize rows into a stream |
 | `datadrop dataset rm\|gc` | Delete a version; reclaim unreferenced bytes |
+| `datadrop whoami` | Show what the configured credential resolves to |
+| `datadrop healthcheck` | Probe a running server; the exit code is the result |
 
 Exit codes are stable, so scripts can branch on them without parsing stderr:
 `0` success, `1` generic error, `2` usage, `3` auth, `4` not found,
 `5` validation.
+
+## Output
+
+Every verb that produces data emits **rows**, and the rendering is a flag rather
+than a property of the command. The default is a table; everything else is one
+flag away, on every verb:
+
+```bash
+datadrop query greenhouse --output csv
+datadrop query greenhouse --output json
+datadrop query greenhouse --fields seq,time,data.temp_c
+datadrop query greenhouse --sort-by -seq
+datadrop query greenhouse --jq 'select(.["data.temp_c"] > 21)'
+datadrop query greenhouse --select seq
+datadrop query greenhouse --output excel --output-file july.xlsx
+
+datadrop dataset list greenhouse --output json
+datadrop whoami --select user_id
+```
+
+`--output` accepts `table`, `csv`, `tsv`, `json`, `yaml`, `sql`, `markdown` and
+`excel`. Note that **`--jq` filters rows and `--filter` removes columns**; they
+read as each other's opposite and are not.
+
+An event's payload is flattened into `data.*` columns using the same projection
+the web workbench shows, so `--fields data.temp_c` and a field chip in the
+browser name one column. `datadrop query --output csv` and
+`datadrop export --format csv` therefore produce identical headers.
+
+`export` is the exception, and deliberately: it has `--format` and no
+`--output`, because it streams bytes the **server** formatted rather than
+rendering rows locally. A verb with both flags would be a verb classified wrong.
+
+Full details, including the column names, the streaming rules for
+`tail --follow`, and troubleshooting:
+
+```bash
+datadrop help cli-output
+```
+
+### Flags that changed in v0.2
+
+Three flags were renamed, two of them because the output layer already owns the
+name and two flags cannot share one on a command:
+
+| Before | After |
+|---|---|
+| `--stream NAME` (on `query`, `tail`, `export`, `push`, `schema`, `dataset import`) | `--drop-stream NAME` |
+| `dataset push --flatten` | `dataset push --flatten-paths` |
+| `dataset import --format` | `dataset import --row-format` |
+
+`--stream` needs care when updating a script, because the old spelling still
+parses: it is a boolean now, so `--stream temps` reads as `--stream=true` plus a
+stray positional argument. Search for it rather than waiting for a failure.
+
+`--output ndjson` is deprecated. It still works for one release and warns on
+stderr. Piping into `jq`? Use `--output json --output-as-objects`. Reading one
+line at a time? Use `datadrop export --format ndjson`, which is the server's own
+NDJSON and is line-oriented by construction.
+
+`export --format`, `--addr`, `--token`, `--limit`, `--from`, `--to`, `--after`,
+`--order` and `--follow` are unchanged.
 
 ## Users and access
 

@@ -46,6 +46,7 @@ func BuildCobraCommand(command cmds.Command) (*cobra.Command, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "building the %s command", command.Description().Name)
 	}
+	installNDJSONShim(cobraCmd)
 	return cobraCmd, nil
 }
 
