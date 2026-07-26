@@ -55,3 +55,12 @@ Phase 4: the lesson rail and completion by predicate (commit f7b4261). One atom,
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/organisms/LessonRail/LessonRail.tsx — Only a self completion advances — a watched step stays open so its nudge is reachable
 
+
+## 2026-07-26
+
+Phase 5: the module rack and a card for every application (commit 7fe48c1). tour/ is a new layer that may not import components, which is what keeps a predicate testable with no DOM. The rack's two groups derive from AppDescriptor.docBound rather than a hand-kept list. Writing the nine undescribed cards was the real work: a fixed slot is a question you cannot skip, and it caught four gaps in what we knew about our own applications. 209 tests
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/tour/modules.tsx — The vocabulary, in one place, with a test that keeps it complete
+

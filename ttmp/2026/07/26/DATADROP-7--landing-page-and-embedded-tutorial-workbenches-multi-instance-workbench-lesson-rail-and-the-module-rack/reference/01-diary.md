@@ -38,18 +38,25 @@ RelatedFiles:
       Note: Line 9 is the only runtime import of the store singleton in the whole frontend — the finding the design rests on
     - Path: repo://ui/src/store/index.ts
       Note: makeStore is now the only way to get a store; the preloadedState comment describes the two defects one store could not reveal (commit 4796da2)
+    - Path: repo://ui/src/tour/modules.tsx
+      Note: Twenty-one reference cards; nine describe applications nothing had ever described (commit 7fe48c1)
     - Path: repo://ui/test/fixture-query.test.ts
       Note: The round-trip guard, verified by renaming the stream table path (commit 8302e2c)
     - Path: repo://ui/test/instances.test.ts
       Note: Ten tests; both ambient-store guards verified by breaking them (commit 4796da2)
+    - Path: repo://ui/test/layers.test.ts
+      Note: The tour layer, and the restriction a graph table cannot express (commit 7fe48c1)
     - Path: repo://ui/test/no-raw-controls.test.ts
       Note: Rule 4 matches a typed const declaration, not an inline style literal, which is why Tutorial.tsx slips through
+    - Path: repo://ui/test/tour.test.ts
+      Note: Coverage in both directions, verified by deleting a card (commit 7fe48c1)
 ExternalSources: []
 Summary: ""
 LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -1372,3 +1379,201 @@ organisms    LessonRail      + RailHeader, wedge    3 stories
              BriefChecklist                         3 stories
 appkit       lessons.ts      the contract           —
 ```
+
+## Step 6: Phase 5 — the module rack, and describing every application
+
+Two molecules, one organism, and a new layer. The interesting part was not the
+components — a card and a chip list are a morning's work — but the content:
+twenty-one reference cards, of which nine describe applications nobody had ever
+written a sentence about.
+
+The prototype documents twelve. We have twenty-one. Writing the missing nine was
+the most useful thing in the phase, because filling a fixed slot forces a
+question that free-form prose lets you skip.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 5 of the ticket.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** `7fe48c1` — "DATADROP-7 phase 5: the module rack, and a card for every application"
+
+### What I did
+
+- `src/tour/` — the new layer, added to `test/layers.test.ts` with its
+  permissions and the reason for each.
+- `tour/modules.tsx` — 21 `ModuleEntry` cards.
+- `molecules/ModuleCard`, `molecules/CheatCard`, `organisms/ModuleRack`, each
+  with a story.
+- `test/tour.test.ts` — five tests, verified by deleting a card.
+
+### Why
+
+**`tour` is a layer rather than a directory under `components/`, and the
+restriction is the point.** It may import `model`, `pbui`, `store` and
+`appkit`; it may **not** import `components`. That is what keeps a lesson
+predicate unit-testable against a literal state object with no DOM, and it is
+the reason the `Lesson` contract sits in `appkit` rather than beside the rail
+that renders it. The restriction now has a test of its own rather than living
+only in the graph table, because it is the kind of rule that gets broken by one
+convenient import.
+
+**The rack's two groups are derived from `AppDescriptor.docBound`.** The
+distinction they teach — *if a tile carries a DOC strip it is a view of one
+document and can be re-pointed; if it does not, it is the whole world and there
+is only one of it* — is the single thing a reader has to internalise about the
+shell. A hand-kept list would eventually disagree with the applications it
+describes, and would then be teaching the wrong model with full confidence,
+which is worse than teaching nothing.
+
+**`ModuleCard`'s five fixed slots exist for the fifth.** `NOT TO BE` names the
+module people confuse this one with. A fixed slot forces the author of a new
+card to answer that question rather than skip it, and "nothing — this one is not
+mistaken for anything" is a real answer that tells you something.
+
+### What worked
+
+**The coverage test caught what it was built for, verified by breaking it.**
+Deleting the `tut1` card:
+
+```console
+$ bun test test/tour.test.ts
++   "tut1"
+(fail) the module rack covers the registry > every registered application has a module card
+```
+
+Both directions are checked. A card naming an application that no longer exists
+would render as nothing at all, so the rack would silently shrink — the organism
+drops unknown ids defensively, and this test is what makes that defence
+unnecessary rather than load-bearing.
+
+**Parsing rather than importing, following the house style.** `apps/all` pulls
+in React, every component beneath it and their CSS modules; importing it would
+have turned a 20 ms test into a bundling exercise. Both sides are read out of
+source with a regex, and the test says so in its docstring — which is what makes
+relying on `registerApp({ id: "…" })` being a literal fair rather than fragile.
+
+**Writing the nine undescribed cards was the real work of the phase.** Forcing
+myself to fill `EMITS` for `sources` made me check what it actually mints
+(`<source>` per stream or dataset, and `<field>` once a table is loaded).
+Filling `NOT TO BE` for `tokens` produced the sentence *a session is a browser,
+a token is a program*, which is the clearest statement of that distinction
+anywhere in the tree — and it exists because a slot demanded it.
+
+### What didn't work
+
+**`cd ui` failed four separate times in this session**, always the same way:
+the shell's working directory had persisted from an earlier `cd`, so `cd ui`
+from inside `ui` fails, and with `&&` chaining it silently drops the head of a
+multi-line block. In phase 4 it ate an entire component file. I have started
+using absolute paths for the `cd` in every block, which is what I should have
+done after the first one rather than the fourth.
+
+**A story I wrote had a `.reverse() as unknown as [string, string]` in it.** I
+wanted `Kbd` markup in a cheat sheet's *term* column, the type says the term is
+a `string`, and rather than fix either I wrote a cast that reversed a tuple to
+sneak past the checker. It typechecked. It was nonsense.
+
+The right answer took ten seconds once I stopped: the term column is the key and
+the thing the eye scans down, so it *should* be a plain string, and rich markup
+belongs in the gloss where it names controls. **A cast that makes a type error
+go away without changing what the code means is a signal that the design is
+being argued with, and the design usually wins.**
+
+### What I learned
+
+**A fixed slot is a question you cannot skip, and that is most of the value of a
+template.** I did not expect the card format to teach me anything about our own
+applications. It did, four times, and each time by refusing to let me write
+around a gap.
+
+**Deriving a taxonomy from data the system already carries beats writing it
+down, even when writing it down is faster.** `docBound` was sitting in the
+registry the whole time. The alternative — two arrays of ids in `modules.tsx` —
+would have worked today and been wrong within two applications.
+
+### What was tricky to build
+
+**Almost nothing, and that is worth recording too.** After four phases the
+patterns are established: an organism takes data and callbacks, a molecule
+takes props and holds one piece of local state, every component gets a story,
+the layer graph gets updated in the same commit, a structural test gets verified
+by breaking it. This phase followed the groove and took about half the time of
+phase 4.
+
+The one real decision was whether `ModuleRack` should be controlled or
+uncontrolled. It is both: `selected` when supplied, self-managing otherwise.
+Section D needs controlled, because picking a card re-points a tile; a story
+wants uncontrolled, because otherwise every story needs a wrapper. Supporting
+both is four lines and no ambiguity — `selected ?? internal`.
+
+### What warrants a second pair of eyes
+
+- **The nine new cards' accuracy.** I wrote them from reading the applications,
+  and a card that confidently describes the wrong behaviour is worse than no
+  card. `EMITS` for `profile` and `upload` in particular deserve a check against
+  what those tiles actually present.
+- **The group headings are long** and wrap to two lines at the rack's real
+  width. They are doing teaching work rather than labelling, which I think earns
+  the space, but it is a judgement.
+- **`tour → store`.** It is what lets a predicate take `RootState`, and it also
+  means lesson content can import action creators and dispatch anything. That is
+  intended — ▶ has to dispatch exactly what the interface dispatches — but it is
+  a broad permission for a content layer.
+
+### What should be done in the future
+
+- **`CheatCard` has no call site yet.** It ships in phase 5 and is used in phase
+  7. DATADROP-6 dropped four proposed components for want of a call site and
+  that was right; this one has a *known* call site two phases out, which is a
+  different thing, but if phase 7 changes shape it should be deleted rather than
+  kept.
+- The three carried-over items: the null-key persistence test, the CSS custom
+  property guard, and `wedgeOf`'s source matching.
+- Phase 6, the four tracks and the brief — the phase with the anti-rot test.
+
+### Code review instructions
+
+- `src/tour/modules.tsx` — read the nine cards for applications the prototype
+  does not cover (`sources`, `about`, `tut1`–`tut4`, `signin`, `profile`,
+  `tokens`, `upload`) against what those tiles actually do.
+- `test/layers.test.ts` — the `tour` entry and its comment. Confirm the
+  permissions are the minimum rather than the convenient set.
+- `test/tour.test.ts` — delete a card from `modules.tsx` and watch it fail.
+- Open `Component Library/Organisms/ModuleRack → Pipeline` and `→ Table` and
+  read only the last row of each.
+- Validate: `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build && bun run --cwd=ui build-storybook`.
+
+### Technical details
+
+The layer graph after this phase — one new node, one new edge:
+
+```text
+tour   : model, pbui, store, appkit          NEW
+pages  : … + tour                            NEW EDGE
+```
+
+and the restriction that is not in the table, because a table cannot express it:
+
+```ts
+// test/tour.test.ts
+test("nothing under tour/ imports a component", () => { … })
+```
+
+Coverage, as the test measures it:
+
+```text
+registerApp({ id: … })  in src/apps/     21
+ModuleEntry id:         in src/tour/     21
+missing                                   0
+ghosts                                    0
+documented twice                          0
+```
+
+Of the 21, the prototype covers 12 by concept — its `data` browser is our
+`sources`, and its `spec` tile has no equivalent here. The nine that had never
+been described anywhere: `about`, `tut1`, `tut2`, `tut3`, `tut4`, `signin`,
+`profile`, `tokens`, `upload`.
