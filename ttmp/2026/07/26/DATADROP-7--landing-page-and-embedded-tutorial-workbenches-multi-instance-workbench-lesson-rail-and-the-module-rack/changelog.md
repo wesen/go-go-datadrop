@@ -96,3 +96,12 @@ Follow-up (commit f268cc5): the lesson rail, cheat sheet, module rack and brief 
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/tour/fixtures.ts — Every seeded layout now names its teaching tiles, plus a hero seed that has none
 
+
+## 2026-07-26
+
+Follow-up (commit 29f1191): unnested the teaching tiles and removed every drop shadow. The rail, brief, rack and cheat card each drew a frame and a title inside a tile that already had both. Rule stated: an organism rendered as an application describes its contents and nothing about its container. Two things the removal exposed — the progress count's colours were chosen for an inverted bar and measured 1.9:1 on the pane, and Surface.raised/.floating differed ONLY by shadow, so removing it would have made two named variants render identically
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/layout/Surface/Surface.module.css — raised and floating now differ by border weight, because they differed only by shadow
+

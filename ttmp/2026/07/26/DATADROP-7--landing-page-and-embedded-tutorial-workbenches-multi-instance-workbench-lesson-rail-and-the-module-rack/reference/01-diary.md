@@ -30,8 +30,12 @@ RelatedFiles:
       Note: The debounced write, or nothing at all when the key is null (commit 4796da2)
     - Path: repo://ui/src/components/atoms/Tick/Tick.tsx
       Note: Extracted from Tutorial.tsx, where it was an inline style object and aria-hidden (commit f7b4261)
+    - Path: repo://ui/src/components/molecules/CheatCard/CheatCard.tsx
+      Note: framed defaults to false — a component in more than one container owns no chrome (commit 29f1191)
     - Path: repo://ui/src/components/organisms/LessonRail/LessonRail.tsx
       Note: The completion loop, and the auto-advance whose exception the browser found (commit f7b4261)
+    - Path: repo://ui/src/components/organisms/LessonRail/RailHeader.tsx
+      Note: What is left of a panel header once the tile owns the frame and the title (commit 29f1191)
     - Path: repo://ui/src/components/organisms/SourcePanel/SourcePanel.tsx
       Note: showToken — a server with no authentication should not ask for a credential (commit 99f4fb8)
     - Path: repo://ui/src/components/pages/LandingPage/LandingPage.tsx
@@ -50,6 +54,8 @@ RelatedFiles:
       Note: Line 9 is the only runtime import of the store singleton in the whole frontend — the finding the design rests on
     - Path: repo://ui/src/store/index.ts
       Note: makeStore is now the only way to get a store; the preloadedState comment describes the two defects one store could not reveal (commit 4796da2)
+    - Path: repo://ui/src/styles/tokens.css
+      Note: The shadow tokens resolve to none rather than being deleted, and why (commit 29f1191)
     - Path: repo://ui/src/tour/fixtures.ts
       Note: World and layout seeded together, because a tile that should be bound needs the doc id at construction (commit 01eab25)
     - Path: repo://ui/src/tour/lessons/grammar.tsx
@@ -76,6 +82,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -2312,4 +2319,208 @@ Heights:
 section          520     720
 §C, the brief    660     820
 hero             380     460
+```
+
+## Step 10: Unnesting, and taking the shadows out
+
+A screenshot of the lessons tile made the problem unarguable: the tile drew a
+title bar reading LESSONS and a border, and immediately inside it the rail drew
+a second title bar reading LESSONS and a second border. Same word twice, box
+inside a box. The cheat sheet did the same thing one step worse — a bordered
+card with a filled header bar inside a bordered tile with a filled header bar.
+
+The cause is that step 9 moved these components into tiles without removing the
+chrome they had needed when they were panels beside the workbench. The fix is
+subtraction, and the general rule it belongs to is worth writing down.
+
+### Prompt Context
+
+**User prompt (verbatim):** "unnest the lessons / cheatsheet / module rack to avoid having a box inside a box, and the title twice and such (see screenshot [Image #1]) and remove dropshadows from all components that have one."
+
+**Assistant interpretation:** Strip the self-drawn frame and duplicated title
+from the teaching organisms now that a tile provides both; and remove every
+offset drop shadow across the design system.
+
+**Inferred user intent:** They looked at what step 9 shipped and saw doubled
+chrome. The shadow request is the same instinct one level up — at this density
+the offsets have stopped separating panels and started cluttering them.
+
+**Commit (code):** `29f1191` — "DATADROP-7: unnest the teaching tiles, and remove every drop shadow"
+
+### What I did
+
+- `LessonRail`, `BriefChecklist`, `ModuleRack`: removed border, shadow,
+  background and title from all three.
+- `RailHeader`: dropped the `title` prop entirely; it is now a light `Toolbar`
+  holding the progress count and ↺.
+- `ModuleRack`: removed its header outright — it had nothing but a title.
+- `CheatCard`: added `framed`, defaulting to **false**; the filled header bar
+  became a hairline rule; the titles shortened from "Cheat sheet · objects" to
+  "Objects".
+- Every `box-shadow` in the tree removed, and the two shadow tokens set to
+  `none` rather than deleted.
+- Corrected "twenty-one applications" to twenty-five in four places.
+
+### Why
+
+**A component rendered as an application describes its contents and nothing
+about its container.** That is the rule the three organisms were breaking, and
+stating it that way makes the fix mechanical rather than a matter of taste: a
+border, a background and a title are all statements about the container.
+
+**The progress count and ↺ stayed because they have no other home.** The tile's
+title bar is generic — it belongs to `Tile` and holds an application picker,
+split, and close. `0/4` and ↺ have nowhere else to go, so the header survives
+with its title removed. Making it a light toolbar rather than an inverted bar
+matters for the same reason the nesting was visible in the first place: the
+tile's title bar is the loud element, and two elements competing for that role
+is what the eye reads as doubling.
+
+**The shadows had stopped working at this density.** A 2px hard offset behind
+one panel reads as deliberate. Behind fifteen tiles, each with six framed
+buttons in its title bar, inside a page holding six workbenches, every panel
+casts a black rectangle onto the one behind it and the hairline borders stop
+being what separates them. Removing them is subtraction in the same direction
+as the unnesting.
+
+### What worked
+
+**The screenshot was the specification.** Two rectangles and one repeated word,
+and the whole change followed from looking at it. This is the third time in the
+ticket that reading the rendered page produced a correction that reading the
+source would not have.
+
+**Setting the tokens to `none` rather than deleting them.** Two reasons, and the
+first is concrete: `tokens-used.test.ts` — written two steps ago — fails on any
+`var(--pbui-…)` naming a token that does not exist, so deleting them would have
+turned a purely visual decision into a compile-adjacent chore across seven
+files. The second is that turning them back on is now a one-line experiment
+rather than an archaeology exercise. A guard written for one purpose shaped a
+decision it was not written for, which is a good sign about the guard.
+
+**Checking what the removal left behind.** `Surface.raised` and
+`Surface.floating` differed *only* by shadow, so removing both would have made
+them identical — two named variants that render the same thing is worse than no
+variants. They now differ by border weight. `Button.raised` against
+`Button.framed` had the same problem and now differs by border weight and
+padding, which is still two clearly distinguishable controls.
+
+### What didn't work
+
+**The progress count became unreadable and I nearly missed it.** It was
+`--pbui-tone-chart` and `--pbui-tone-geom`, both chosen for an inverted bar
+because `--pbui-ok` is #317a53 and nearly invisible on dark. Moving the header
+to a pale surface inverted that: on the pane those two measure roughly 1.9:1 and
+1.7:1. The semantic pair — `--pbui-faint` and `--pbui-ok` — is tuned for exactly
+this surface and clears 4.5:1.
+
+This is a specific failure mode worth naming: **a colour chosen for one surface
+is wrong on its opposite, and changing a surface silently changes every colour
+sitting on it.** Nothing failed. The text was simply there and not readable.
+
+**The cheat sheet was still half-duplicated after the first pass.** I removed
+the card's frame but left the title as "Cheat sheet · objects" under a tile
+saying CHEAT SHEET. Only the section name was carrying information. Shortening
+to "Objects" is the rest of the same correction, and I only saw it by looking at
+the screenshot again after the fix.
+
+**Stale prose the change exposed.** The §D blurb said "Twenty-one applications
+share one world" — true when it was written, and four teaching tiles had
+registered since. Four places, all in prose. No test covers a sentence, and the
+module-card coverage test cannot help because it counts ids rather than reading
+English.
+
+### What I learned
+
+**Chrome is a statement about position, and moving a component invalidates it.**
+The rail's frame and title were correct while it was a panel and became wrong
+the instant it became a tile, without anything about the rail changing. Any
+component that can be rendered in more than one container should own no chrome
+at all, or take it as a prop — which is what `CheatCard.framed` now does.
+
+**Deleting a token and disabling one are different operations with different
+blast radii.** I reached for delete first. The test that would have punished it
+was one I wrote two steps ago for an unrelated reason, and its failure would
+have been correct and useless — which is what made `none` the better answer.
+
+**Removing a distinguishing property means checking what still distinguishes.**
+Two of the three shadow removals left a pair of variants identical. Neither
+would have failed a test; both would have been a design-system defect of the
+kind v0.5 spent a whole ticket removing.
+
+### What was tricky to build
+
+**Deciding how much of the rail header to keep.** The options were: remove it
+entirely and lose the progress count and ↺; keep it and accept a second bar; or
+keep it with the title removed. The first loses real function — a reader needs
+to know how far through they are, and ↺ is the only escape from a wedged panel.
+The second is what the screenshot was complaining about.
+
+The third works, but only because the *weight* changed too. A dark bar with
+`0/4` in it still reads as a title bar with the title missing. A light toolbar
+reads as a control strip, which is what it is. The lesson is that the doubling
+the user saw was as much about visual weight as about the repeated word, and
+fixing only the word would have left it looking wrong for a reason nobody could
+name.
+
+### What warrants a second pair of eyes
+
+- **Whether `Surface.raised` and `Surface.floating` still earn separate names.**
+  They differ by border weight now — hairline against firm. That is a real
+  distinction but a thinner one than before, and if nothing depends on it they
+  should probably collapse.
+- **The `Kbd` shadow.** It was a 1px offset written inline rather than through a
+  token, and it is gone. `Kbd` is now a bordered inline span, which is legible
+  but flatter than the convention for keycaps.
+- **Contrast on the two-state progress count.** I reasoned about the values
+  rather than measuring them with a tool. `--pbui-faint` and `--pbui-ok` are
+  both documented in `tokens.css` as clearing 4.5:1 on the pane, so the
+  conclusion follows — but it follows from a comment rather than from a
+  measurement I took.
+
+### What should be done in the future
+
+- **A visual check of every story at the new flat weight.** 254 stories, and I
+  looked at four. Nothing can have broken structurally, but a component that
+  relied on its shadow to separate it from its neighbour will now be flat
+  against it.
+- The four carried items are unchanged: solve the brief by hand, fix `wedgeOf`'s
+  table matching, test the null persistence key, and check §C at 1280×720.
+
+### Code review instructions
+
+- `RailHeader.tsx` — the docstring states the rule the whole change follows.
+- `LessonRail.module.css` `.rail`, and the comment on the progress colours.
+- `CheatCard.tsx` — the `framed` prop's docstring, and the `Framed` story, which
+  exists so the default reads as a choice rather than an omission.
+- `tokens.css` — the shadow block, and why `none` rather than deletion.
+- Open `Applications/Tour/Section → WithRail` and `→ WithRack` and count the
+  borders and the titles. There should be one of each per tile.
+
+### Technical details
+
+What each organism stopped drawing:
+
+```text
+                    before                          after
+LessonRail          border + shadow + pane bg       nothing
+                    inverted bar: title, 0/4, ↺     toolbar: 0/4, ↺
+BriefChecklist      same                            same
+ModuleRack          border + shadow + pane bg       nothing
+                    inverted bar: "Module rack"     removed entirely
+CheatCard           border + shadow                 none, unless framed
+                    filled header bar               hairline rule
+                    "Cheat sheet · objects"         "Objects"
+```
+
+Every shadow removed, and what now distinguishes the pairs that relied on one:
+
+```text
+Button.raised     border-firm + roomier padding   (was: + shadow-hard)
+Button.framed     border-hair
+Surface.raised    border-hair                     (was: shadow-hard alone)
+Surface.floating  border-firm                     (was: shadow-menu alone)
+Tile              border-firm
+ObjectMenu        border-firm
+Kbd               border-hair                     (was: + inline 1px offset)
 ```
