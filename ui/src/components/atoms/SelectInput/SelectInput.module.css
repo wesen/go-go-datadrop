@@ -11,15 +11,25 @@
   min-width: 0;
 }
 
-/* Nothing. The native control keeps whatever the platform gives it, which is
- * what every call site outside SourceApp had. */
+/*
+ * Both variants paint a pale background, so both must state their own ink.
+ *
+ * `color: inherit` on `.root` above is right for a control on a pale surface
+ * and catastrophic on an inverted one: `Surface`'s `.inverted` re-points
+ * `--pbui-ink` to paper for every descendant, so the inherited colour is white
+ * and the background is white. DATADROP-8's stage switcher is the first select
+ * ever placed on the masthead and rendered as a blank box — typecheck, lint and
+ * every test green.
+ */
 .native {
   background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
 }
 
 .framed {
   border: var(--pbui-border-hair);
   background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
   padding: 0 var(--pbui-space-2);
 }
 

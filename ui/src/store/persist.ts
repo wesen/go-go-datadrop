@@ -1,5 +1,5 @@
-import type { LayoutState, Node, Workspace } from "./layout";
-import { mergePinned } from "./spaces";
+import type { LayoutState, Node, Stage, StageChrome, Workspace } from "./layout";
+import { mergeStages, WORK_STAGE_ID } from "./stages";
 import type { WorldState } from "./world";
 
 /**
@@ -27,8 +27,13 @@ import type { WorldState } from "./world";
 
 /** The application's key. Embedded instances pass null and persist nothing. */
 export const WORKBENCH_KEY = "datadrop-workbench";
-/** Bumped when a shape change makes older payloads unreadable. */
-const VERSION = 1;
+/**
+ * Bumped when a shape change makes older payloads unreadable.
+ *
+ * 2 since DATADROP-8, which put stages above workspaces. Version 1 payloads
+ * are MIGRATED rather than discarded (DR-73) — see `migrate` below.
+ */
+const VERSION = 2;
 
 interface Persisted {
   version: number;
@@ -78,34 +83,137 @@ function isNode(value: unknown): value is Node {
 function isWorkspace(value: unknown): value is Workspace {
   const space = value as Partial<Workspace>;
   return (
-    !!space && typeof space.id === "string" && typeof space.name === "string" && isNode(space.tree)
+    !!space &&
+    typeof space.id === "string" &&
+    typeof space.name === "string" &&
+    typeof space.stageId === "string" &&
+    isNode(space.tree)
   );
 }
 
-export function validate(raw: unknown): Persisted | null {
+function isChrome(value: unknown): value is StageChrome {
+  const chrome = value as Partial<StageChrome>;
+  return (
+    !!chrome &&
+    typeof chrome.masthead === "boolean" &&
+    typeof chrome.workspaces === "boolean" &&
+    typeof chrome.stageBar === "boolean"
+  );
+}
+
+function isStage(value: unknown): value is Stage {
+  const stage = value as Partial<Stage>;
+  return (
+    !!stage &&
+    typeof stage.id === "string" &&
+    typeof stage.name === "string" &&
+    typeof stage.currentSpaceId === "string" &&
+    (stage.apps === null || Array.isArray(stage.apps)) &&
+    isChrome(stage.chrome)
+  );
+}
+
+/** The shape a version-1 payload had, for the migration only. */
+interface PersistedV1 {
+  version: 1;
+  world: Persisted["world"];
+  layout: { spaces: Array<Omit<Workspace, "stageId">>; currentSpaceId: string };
+}
+
+/**
+ * The two workspace ids version 1 hardwired.
+ *
+ * They are dropped rather than migrated: `mergeStages` re-creates both as
+ * *stages* from code (DR-59), so carrying them forward would produce a
+ * duplicate of each under the wrong parent — a second "welcome" workspace
+ * sitting inside the work stage, containing a sign-in tile.
+ */
+const PINNED_V1_IDS: ReadonlySet<string> = new Set(["ws-welcome", "ws-account"]);
+
+/**
+ * Version 1 → 2: every user workspace joins the `work` stage (DR-73).
+ *
+ * Migrate rather than discard. Discarding is defensible when the old shape is
+ * unrecoverable; here it is entirely recoverable, and discarding would throw
+ * away every existing user's twelve workspaces at upgrade, silently, with a
+ * console warning as the only evidence.
+ *
+ * **Idempotent on a version-2 payload** — the first line returns it unchanged.
+ * Without that, a second load would re-wrap everything into a second work
+ * stage, which is the classic way a migration that "worked" corrupts on the
+ * next reload.
+ *
+ * The result is NOT trusted: `validate` calls this first and then validates
+ * what came back, so the migration cannot produce a shape that skips the
+ * validator. A migration returning unvalidated state is a second trust
+ * boundary.
+ */
+export function migrate(raw: unknown): unknown | null {
+  if (!raw || typeof raw !== "object") return null;
+  const data = raw as { version?: number };
+  if (data.version === VERSION) return raw;
+  if (data.version !== 1) return null;
+
+  const v1 = raw as unknown as PersistedV1;
+  if (!v1.layout || !Array.isArray(v1.layout.spaces)) return null;
+
+  const spaces = v1.layout.spaces
+    .filter((space) => !PINNED_V1_IDS.has(space.id))
+    .map((space) => {
+      const { pinned: _pinned, ...rest } = space as Workspace;
+      return { ...rest, stageId: WORK_STAGE_ID };
+    });
+
+  return {
+    version: VERSION,
+    world: v1.world,
+    layout: {
+      // mergeStages supplies the pinned four; an empty array here is not a
+      // missing stage list, it is "this payload defines no stages of its own".
+      stages: [],
+      currentStageId: WORK_STAGE_ID,
+      spaces,
+      currentSpaceId: spaces.some((s) => s.id === v1.layout.currentSpaceId)
+        ? v1.layout.currentSpaceId
+        : (spaces[0]?.id ?? ""),
+    },
+  };
+}
+
+export function validate(input: unknown): Persisted | null {
+  const raw = migrate(input);
   if (!raw || typeof raw !== "object") return null;
   const data = raw as Partial<Persisted>;
   if (data.version !== VERSION) return null;
   if (!data.world || !data.layout) return null;
-  if (!Array.isArray(data.layout.spaces) || data.layout.spaces.length === 0) return null;
+  if (!Array.isArray(data.layout.spaces)) return null;
   if (!data.layout.spaces.every(isWorkspace)) return null;
+  if (!Array.isArray(data.layout.stages)) return null;
+  if (!data.layout.stages.every(isStage)) return null;
   if (typeof data.world.docs !== "object" || !Array.isArray(data.world.docOrder)) return null;
 
-  // The hardwired spaces are re-created from code on every load, replacing
-  // whatever was stored under their ids (DR-29). A user who deleted the account
-  // space in a previous release gets it back; a user who added a tile to it
-  // loses that tile, which is what "hardwired" means.
-  const spaces = mergePinned(data.layout.spaces);
+  // The hardwired stages and their workspaces are re-created from code on every
+  // load, replacing whatever was stored under their ids (DR-29, DR-59). A user
+  // who deleted the account workspace in a previous release gets it back; a
+  // user who added a tile to it loses that tile, which is what "hardwired"
+  // means. `mergeStages` also repairs orphans and empty stages.
+  const { stages, spaces } = mergeStages(data.layout.stages, data.layout.spaces);
 
-  // A currentSpaceId naming a space that is gone would render nothing.
-  const current = spaces.some((s) => s.id === data.layout?.currentSpaceId)
-    ? data.layout.currentSpaceId
-    : (spaces[0] as Workspace).id;
+  const stage = stages.find((s) => s.id === data.layout?.currentStageId) ?? (stages[0] as Stage);
+  // A currentSpaceId naming a space that is gone would render nothing. The
+  // stage's own pointer has already been repaired by mergeStages, so mirroring
+  // it here is both the repair and the invariant (DR-60).
+  const currentSpaceId = spaces.some(
+    (s) => s.id === data.layout?.currentSpaceId && s.stageId === stage.id,
+  )
+    ? (data.layout.currentSpaceId as string)
+    : stage.currentSpaceId;
+  stage.currentSpaceId = currentSpaceId;
 
   return {
     version: VERSION,
     world: data.world,
-    layout: { spaces, currentSpaceId: current },
+    layout: { stages, currentStageId: stage.id, spaces, currentSpaceId },
   };
 }
 

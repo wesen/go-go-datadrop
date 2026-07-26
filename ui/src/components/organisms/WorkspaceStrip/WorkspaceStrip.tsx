@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { Presentation } from "../../../pbui";
 import type { RootState } from "../../../store";
@@ -15,10 +15,24 @@ import { Stack, Toolbar } from "../../layout";
  * change, not a remount of the data: the documents, the snapshots and the
  * cached tables are the same objects, which is why an accept started in one
  * workspace can be satisfied in another.
+ *
+ * **Scoped to the current stage** since DATADROP-8. Before stages this was
+ * every workspace in the layout, which is how the account arrangement and the
+ * four tutorial arrangements ended up in the same flat strip as the user's own
+ * — twelve chips, two of them marked ⌾ and needing a tooltip to explain why
+ * they were different.
  */
 export function WorkspaceStrip() {
   const dispatch = useDispatch();
-  const spaces = useSelector((s: RootState) => s.layout.spaces);
+  // Selected raw and filtered in a memo, not filtered inside the selector: a
+  // selector returning a fresh array on every call re-renders on every store
+  // change and trips react-redux's identity warning.
+  const allSpaces = useSelector((s: RootState) => s.layout.spaces);
+  const stageId = useSelector((s: RootState) => s.layout.currentStageId);
+  const spaces = useMemo(
+    () => allSpaces.filter((space) => space.stageId === stageId),
+    [allSpaces, stageId],
+  );
   const current = useSelector((s: RootState) => s.layout.currentSpaceId);
   const [renaming, setRenaming] = useState<string | null>(null);
 

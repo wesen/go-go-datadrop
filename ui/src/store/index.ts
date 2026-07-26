@@ -4,7 +4,7 @@ import { api } from "../api/client";
 import type { FixtureData } from "../api/fixtures";
 import { layoutSlice, type LayoutState } from "./layout";
 import { worldSlice, initialWorld, type WorldState } from "./world";
-import { defaultSpaces } from "./spaces";
+import { defaultLayout } from "./stages";
 
 /**
  * The store, as a factory and only as a factory.
@@ -98,12 +98,12 @@ export function makeStore(options: MakeStoreOptions = {}) {
   //    module load, so every store built without a preload started with the
   //    same workspace *id*. Harmless while there is one store and confusing the
   //    moment there are five.
-  //  - The fallback layout was one launcher tile rather than `defaultSpaces()`,
+  //  - The fallback layout was one launcher tile rather than `defaultLayout()`,
   //    so the shell's own Storybook story rendered an empty workbench. The
   //    story was showing the fallback, not the product.
   const preloadedState = {
     world: { ...initialWorld, ...preloaded?.world },
-    layout: preloaded?.layout ?? defaultSpaces(),
+    layout: preloaded?.layout ?? defaultLayout(),
   };
 
   const store = configureStore({

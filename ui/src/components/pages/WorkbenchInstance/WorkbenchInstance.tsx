@@ -81,8 +81,16 @@ export interface InstanceConfig {
   persistKey?: string | null;
   /** The DATALAB wordmark. Off by default: the page has its own masthead. */
   masthead?: boolean;
-  /** The workspace strip. On by default — switching layouts is §B's lesson. */
+  /**
+   * The workspace strip.
+   *
+   * Omit to defer to the seeded stage, which is what a section that knows its
+   * own layout should do. `false` overrides it — `??`, not `&&`, so "say
+   * nothing" and "say false" stay distinguishable (DATADROP-8 §5.6).
+   */
   workspaces?: boolean;
+  /** The stage switcher. Off by default: an embedded panel seeds one stage. */
+  stageBar?: boolean;
   /**
    * Offer a control that expands the workbench to fill the window.
    *
@@ -150,7 +158,12 @@ export function WorkbenchInstance({
             <div className={styles.instance}>
               <WorkbenchShell
                 masthead={config.masthead ?? false}
-                workspaces={config.workspaces ?? true}
+                workspaces={config.workspaces}
+                // An embedded panel seeds one stage, so a switcher would have
+                // one entry. `StageBar` degrades to the name alone in that
+                // case, but the panel does not want even that: the page's own
+                // prose says which section this is.
+                stageBar={config.stageBar ?? false}
                 fullFrame={expanded}
                 onToggleFullFrame={
                   config.fullFrame === false ? undefined : () => setExpanded((on) => !on)

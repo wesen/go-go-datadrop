@@ -1,6 +1,8 @@
 export { Tile } from "./Tile";
 export { NodeView } from "./SplitView";
 export { WorkspaceStrip } from "./WorkspaceStrip";
+// DATADROP-8: the layer above workspaces (DR-58).
+export { StageBar } from "./StageBar";
 
 // Presentational panels. Added by DATADROP-6 phase 5, which is when they became
 // legal: apps may import organisms only because DR-33 deleted the reverse edge.

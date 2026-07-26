@@ -3,6 +3,7 @@ import { readings, census } from "../fixtures";
 import { defaultChart } from "../model/chart";
 import type { PreloadedState } from "../store";
 import { leaf, split, type LayoutState } from "../store/layout";
+import { singleStageLayout } from "../store/stages";
 import { newId } from "../store/world";
 
 /**
@@ -89,10 +90,16 @@ export function seedTwo(): NonNullable<PreloadedState["world"]> {
   };
 }
 
-const space = (name: string, tree: LayoutState["spaces"][number]["tree"]): LayoutState => {
-  const id = newId();
-  return { spaces: [{ id, name, tree }], currentSpaceId: id };
-};
+/**
+ * One workspace on one stage, which is what every tour section wants.
+ *
+ * The stage is minted per section rather than reusing a pinned one (DATADROP-8
+ * DR-59): a section's allow-list is already carried by `InstanceConfig.apps`,
+ * and giving six embedded instances the *same* stage id would be harmless today
+ * and confusing the moment a stage verb names one.
+ */
+const space = (name: string, tree: LayoutState["spaces"][number]["tree"]): LayoutState =>
+  singleStageLayout(name, tree);
 
 /**
  * Each section seeds its world and its layout TOGETHER.

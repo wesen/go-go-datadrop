@@ -16,7 +16,12 @@ import {
 import { TRACE_CAP, worldActions, worldSlice, type WorldState } from "../src/store/world";
 import { actionsForVerb, environmentFor } from "../src/store/applyVerb";
 import { findSecrets, validate } from "../src/store/persist";
-import { ACCOUNT_SPACE_ID, WELCOME_SPACE_ID } from "../src/store/spaces";
+import {
+  ACCOUNT_SPACE_ID,
+  ACCOUNT_STAGE_ID,
+  SIGNIN_SPACE_ID,
+  WORK_STAGE_ID,
+} from "../src/store/stages";
 
 /**
  * The shell reducers: pure functions, tested without a DOM.
@@ -334,6 +339,18 @@ describe("verbs become actions", () => {
 /* ----------------------------------------------------------- persistence -- */
 
 describe("persistence is defensive", () => {
+  /** A version-2 payload holding one user workspace in the work stage. */
+  const v2 = (
+    spaces: unknown[],
+    currentSpaceId: string,
+    stages: unknown[] = [],
+    currentStageId = WORK_STAGE_ID,
+  ) => ({
+    version: 2,
+    world: { docs: {}, docOrder: [] },
+    layout: { stages, currentStageId, spaces, currentSpaceId },
+  });
+
   test("a payload from another version is refused", () => {
     expect(
       validate({ version: 99, world: {}, layout: { spaces: [], currentSpaceId: "" } }),
@@ -342,14 +359,9 @@ describe("persistence is defensive", () => {
 
   test("a malformed tree is refused rather than rendered", () => {
     expect(
-      validate({
-        version: 1,
-        world: { docs: {}, docOrder: [] },
-        layout: {
-          spaces: [{ id: "s", name: "x", tree: { id: "n", type: "split" } }],
-          currentSpaceId: "s",
-        },
-      }),
+      validate(
+        v2([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree: { id: "n", type: "split" } }], "s"),
+      ),
     ).toBeNull();
   });
 
@@ -362,67 +374,63 @@ describe("persistence is defensive", () => {
       a: { id: "a", type: "leaf", app: "chart" },
       b: { id: "b", type: "leaf", app: "table" },
     };
-    expect(
-      validate({
-        version: 1,
-        world: { docs: {}, docOrder: [] },
-        layout: { spaces: [{ id: "s", name: "x", tree }], currentSpaceId: "s" },
-      }),
-    ).toBeNull();
+    expect(validate(v2([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "s"))).toBeNull();
   });
 
-  test("a currentSpaceId naming a missing space falls back to the first", () => {
+  test("a currentSpaceId naming a missing space falls back to the stage's", () => {
     const tree = { id: "n", type: "leaf", app: "chart" };
-    const valid = validate({
-      version: 1,
-      world: { docs: {}, docOrder: [] },
-      layout: { spaces: [{ id: "s", name: "x", tree }], currentSpaceId: "gone" },
-    });
-    // The hardwired spaces are prepended on load, so "first" is now `welcome`
-    // rather than whatever was stored. The property under test is the fallback,
+    const valid = validate(v2([{ id: "s", name: "x", stageId: WORK_STAGE_ID, tree }], "gone"));
+    // The stage's own pointer has already been repaired by mergeStages, so the
+    // layout mirror follows it (DR-60). The property under test is the fallback,
     // not the identity of the space it falls back to.
-    expect(valid?.layout.currentSpaceId).toBe(WELCOME_SPACE_ID);
+    expect(valid?.layout.currentSpaceId).toBe("s");
     expect(valid?.layout.spaces.map((space) => space.id)).toContain("s");
   });
 
-  test("the hardwired spaces are restored from code, not from storage", () => {
-    // DR-29. A user who deleted the account space in a previous release must
-    // get it back, and a stored tree under a pinned id must not win.
-    const valid = validate({
-      version: 1,
-      world: { docs: {}, docOrder: [] },
-      layout: {
-        spaces: [
+  test("the hardwired workspaces are restored from code, not from storage", () => {
+    // DR-29. A user who deleted the account workspace in a previous release
+    // must get it back, and a stored tree under a pinned id must not win.
+    const valid = validate(
+      v2(
+        [
           {
             id: ACCOUNT_SPACE_ID,
             name: "renamed by a user",
+            stageId: ACCOUNT_STAGE_ID,
             tree: { id: "n", type: "leaf", app: "chart" },
           },
         ],
-        currentSpaceId: ACCOUNT_SPACE_ID,
-      },
-    });
+        ACCOUNT_SPACE_ID,
+        [],
+        ACCOUNT_STAGE_ID,
+      ),
+    );
 
     const ids = valid?.layout.spaces.map((space) => space.id) ?? [];
-    expect(ids).toContain(WELCOME_SPACE_ID);
+    expect(ids).toContain(SIGNIN_SPACE_ID);
     expect(ids).toContain(ACCOUNT_SPACE_ID);
     // Exactly once: merging must not duplicate a pinned space that was stored.
     expect(ids.filter((id) => id === ACCOUNT_SPACE_ID)).toHaveLength(1);
 
     const account = valid?.layout.spaces.find((space) => space.id === ACCOUNT_SPACE_ID);
-    expect(account?.name).toBe("account");
+    expect(account?.name).toBe("profile");
     expect(account?.pinned).toBe(true);
   });
 
   test("user-created spaces survive the merge", () => {
-    const valid = validate({
-      version: 1,
-      world: { docs: {}, docOrder: [] },
-      layout: {
-        spaces: [{ id: "mine", name: "mine", tree: { id: "n", type: "leaf", app: "chart" } }],
-        currentSpaceId: "mine",
-      },
-    });
+    const valid = validate(
+      v2(
+        [
+          {
+            id: "mine",
+            name: "mine",
+            stageId: WORK_STAGE_ID,
+            tree: { id: "n", type: "leaf", app: "chart" },
+          },
+        ],
+        "mine",
+      ),
+    );
     expect(valid?.layout.spaces.find((space) => space.id === "mine")?.name).toBe("mine");
     expect(valid?.layout.currentSpaceId).toBe("mine");
   });

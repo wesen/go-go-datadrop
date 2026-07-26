@@ -32,6 +32,23 @@
   --pbui-ink: #23262b; /* every border, all body text, the dark bars */
 
   /*
+   * Ink for something that draws its OWN pale background, whatever surface it
+   * is sitting on.
+   *
+   * `Surface`'s `.inverted` re-points `--pbui-ink` to paper for every
+   * descendant, which is exactly right for text on the dark bar and exactly
+   * wrong for a control that paints `--pbui-pane` behind itself: it comes out
+   * white on white, 1.00:1, invisible.
+   *
+   * Found by looking at the rendered masthead after DATADROP-8 put the first
+   * `<select>` on the inverted bar. Typecheck, lint and every test were green;
+   * the control was legible only by tabbing to it and reading the value out of
+   * the DOM. This token is deliberately NOT re-pointed by `.inverted`, and that
+   * absence is the whole of its job.
+   */
+  --pbui-ink-on-pane: #23262b;
+
+  /*
    * Secondary text: hints, axis labels, trace metadata, the right-hand half of
    * every chip. Darkened from the prototype's #7b8087, which measures 3.98:1 on
    * --pbui-pane and 3.51:1 on --pbui-pane-alt — below the 4.5:1 threshold, at

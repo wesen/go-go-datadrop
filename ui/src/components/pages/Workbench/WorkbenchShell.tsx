@@ -3,7 +3,7 @@ import { useSelector } from "react-redux";
 import { AcceptBanner, MouseDocLine, ObjectMenu } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { countLeaves } from "../../../store/layout";
-import { NodeView, WorkspaceStrip } from "../../organisms";
+import { NodeView, StageBar, WorkspaceStrip } from "../../organisms";
 import { IconButton } from "../../atoms";
 import { Surface, Toolbar } from "../../layout";
 import { Text } from "../../foundation";
@@ -37,15 +37,25 @@ export interface WorkbenchShellProps {
    *
    * The product wants it; an instance embedded in a page that already has a
    * masthead does not, and five of them down one page would be absurd.
+   *
+   * **`?? stage.chrome`, never `&&`** (DATADROP-8 §5.6). Three chrome props now
+   * have two possible sources: the stage says what this part of the product
+   * looks like, and the instance may override. An instance that says nothing
+   * defers to the stage; an instance that says `false` wins. `&&` would make
+   * "say nothing" indistinguishable from "say false" and every embedded panel
+   * would lose its workspace strip.
    */
   masthead?: boolean;
   /**
    * The workspace strip.
    *
-   * Hidden by the signed-out gate, and by a tour section that pins its reader
-   * to one layout so the lesson's prose can name what is on screen.
+   * Hidden by a stage that holds exactly one workspace, and by a tour section
+   * that pins its reader to one layout so the lesson's prose can name what is
+   * on screen.
    */
   workspaces?: boolean;
+  /** The stage switcher in the masthead. Off for the sign-in stage. */
+  stageBar?: boolean;
   /** Extra ambient text for the mouse-doc line, appended to the tile counts. */
   ambient?: string;
   /**
@@ -65,8 +75,9 @@ export interface WorkbenchShellProps {
 }
 
 export function WorkbenchShell({
-  masthead = true,
-  workspaces = true,
+  masthead,
+  workspaces,
+  stageBar,
   ambient,
   fullFrame = false,
   onToggleFullFrame,
@@ -74,8 +85,22 @@ export function WorkbenchShell({
   const space = useSelector((state: RootState) =>
     state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId),
   );
-  const spaceCount = useSelector((state: RootState) => state.layout.spaces.length);
+  const stage = useSelector((state: RootState) =>
+    state.layout.stages.find((s) => s.id === state.layout.currentStageId),
+  );
+  // Workspaces in THIS stage, not in the layout: the count under the canvas
+  // should agree with the strip above it, and the strip is now stage-scoped.
+  const spaceCount = useSelector(
+    (state: RootState) =>
+      state.layout.spaces.filter((s) => s.stageId === state.layout.currentStageId).length,
+  );
   const docCount = useSelector((state: RootState) => state.world.docOrder.length);
+
+  const chrome = {
+    masthead: masthead ?? stage?.chrome.masthead ?? true,
+    workspaces: workspaces ?? stage?.chrome.workspaces ?? true,
+    stageBar: stageBar ?? stage?.chrome.stageBar ?? true,
+  };
 
   /**
    * Escape leaves full frame.
@@ -101,7 +126,7 @@ export function WorkbenchShell({
   return (
     <>
       <div className={styles.shell}>
-        {masthead && (
+        {chrome.masthead && (
           <Surface tone="inverted" border="none">
             <Toolbar tight>
               <Text size="title" strong>
@@ -114,15 +139,19 @@ export function WorkbenchShell({
               <Text size="tiny" tone="faint">
                 <span className={styles.tagline}>DATA · EXPLORE · INSPECT · UNDERSTAND</span>
               </Text>
+              {/* Top right, as the request asked. Inside the masthead rather
+                  than beside the workspace strip, because a stage outranks a
+                  workspace and the sign-in stage hides the strip entirely. */}
+              {chrome.stageBar && <StageBar />}
             </Toolbar>
           </Surface>
         )}
 
         <AcceptBanner />
 
-        {(workspaces || onToggleFullFrame) && (
+        {(chrome.workspaces || onToggleFullFrame) && (
           <div className={styles.chrome}>
-            {workspaces && <WorkspaceStrip />}
+            {chrome.workspaces && <WorkspaceStrip />}
             <span className={styles.chromeSpacer} />
             {onToggleFullFrame && (
               <span className={styles.chromeAction}>

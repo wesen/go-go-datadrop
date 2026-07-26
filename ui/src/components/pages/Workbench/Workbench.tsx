@@ -3,7 +3,7 @@ import { useDispatch } from "react-redux";
 import { useMeQuery } from "../../../api/client";
 import { usePersistence } from "../../../appkit/usePersistence";
 import { layoutActions } from "../../../store/layout";
-import { ACCOUNT_SPACE_ID, WELCOME_SPACE_ID } from "../../../store/spaces";
+import { ACCOUNT_STAGE_ID, SIGNIN_STAGE_ID } from "../../../store/stages";
 import { WorkbenchProviders } from "./WorkbenchProviders";
 import { WorkbenchShell } from "./WorkbenchShell";
 import styles from "./Workbench.module.css";
@@ -67,17 +67,28 @@ export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
    */
   const lockedOut = me?.auth_mode === "oidc" && !me.authenticated;
 
+  /**
+   * The gate sets a STAGE, not a workspace (DATADROP-8 DR-59).
+   *
+   * This is the line that proves the two hardwired workspaces were always
+   * stages: an application was forcing a *layout* value, twice, because there
+   * was no layer at which "which part of the product am I in" could be said.
+   * The sign-in stage offers two applications and hides both the workspace
+   * strip and the stage switcher, so there is no route from it to a stage whose
+   * every tile would show 401 — which is what made `workspaces={!lockedOut}`
+   * necessary below and is now the stage's own chrome.
+   */
   useEffect(() => {
-    if (lockedOut) dispatch(layoutActions.setCurrentSpace(WELCOME_SPACE_ID));
+    if (lockedOut) dispatch(layoutActions.setCurrentStage(SIGNIN_STAGE_ID));
   }, [dispatch, lockedOut]);
 
-  // A first sign-in lands in the account workspace rather than wherever this
+  // A first sign-in lands in the account stage rather than wherever this
   // browser was last, because a new user has nothing to go back to. The flag is
   // true exactly once, so it is read and stripped rather than stored.
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("first") !== "1") return;
-    dispatch(layoutActions.setCurrentSpace(ACCOUNT_SPACE_ID));
+    dispatch(layoutActions.setCurrentStage(ACCOUNT_STAGE_ID));
     params.delete("first");
     const query = params.toString();
     window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
@@ -88,7 +99,10 @@ export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
   return (
     <div className={styles.app}>
       <WorkbenchProviders>
-        <WorkbenchShell workspaces={!lockedOut} />
+        {/* No chrome props: the stage decides now. `workspaces={!lockedOut}`
+            used to be the whole of the signed-out chrome rule, and it lived
+            here because there was nowhere else to put it. */}
+        <WorkbenchShell />
       </WorkbenchProviders>
     </div>
   );

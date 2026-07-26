@@ -4,6 +4,7 @@ import { fixturesFrom } from "../../../api/fixtures";
 import { readings, census } from "../../../fixtures";
 import { defaultChart } from "../../../model/chart";
 import { leaf, split } from "../../../store/layout";
+import { singleStageLayout } from "../../../store/stages";
 import { newId } from "../../../store/world";
 
 /**
@@ -43,22 +44,10 @@ type Story = StoryObj<typeof meta>;
 
 /** The layout a tour section teaching the grammar would seed. */
 function grammarSpaces() {
-  const id = newId();
-  return {
-    spaces: [
-      {
-        id,
-        name: "build",
-        tree: split(
-          "row",
-          split("col", leaf("pipeline"), leaf("encode"), 0.55),
-          leaf("chart"),
-          0.46,
-        ),
-      },
-    ],
-    currentSpaceId: id,
-  };
+  return singleStageLayout(
+    "build",
+    split("row", split("col", leaf("pipeline"), leaf("encode"), 0.55), leaf("chart"), 0.46),
+  );
 }
 
 /**
@@ -87,11 +76,7 @@ function seededWorld() {
 
 /** Chart beside table, both on one document — the pair §B teaches. */
 function chartAndTable() {
-  const id = newId();
-  return {
-    spaces: [{ id, name: "look", tree: split("row", leaf("chart"), leaf("table"), 0.55) }],
-    currentSpaceId: id,
-  };
+  return singleStageLayout("look", split("row", leaf("chart"), leaf("table"), 0.55));
 }
 
 /**
