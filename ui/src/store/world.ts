@@ -174,6 +174,47 @@ export const worldSlice = createSlice({
       },
     },
 
+    /**
+     * Merge documents minted by an import (DATADROP-8).
+     *
+     * The ids are already fixed by the caller — `store/effects.ts` mints them
+     * so the conversion stays a pure function — so this reducer only has to
+     * place them. It deliberately does NOT change `activeDocId`: importing a
+     * workspace should not re-aim every ambient verb in the tiles the user was
+     * already looking at.
+     */
+    addDocs(state, action: PayloadAction<Record<DocId, Doc>>) {
+      for (const doc of Object.values(action.payload)) {
+        if (state.docs[doc.id]) continue;
+        state.docs[doc.id] = doc;
+        state.docOrder.push(doc.id);
+        trace(state, "doc_imported", doc.name);
+      }
+      if (!state.activeDocId) state.activeDocId = state.docOrder[0] ?? null;
+    },
+
+    /**
+     * Note in the trace that something was copied out.
+     *
+     * The KIND and the NAME, never the payload. The trace is a teaching surface
+     * people screenshot, and a bundle contains the sources and filters the user
+     * set — which is exactly what §7.6 says must not be deposited anywhere it
+     * was not deliberately pasted.
+     */
+    noteExport: {
+      reducer(state, action: PayloadAction<{ kind: string; name: string }>) {
+        trace(
+          state,
+          "exported",
+          `${action.payload.kind} “${action.payload.name}”`,
+          "to the clipboard",
+        );
+      },
+      prepare(kind: string, name: string) {
+        return { payload: { kind, name } };
+      },
+    },
+
     setActiveDoc(state, action: PayloadAction<DocId>) {
       const doc = state.docs[action.payload];
       if (!doc || state.activeDocId === doc.id) return;

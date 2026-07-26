@@ -4,6 +4,7 @@ import {
   cloneTree,
   countLeaves,
   findLeaf,
+  initialLayout,
   layoutSlice,
   leaf,
   removeLeaf,
@@ -345,14 +346,24 @@ describe("verbs become actions", () => {
       () => readings.fields,
     );
 
+  /**
+   * `actionsForVerb` takes the WHOLE state since DATADROP-8 (DR-68), and may
+   * return a thunk. These world-verb cases never do, so the helper narrows the
+   * result back to a plain action rather than every call site casting.
+   */
+  const world1 = (state: WorldState) => ({ world: state, layout: initialLayout() });
+  const only = (results: unknown[]) => results[0] as Parameters<typeof world>[1];
+
   test("a verb naming a document targets that document", () => {
     const { state, docId } = withDoc();
-    const [action] = actionsForVerb(
-      { kind: "setMapping", docId, channel: "y", field: "data.temp_c" },
-      state,
-      env(state),
+    const action = only(
+      actionsForVerb(
+        { kind: "setMapping", docId, channel: "y", field: "data.temp_c" },
+        world1(state),
+        env(state),
+      ),
     );
-    const next = world(state, action!);
+    const next = world(state, action);
     expect(next.docs[docId]?.spec.mapping.y).toBe("data.temp_c");
   });
 
@@ -363,23 +374,27 @@ describe("verbs become actions", () => {
     state = world(state, worldActions.newDoc(readings.source));
     const second = state.activeDocId as string;
 
-    const [action] = actionsForVerb(
-      { kind: "setMapping", docId: null, channel: "y", field: "data.temp_c" },
-      state,
-      env(state),
+    const action = only(
+      actionsForVerb(
+        { kind: "setMapping", docId: null, channel: "y", field: "data.temp_c" },
+        world1(state),
+        env(state),
+      ),
     );
-    const next = world(state, action!);
+    const next = world(state, action);
     expect(next.docs[second]?.spec.mapping.y).toBe("data.temp_c");
   });
 
   test("addFilter mints a step against the schema as of the pipeline's end", () => {
     const { state, docId } = withDoc();
-    const [action] = actionsForVerb(
-      { kind: "addFilter", docId, field: "data.station", op: "=", value: "north" },
-      state,
-      env(state),
+    const action = only(
+      actionsForVerb(
+        { kind: "addFilter", docId, field: "data.station", op: "=", value: "north" },
+        world1(state),
+        env(state),
+      ),
     );
-    const next = world(state, action!);
+    const next = world(state, action);
     const step = next.docs[docId]?.spec.steps[0];
     expect(step).toMatchObject({ kind: "filter", field: "data.station", op: "=", value: "north" });
   });

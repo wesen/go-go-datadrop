@@ -2,6 +2,7 @@ import { configureStore } from "@reduxjs/toolkit";
 import { setupListeners } from "@reduxjs/toolkit/query";
 import { api } from "../api/client";
 import type { FixtureData } from "../api/fixtures";
+import { browserClipboard, noClipboard, type ClipboardPort } from "./clipboard";
 import { layoutSlice, type LayoutState } from "./layout";
 import { worldSlice, initialWorld, type WorldState } from "./world";
 import { defaultLayout } from "./stages";
@@ -80,10 +81,33 @@ export interface MakeStoreOptions {
    * both at once.
    */
   seed?: boolean;
+  /**
+   * Where "copy this to the clipboard" goes (DATADROP-8 DR-66).
+   *
+   * Rides the thunk extra argument beside `fixtures`, for the same three
+   * reasons: it is per store, no call site above the thunk knows it exists, and
+   * it makes the whole export path testable with no DOM — a test passes a fake
+   * that records what it was given.
+   *
+   * Defaults to the browser's when one is available and to a port that refuses
+   * both ways when it is not, so a store built in `bun test` never touches
+   * `navigator` and an export in that store reports that the copy did not
+   * happen rather than silently succeeding into nowhere.
+   */
+  clipboard?: ClipboardPort;
+}
+
+/** The shape every thunk in this store receives as its third argument. */
+export interface ThunkExtra {
+  fixtures?: FixtureData;
+  clipboard: ClipboardPort;
 }
 
 export function makeStore(options: MakeStoreOptions = {}) {
   const { preloaded, seed = true, fixtures } = options;
+  const clipboard =
+    options.clipboard ??
+    (typeof navigator === "undefined" || !navigator.clipboard ? noClipboard : browserClipboard);
 
   // Both slices are always supplied, never conditionally spread. A preloaded
   // object whose `layout` key is sometimes absent makes configureStore infer
@@ -115,7 +139,9 @@ export function makeStore(options: MakeStoreOptions = {}) {
     middleware: (getDefault) =>
       // The fixture map rides the thunk extra argument, which is the only
       // per-store channel RTK Query's base query can read (DR-48).
-      getDefault({ thunk: { extraArgument: { fixtures } } }).concat(api.middleware),
+      getDefault({ thunk: { extraArgument: { fixtures, clipboard } satisfies ThunkExtra } }).concat(
+        api.middleware,
+      ),
     preloadedState,
   });
 
@@ -132,3 +158,17 @@ export function makeStore(options: MakeStoreOptions = {}) {
 export type AppStore = ReturnType<typeof makeStore>;
 export type RootState = ReturnType<AppStore["getState"]>;
 export type AppDispatch = AppStore["dispatch"];
+
+/**
+ * A thunk this store can dispatch.
+ *
+ * Written out rather than taken from `AppDispatch`, because `actionsForVerb`
+ * has to *name* the type it may return without importing the store it will be
+ * dispatched into — `store/effects.ts` is imported by `store/applyVerb.ts`,
+ * which is imported by the component that owns the store.
+ */
+export type AppThunk<R = void> = (
+  dispatch: AppDispatch,
+  getState: () => RootState,
+  extra: ThunkExtra,
+) => R;

@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
-import { Presentation } from "../../../pbui";
+import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
 import { layoutActions } from "../../../store/layout";
 import { SectionLabel, Text } from "../../foundation";
@@ -21,9 +21,18 @@ import { Stack, Toolbar } from "../../layout";
  * four tutorial arrangements ended up in the same flat strip as the user's own
  * — twelve chips, two of them marked ⌾ and needing a tooltip to explain why
  * they were different.
+ *
+ * ## The help text is finally true
+ *
+ * It has ended with "R for duplicate / delete" since DATADROP-4, describing a
+ * feature that did not exist: `workspace` was a declared presentation type with
+ * no descriptor, so right-clicking a chip produced "no verbs for this object
+ * yet". `pbui/descriptors/workspace.ts` is what makes the sentence true, and it
+ * also supplies the keyboard route the double-click never had.
  */
 export function WorkspaceStrip() {
   const dispatch = useDispatch();
+  const pbui = usePbui();
   // Selected raw and filtered in a memo, not filtered inside the selector: a
   // selector returning a fresh array on every call re-renders on every store
   // change and trips react-redux's identity warning.
@@ -34,7 +43,7 @@ export function WorkspaceStrip() {
     [allSpaces, stageId],
   );
   const current = useSelector((s: RootState) => s.layout.currentSpaceId);
-  const [renaming, setRenaming] = useState<string | null>(null);
+  const renaming = useSelector((s: RootState) => s.layout.renamingId);
 
   return (
     <Toolbar tight>
@@ -50,22 +59,32 @@ export function WorkspaceStrip() {
               initial={space.name}
               label="workspace name"
               fallback={space.name}
-              onCommit={(name) => {
-                dispatch(layoutActions.renameSpace({ spaceId: space.id, name }));
-                setRenaming(null);
-              }}
-              onCancel={() => setRenaming(null)}
+              // Through `perform`, not `dispatch`, so the rename appears in the
+              // trace as a verb like every other user decision.
+              onCommit={(name) =>
+                pbui.perform({ kind: "renameWorkspace", spaceId: space.id, name })
+              }
+              onCancel={() => dispatch(layoutActions.beginRename(null))}
             />
           ) : (
             <Presentation
               key={space.id}
               ptype="workspace"
-              value={space.id}
+              // A WorkspaceRef, not a bare id: the descriptor has to know
+              // whether this is the last workspace in its stage, and that is a
+              // question about the layout that a descriptor may not ask.
+              value={{
+                spaceId: space.id,
+                name: space.name,
+                stageId: space.stageId,
+                pinned: space.pinned === true,
+                canDelete: spaces.length > 1,
+              }}
               doc={`<workspace> ${space.name}`}
               onActivate={() => dispatch(layoutActions.setCurrentSpace(space.id))}
               activateDoc="switch to it"
             >
-              {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename, and that genuinely has NO keyboard route today: the `workspace` presentation type has no descriptor, so there is no Rename verb to reach by menu. DATADROP-8 adds one; until then this is a known gap recorded rather than hidden. */}
+              {/* biome-ignore lint/a11y/noStaticElementInteractions: the interactive element is the Presentation around this span — it carries tabIndex, role and the key handlers. What this span adds is double-click-to-rename; the keyboard route is "Rename this workspace …" in the object menu, which DATADROP-8 added. */}
               <span
                 style={{
                   border: "var(--pbui-border-firm)",
@@ -75,7 +94,7 @@ export function WorkspaceStrip() {
                   fontSize: "var(--pbui-fs-small)",
                   fontWeight: current === space.id ? 700 : 400,
                 }}
-                onDoubleClick={() => !space.pinned && setRenaming(space.id)}
+                onDoubleClick={() => !space.pinned && dispatch(layoutActions.beginRename(space.id))}
                 title={space.pinned ? "defined in code — cannot be renamed or deleted" : undefined}
               >
                 {space.pinned ? `⌾ ${space.name}` : space.name}
@@ -91,7 +110,8 @@ export function WorkspaceStrip() {
           + workspace
         </Button>
         <Text size="tiny" tone="faint">
-          L switches · double-click renames · R for duplicate / delete · ⌾ is defined in code
+          L switches · double-click renames · R for rename / duplicate / delete / export · ⌾ is
+          defined in code
         </Text>
       </Stack>
     </Toolbar>

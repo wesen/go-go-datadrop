@@ -54,8 +54,13 @@ export function WorkbenchProviders({ children }: { children: ReactNode }) {
    */
   const perform = useCallback(
     (verb: Verb) => {
-      for (const action of actionsForVerb(verb, store.getState().world, environment)) {
-        dispatch(action);
+      const { world, layout } = store.getState();
+      // Unchanged in shape by DATADROP-8: `actionsForVerb` now takes the whole
+      // state and may return a thunk, and RTK's dispatch takes thunks — so the
+      // loop is the same loop. The cast is because `useDispatch` is untyped
+      // here; the store's own `AppDispatch` knows about thunks.
+      for (const action of actionsForVerb(verb, { world, layout }, environment)) {
+        (dispatch as (action: unknown) => unknown)(action);
       }
     },
     [dispatch, environment, store],

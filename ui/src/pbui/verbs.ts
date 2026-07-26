@@ -65,7 +65,54 @@ export type Verb =
   | { kind: "removeMember"; drop: string; userId: string }
   | { kind: "claimDrop"; drop: string }
   | { kind: "retryUpload"; batchId: string; path: string }
-  | { kind: "cancelUpload"; batchId: string };
+  | { kind: "cancelUpload"; batchId: string }
+  // ── the layout (DATADROP-8) ───────────────────────────────────────────────
+  //
+  // Every action this ticket adds is a verb of `tile`, `workspace` or `stage`.
+  // The interface for all of them already existed — those three were declared
+  // presentation types, were already wrapped in real <Presentation> elements,
+  // and had no descriptor, so right-clicking one said "no verbs for this object
+  // yet". What was missing was three files and these cases.
+  //
+  // Still plain serialisable data, including the ones that end in a promise:
+  // `exportTile` names the tile, and the clipboard it will be written to
+  // arrives on the store's thunk extra argument rather than in the verb.
+  /** Open the inline editor. The COMMIT is `renameTile` below. */
+  | { kind: "beginRenameTile"; nodeId: string }
+  | { kind: "renameTile"; nodeId: string; label: string }
+  | { kind: "duplicateTile"; nodeId: string }
+  | { kind: "splitTile"; nodeId: string; dir: "row" | "col" }
+  | { kind: "closeTile"; nodeId: string }
+  | { kind: "exportTile"; nodeId: string }
+  | { kind: "importIntoTile"; nodeId: string }
+  | { kind: "beginRenameWorkspace"; spaceId: string }
+  | { kind: "renameWorkspace"; spaceId: string; name: string }
+  | { kind: "duplicateWorkspace"; spaceId: string }
+  | { kind: "deleteWorkspace"; spaceId: string }
+  | { kind: "exportWorkspace"; spaceId: string }
+  | { kind: "importWorkspace"; stageId: string }
+  | { kind: "switchStage"; stageId: string }
+  | { kind: "exportStage"; stageId: string }
+  | { kind: "importStage" }
+  | { kind: "storeTemplate"; source: BundleSource; name: string };
+
+/** What a "save this as a template" verb points at. */
+export type BundleSource =
+  | { kind: "tile"; nodeId: string }
+  | { kind: "workspace"; spaceId: string }
+  | { kind: "stage"; stageId: string };
+
+/**
+ * Where an import will land.
+ *
+ * A tile import replaces one leaf; a workspace import adds to a stage; a stage
+ * import adds a stage. The three are different enough that one shape with
+ * optional fields would need every consumer to check which fields are set.
+ */
+export type ImportTarget =
+  | { kind: "tile"; nodeId: string }
+  | { kind: "workspace"; stageId: string }
+  | { kind: "stage" };
 
 /** One entry in an object menu. */
 export interface Action {
@@ -118,6 +165,43 @@ export function describeVerb(verb: Verb): string {
       return `retry ${verb.path}`;
     case "cancelUpload":
       return "cancel the upload";
+    // The layout verbs read as prose in the trace, which is a teaching surface
+    // people screenshot — so they name the object rather than its id where the
+    // verb has a name to hand.
+    case "beginRenameTile":
+      return "rename the tile";
+    case "renameTile":
+      return verb.label ? `rename tile to “${verb.label}”` : "clear the tile's name";
+    case "duplicateTile":
+      return "duplicate the tile";
+    case "splitTile":
+      return verb.dir === "row" ? "split right" : "split below";
+    case "closeTile":
+      return "close the tile";
+    case "exportTile":
+      return "copy the tile to the clipboard";
+    case "importIntoTile":
+      return "replace the tile from a bundle";
+    case "beginRenameWorkspace":
+      return "rename the workspace";
+    case "renameWorkspace":
+      return `rename workspace to “${verb.name}”`;
+    case "duplicateWorkspace":
+      return "duplicate the workspace";
+    case "deleteWorkspace":
+      return "delete the workspace";
+    case "exportWorkspace":
+      return "copy the workspace to the clipboard";
+    case "importWorkspace":
+      return "add a workspace from a bundle";
+    case "switchStage":
+      return "switch stage";
+    case "exportStage":
+      return "copy the stage to the clipboard";
+    case "importStage":
+      return "add a stage from a bundle";
+    case "storeTemplate":
+      return `save “${verb.name}” as a template`;
     default:
       return verb.kind;
   }

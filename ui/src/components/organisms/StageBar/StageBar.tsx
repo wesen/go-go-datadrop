@@ -2,8 +2,9 @@ import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import type { RootState } from "../../../store";
 import { layoutActions } from "../../../store/layout";
+import { Presentation, usePbui } from "../../../pbui";
 import { Text } from "../../foundation";
-import { SelectInput } from "../../atoms";
+import { IconButton, SelectInput } from "../../atoms";
 import styles from "./StageBar.module.css";
 
 /**
@@ -30,6 +31,7 @@ import styles from "./StageBar.module.css";
  */
 export function StageBar() {
   const dispatch = useDispatch();
+  const pbui = usePbui();
   const all = useSelector((state: RootState) => state.layout.stages);
   const currentId = useSelector((state: RootState) => state.layout.currentStageId);
   const current = all.find((stage) => stage.id === currentId);
@@ -52,21 +54,39 @@ export function StageBar() {
   // One stage is not a choice. A tour panel seeds exactly one and would
   // otherwise render a switcher that cannot switch — furniture that reads as a
   // control.
-  if (stages.length < 2) {
-    return current ? (
-      <span className={styles.bar}>
-        <Text size="tiny" tone="faint">
-          <span className={styles.name}>▸ {current.name}</span>
-        </Text>
-      </span>
-    ) : null;
-  }
+  if (!current) return null;
+
+  /**
+   * The stage's own name is a presentation, so its verbs live in one place.
+   *
+   * Export, import and inspect are reached by right-clicking the name or by the
+   * `▾` button, which calls `openMenu` with the same value — one line, and it
+   * means the switcher is not a second mechanism with its own copy of the stage
+   * verbs to keep in step.
+   */
+  const value = {
+    stageId: current.id,
+    name: current.name,
+    pinned: current.pinned === true,
+    current: true,
+  };
+
+  const name = (
+    <Presentation ptype="stage" value={value} doc={`<stage> ${current.name}`}>
+      <Text size="tiny" tone="faint">
+        <span className={styles.name}>▸ {current.name}</span>
+      </Text>
+    </Presentation>
+  );
+
+  // One stage is not a choice. A tour panel seeds exactly one and would
+  // otherwise render a switcher that cannot switch — furniture that reads as a
+  // control. The name stays, and stays right-clickable.
+  if (stages.length < 2) return <span className={styles.bar}>{name}</span>;
 
   return (
     <span className={styles.bar}>
-      <Text size="tiny" tone="faint">
-        <span className={styles.name}>▸ {current?.name ?? "—"}</span>
-      </Text>
+      {name}
       <SelectInput
         label="stage"
         variant="framed"
@@ -79,6 +99,23 @@ export function StageBar() {
           // object, so one glyph means one thing at both levels.
           label: stage.pinned ? `⌾ ${stage.name}` : stage.name,
         }))}
+      />
+      <IconButton
+        variant="framed"
+        size="tiny"
+        glyph="▾"
+        label="this stage's verbs"
+        title="export, import, inspect — the same menu as a right-click"
+        onClick={(event) => {
+          // `stopPropagation` for the same reason `Presentation.onClick` does
+          // it: an open object menu installs a window-level click listener that
+          // closes it, and that listener runs AFTER this handler. Without this,
+          // clicking ▾ while any menu is open opens the stage menu and closes
+          // it again in the same event, and the button appears to do nothing.
+          event.stopPropagation();
+          const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+          pbui.openMenu("stage", value, box.left, box.bottom);
+        }}
       />
     </span>
   );

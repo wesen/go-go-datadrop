@@ -146,6 +146,38 @@ describe("the space pointer never desynchronises", () => {
     setLeafDoc: { nodeId: "n", docId: null },
     renameLeaf: { nodeId: "n", label: "mine" },
     duplicateLeaf: "n",
+    beginRename: "s1-a",
+    openImport: { target: { kind: "stage" }, prefill: "", from: null },
+    closeImport: undefined,
+    replaceLeafFromBundle: {
+      nodeId: "n",
+      leaf: { id: "x", type: "leaf", app: "chart", docId: null },
+    },
+    insertWorkspaceFromBundle: {
+      space: {
+        id: "fresh",
+        name: "fresh",
+        stageId: "s1",
+        tree: { id: "t", type: "leaf", app: "chart", docId: null },
+      },
+    },
+    insertStageFromBundle: {
+      stage: {
+        id: "s3",
+        name: "imported",
+        apps: null,
+        chrome: { masthead: true, workspaces: true, stageBar: true },
+        currentSpaceId: "",
+      },
+      spaces: [
+        {
+          id: "s3-a",
+          name: "a",
+          stageId: "s3",
+          tree: { id: "t2", type: "leaf", app: "chart", docId: null },
+        },
+      ],
+    },
     swapTiles: { a: "n1", b: "n2" },
     dockTile: { from: "n1", to: "n2", zone: "left" },
     addSpace: undefined,

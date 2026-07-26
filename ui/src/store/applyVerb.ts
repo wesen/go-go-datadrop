@@ -1,9 +1,13 @@
+import type { UnknownAction } from "@reduxjs/toolkit";
 import { newStep, schemaAfter } from "../model/pipeline";
 import type { Step } from "../model/pipeline";
 import type { Field, Table } from "../model/table";
 import { describeFor } from "../pbui/registry";
 import type { PbuiEnvironment } from "../pbui/types";
 import type { Verb } from "../pbui/verbs";
+import type { AppThunk } from "./index";
+import { actionsForLayoutVerb } from "./applyLayoutVerb";
+import type { LayoutState } from "./layout";
 import { worldActions, type WorldState } from "./world";
 
 /**
@@ -16,13 +20,35 @@ import { worldActions, type WorldState } from "./world";
  *
  * Returns the actions to dispatch rather than dispatching, which keeps it a
  * pure function of (verb, state) and therefore testable without a store.
+ *
+ * ## Widened by DATADROP-8 (DR-68), in two ways
+ *
+ * It takes the **whole** state rather than only the world, because every verb
+ * this ticket adds targets the layout. And it may return a **thunk**, because
+ * export, import and the template library are not reducer applications at all
+ * but effects with a promise in the middle.
+ *
+ * The purity claim survives both and needs stating precisely, because "returns
+ * a thunk" sounds like a loophole: this function *returns* a thunk, it never
+ * runs one. A test can still assert the exact consequence of a verb with a
+ * literal state and no store — and for the effects, with a store whose
+ * clipboard is a fake that records what it was given.
  */
+export type VerbResult = UnknownAction | AppThunk<unknown>;
+
 export function actionsForVerb(
   verb: Verb,
-  world: WorldState,
+  state: { world: WorldState; layout: LayoutState },
   env: PbuiEnvironment,
-): ReturnType<typeof worldActions.setMapping>[] {
+): VerbResult[] {
   const a = worldActions;
+  const world = state.world;
+
+  // The layout half lives in its own file so neither becomes a 400-line switch.
+  // It returns null for a verb it does not own, so there is no second list of
+  // verb kinds to keep in step with this switch.
+  const layoutResult = actionsForLayoutVerb(verb, state.layout);
+  if (layoutResult) return layoutResult;
   // The reducers accept `docId: null` and resolve it to the active document
   // themselves, so an ambient verb is resolved at APPLICATION time rather than
   // at menu-build time. The active document can change while a menu is open.
@@ -166,7 +192,7 @@ export function actionsForVerb(
       break;
   }
 
-  return out as ReturnType<typeof worldActions.setMapping>[];
+  return out as VerbResult[];
 }
 
 /**

@@ -11,6 +11,12 @@ import { stepDescriptor } from "./descriptors/step";
 import { tokenDescriptor } from "./descriptors/token";
 import { uploadDescriptor } from "./descriptors/upload";
 import { userDescriptor } from "./descriptors/user";
+// DATADROP-8: the three layout types. They were declared presentation types
+// with no descriptor since DATADROP-4, which is why right-clicking a tile said
+// "no verbs for this object yet".
+import { stageDescriptor } from "./descriptors/stage";
+import { tileDescriptor } from "./descriptors/tile";
+import { workspaceDescriptor } from "./descriptors/workspace";
 
 /**
  * One descriptor per presentation type.
@@ -56,6 +62,9 @@ const DESCRIPTORS: Partial<Record<PresentationType, PresentationDescriptor<never
   token: tokenDescriptor as PresentationDescriptor<never>,
   member: memberDescriptor as PresentationDescriptor<never>,
   upload: uploadDescriptor as PresentationDescriptor<never>,
+  tile: tileDescriptor as PresentationDescriptor<never>,
+  workspace: workspaceDescriptor as PresentationDescriptor<never>,
+  stage: stageDescriptor as PresentationDescriptor<never>,
 };
 
 export function descriptorFor(ptype: PresentationType): PresentationDescriptor<never> | null {

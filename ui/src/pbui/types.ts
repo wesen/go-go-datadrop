@@ -22,6 +22,8 @@ export type PresentationType =
   | "chart"
   | "tile"
   | "workspace"
+  // DATADROP-8. The layer above a workspace.
+  | "stage"
   // DATADROP-5. A person, a credential, an access-list row, one queued file.
   | "user"
   | "token"
@@ -103,6 +105,57 @@ export interface UploadRef {
   error: string | null;
 }
 
+/**
+ * A tile, carrying what its menu needs to decide.
+ *
+ * `tile`'s presentation value was a bare node id, and a bare node id is not
+ * enough: the descriptor has to know which application the leaf holds, whether
+ * that application is duplicable, and whether this is the last tile in its
+ * workspace. None of that is in `PbuiEnvironment`, and it must not be —
+ * `field.ts` has no business being able to see the tile tree, and widening the
+ * environment would grow every existing descriptor's test fixture.
+ *
+ * So the value carries it, resolved by the component that already knows it.
+ * `Tile.tsx` computes all six of these fields for its own rendering anyway, so
+ * minting this costs one object literal and the descriptor stays a pure
+ * function of it.
+ *
+ * The rule that establishes: **a presentation value carries what its menu needs
+ * to decide, resolved by the component that already knows it.** It was implicit
+ * before — `MemberRef` carries `isOwner` for exactly this reason — and this
+ * ticket is what made it worth saying out loud.
+ */
+export interface TileRef {
+  nodeId: string;
+  app: string;
+  /** The tile's effective title, already resolved (label ?? derived). */
+  title: string;
+  /** The user-chosen label, absent when the title is derived. */
+  label?: string;
+  docId: DocId | null;
+  duplicable: boolean;
+  canClose: boolean;
+}
+
+/** A workspace, carrying what its menu needs to decide. */
+export interface WorkspaceRef {
+  spaceId: string;
+  name: string;
+  stageId: string;
+  /** Defined in code: cannot be renamed or deleted. */
+  pinned: boolean;
+  /** False for the last workspace in its stage. */
+  canDelete: boolean;
+}
+
+/** A stage, carrying what its menu needs to decide. */
+export interface StageRef {
+  stageId: string;
+  name: string;
+  pinned: boolean;
+  current: boolean;
+}
+
 /** The value shape carried by each presentation type. */
 export interface PresentationValues {
   field: FieldRef;
@@ -114,8 +167,9 @@ export interface PresentationValues {
   datum: DatumRef;
   cat: CatRef;
   chart: string;
-  tile: string;
-  workspace: string;
+  tile: TileRef;
+  workspace: WorkspaceRef;
+  stage: StageRef;
   user: UserRef;
   token: TokenRef;
   member: MemberRef;

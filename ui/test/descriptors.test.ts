@@ -162,8 +162,127 @@ describe("<source> and <doc>", () => {
 
 describe("an unknown presentation type degrades rather than throws", () => {
   test("no descriptor means no verbs, not a crash", () => {
-    expect(actionsFor("tile", "n7", env())).toEqual([]);
-    expect(labelFor("tile", "n7", env())).toBe("n7");
+    // `chart` rather than `tile`: DATADROP-8 gave `tile`, `workspace` and
+    // `stage` descriptors, which is the whole point of the ticket — before it,
+    // right-clicking a tile produced this empty menu.
+    expect(actionsFor("chart", "c7", env())).toEqual([]);
+    expect(labelFor("chart", "c7", env())).toBe("c7");
+  });
+});
+
+/* ------------------------------------------------- the layout (DATADROP-8) -- */
+
+describe("the layout descriptors", () => {
+  const tile = {
+    nodeId: "n1",
+    app: "chart",
+    title: "chart · α",
+    docId: "d1",
+    duplicable: true,
+    canClose: true,
+  };
+
+  test("a tile's menu offers rename, duplicate, split, export, import and close", () => {
+    const labels = actionsFor("tile", tile, env()).map((a) => a.label);
+    expect(labels).toEqual([
+      "Rename this tile …",
+      "Duplicate",
+      "Split right",
+      "Split below",
+      "Copy this tile to the clipboard",
+      "Replace this tile from the clipboard …",
+      "Inspect",
+      "Close",
+    ]);
+  });
+
+  test("a tile that cannot be duplicated says why, and is still listed", () => {
+    // Hiding an unavailable verb hides the rule that makes it unavailable: a
+    // user who never sees Duplicate on a trace tile concludes it is missing.
+    const trace = { ...tile, app: "trace", duplicable: false };
+    const duplicate = actionsFor("tile", trace, env()).find((a) => a.label === "Duplicate");
+    expect(duplicate?.disabledBecause).toBe("a second trace tile would show the same thing");
+  });
+
+  test("the last tile in a workspace cannot close, and says so", () => {
+    const alone = actionsFor("tile", { ...tile, canClose: false }, env());
+    expect(alone.find((a) => a.label === "Close")?.disabledBecause).toBe(
+      "the last tile in a workspace cannot close",
+    );
+  });
+
+  test("a tile's verbs name the node, never the application", () => {
+    // The verb is what a test can assert without a store, and it must carry the
+    // id rather than anything resolved at menu-build time.
+    const actions = actionsFor("tile", tile, env());
+    expect(actions.find((a) => a.label === "Duplicate")?.verb).toEqual({
+      kind: "duplicateTile",
+      nodeId: "n1",
+    });
+    expect(actions.find((a) => a.label === "Split below")?.verb).toEqual({
+      kind: "splitTile",
+      nodeId: "n1",
+      dir: "col",
+    });
+  });
+
+  test("a pinned workspace refuses rename and delete, each with its reason", () => {
+    const pinned = {
+      spaceId: "ws-account",
+      name: "profile",
+      stageId: "stage-account",
+      pinned: true,
+      canDelete: true,
+    };
+    const actions = actionsFor("workspace", pinned, env());
+    expect(actions.find((a) => a.label === "Rename this workspace …")?.disabledBecause).toBe(
+      "defined in code — cannot be renamed",
+    );
+    expect(actions.find((a) => a.label === "Delete")?.disabledBecause).toBe(
+      "defined in code — cannot be deleted",
+    );
+  });
+
+  test("the last workspace in a stage cannot be deleted, and says so", () => {
+    const last = {
+      spaceId: "ws",
+      name: "build",
+      stageId: "stage-work",
+      pinned: false,
+      canDelete: false,
+    };
+    expect(
+      actionsFor("workspace", last, env()).find((a) => a.label === "Delete")?.disabledBecause,
+    ).toBe("the last workspace in a stage cannot be deleted");
+  });
+
+  test("the current stage is not offered 'switch to it'", () => {
+    const here = { stageId: "s1", name: "work", pinned: true, current: true };
+    const away = { ...here, current: false };
+    expect(actionsFor("stage", here, env()).map((a) => a.label)).not.toContain("Switch to it");
+    expect(actionsFor("stage", away, env()).map((a) => a.label)).toContain("Switch to it");
+  });
+
+  test("nothing a layout presentation exposes can carry a secret", () => {
+    // The same assertion the token descriptor carries, for the same reason: a
+    // presentation value flows into the inspector, the watchlist and the trace,
+    // and a bundle built from one is DESIGNED to be shared.
+    const described = [
+      JSON.stringify(describeFor("tile", tile, env())),
+      JSON.stringify(
+        describeFor(
+          "workspace",
+          { spaceId: "w", name: "n", stageId: "s", pinned: false, canDelete: true },
+          env(),
+        ),
+      ),
+      JSON.stringify(
+        describeFor("stage", { stageId: "s", name: "n", pinned: false, current: true }, env()),
+      ),
+    ].join(" ");
+    for (const key of ["token", "secret", "password", "bearer", "authorization"]) {
+      expect(described.toLowerCase()).not.toContain(key);
+    }
   });
 });
 

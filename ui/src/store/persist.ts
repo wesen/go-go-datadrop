@@ -226,7 +226,21 @@ export function save(key: string, world: WorldState, layout: LayoutState): void 
       // and restoring yesterday's transcript beside today's work is confusing
       // rather than useful.
     },
-    layout,
+    layout: {
+      stages: layout.stages,
+      currentStageId: layout.currentStageId,
+      spaces: layout.spaces,
+      currentSpaceId: layout.currentSpaceId,
+      // `pendingImport` is deliberately not persisted: it is a dialog, and a
+      // reload that reopens a dialog over a tile that may be gone is a defect
+      // that produces no error and fails no test (DR-69).
+      //
+      // Enumerated rather than spread for exactly that reason. The world above
+      // has been enumerated since DATADROP-4 and the layout was passed whole,
+      // because at the time every field in it was durable. The next transient
+      // field added to this slice must now make a decision here rather than
+      // relying on someone remembering.
+    },
   };
 
   const secrets = findSecrets(payload);

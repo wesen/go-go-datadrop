@@ -1,5 +1,6 @@
 import { createSlice, type PayloadAction } from "@reduxjs/toolkit";
 import type { DocId } from "../pbui/types";
+import type { ImportTarget } from "../pbui/verbs";
 import { newId } from "./world";
 
 /**
@@ -113,6 +114,29 @@ export interface Workspace {
   pinned?: boolean;
 }
 
+/**
+ * The import dialog, while it is open (DATADROP-8 DR-69).
+ *
+ * In the store rather than in React state, because the flow is already
+ * state-shaped and because the alternatives are worse: component state means
+ * prop-drilling from the shell through three components to reach a menu, and a
+ * second context beside `PbuiProvider` is a second thing doing the same job.
+ *
+ * **Never persisted, and `persist.save()` enumerates the layout fields it
+ * writes because of this field specifically.** With the slice passed whole, the
+ * 500 ms debounce writes an open dialog to localStorage; reload, and the
+ * application opens with an import dialog on screen, prefilled with whatever
+ * was in the clipboard an hour ago, over a tile that may no longer exist. It is
+ * not a crash and no test fails.
+ */
+export interface PendingImport {
+  target: ImportTarget;
+  /** Text read from the clipboard, or "" when the read failed or was junk. */
+  prefill: string;
+  /** Where the prefill came from, for the line above the text area. */
+  from: "clipboard" | "template" | null;
+}
+
 export interface LayoutState {
   stages: Stage[];
   currentStageId: StageId;
@@ -120,6 +144,18 @@ export interface LayoutState {
   spaces: Workspace[];
   /** Mirrors the current stage's `currentSpaceId`. See `Stage.currentSpaceId`. */
   currentSpaceId: string;
+  /** Non-null while an import dialog is open. Never persisted. */
+  pendingImport?: PendingImport | null;
+  /**
+   * The tile or workspace whose name is being edited, or null.
+   *
+   * In the store rather than in the component, because the *menu* has to be
+   * able to start a rename and a menu entry is a serialisable verb — it cannot
+   * reach into a `useState` three components away. Transient, so `save()`'s
+   * enumeration excludes it for the same reason it excludes `pendingImport`
+   * (DR-69): reloading into a half-typed rename over a tile that may be gone.
+   */
+  renamingId?: string | null;
 }
 
 export const leaf = (app: AppId, docId: DocId | null = null): Node => ({
@@ -302,6 +338,7 @@ export const layoutSlice = createSlice({
      * with `??` rather than `||` at the other end.
      */
     renameLeaf(state, action: PayloadAction<{ nodeId: NodeId; label: string }>) {
+      state.renamingId = null;
       const label = action.payload.label.trim();
       mutateTree(state, (tree) =>
         updateNode(tree, action.payload.nodeId, (node) =>
@@ -454,6 +491,7 @@ export const layoutSlice = createSlice({
     },
 
     renameSpace(state, action: PayloadAction<{ spaceId: string; name: string }>) {
+      state.renamingId = null;
       const space = state.spaces.find((s) => s.id === action.payload.spaceId);
       if (space && !space.pinned && action.payload.name) space.name = action.payload.name;
     },
@@ -586,6 +624,62 @@ export const layoutSlice = createSlice({
       if (state.currentSpaceId === space.id) {
         syncSpacePointer(state, spacesOfStage(state, state.currentStageId)[0]?.id ?? "");
       }
+    },
+
+    /* ------------------------------------------------------- importing -- */
+
+    /** Start (or, with null, stop) editing a tile's or workspace's name. */
+    beginRename(state, action: PayloadAction<string | null>) {
+      state.renamingId = action.payload;
+    },
+
+    openImport(state, action: PayloadAction<PendingImport>) {
+      state.pendingImport = action.payload;
+    },
+
+    closeImport(state) {
+      state.pendingImport = null;
+    },
+
+    /**
+     * Replace one tile from a bundle. The caller supplies the hydrated leaf.
+     *
+     * The conversion lives in `store/bundles.ts` and the ids it consumed were
+     * minted by the caller, so this reducer is a pure function of its payload —
+     * the same rule `duplicateDoc` follows, and for the same reason: a state
+     * tree that changes when you replay it is not replayable.
+     */
+    replaceLeafFromBundle(
+      state,
+      action: PayloadAction<{ nodeId: NodeId; leaf: Extract<Node, { type: "leaf" }> }>,
+    ) {
+      mutateTree(state, (tree) =>
+        updateNode(tree, action.payload.nodeId, (node) =>
+          // The TARGET's id is kept, not the hydrated leaf's. The tile stays the
+          // same tile — it is being re-pointed, not replaced — so a drag in
+          // flight, a focus, and anything else holding the node id stays valid.
+          node.type === "leaf" ? { ...action.payload.leaf, id: node.id } : node,
+        ),
+      );
+      state.pendingImport = null;
+    },
+
+    insertWorkspaceFromBundle(state, action: PayloadAction<{ space: Workspace }>) {
+      const space = action.payload.space;
+      if (!state.stages.some((s) => s.id === space.stageId)) return;
+      state.spaces.push(space);
+      if (space.stageId === state.currentStageId) syncSpacePointer(state, space.id);
+      state.pendingImport = null;
+    },
+
+    insertStageFromBundle(state, action: PayloadAction<{ stage: Stage; spaces: Workspace[] }>) {
+      const { stage, spaces } = action.payload;
+      if (spaces.length === 0) return;
+      state.stages.push({ ...stage, currentSpaceId: (spaces[0] as Workspace).id });
+      state.spaces.push(...spaces);
+      state.currentStageId = stage.id;
+      syncSpacePointer(state, (spaces[0] as Workspace).id);
+      state.pendingImport = null;
     },
 
     /** Replace the whole layout — used by restoration. */

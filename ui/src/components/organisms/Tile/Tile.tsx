@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { appFor } from "../../../appkit/registry";
 import { useAppScope } from "../../../appkit/AppScope";
@@ -23,7 +23,11 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   const dispatch = useDispatch();
   const pbui = usePbui();
   const app = appFor(node.app);
-  const [renaming, setRenaming] = useState(false);
+  // The rename flag lives in the store rather than here, because the *menu* has
+  // to be able to start one and a menu entry is serialisable data — it cannot
+  // reach into a `useState` three components away (DATADROP-8).
+  const renaming = useSelector((state: RootState) => state.layout.renamingId === node.id);
+  const setRenaming = (on: boolean) => dispatch(layoutActions.beginRename(on ? node.id : null));
   const docName = useSelector((state: RootState) =>
     node.docId ? (state.world.docs[node.docId]?.name ?? null) : null,
   );
@@ -126,16 +130,33 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
             // where a blank name leaves nothing to click; a tile always has a
             // derived title to fall back to, so clearing is a real outcome.
             fallback=""
-            onCommit={(name) => {
-              dispatch(layoutActions.renameLeaf({ nodeId: node.id, label: name }));
-              setRenaming(false);
-            }}
+            // Through `perform`, not `dispatch`, so the rename appears in the
+            // trace as a verb like every other user decision.
+            onCommit={(name) => pbui.perform({ kind: "renameTile", nodeId: node.id, label: name })}
             onCancel={() => setRenaming(false)}
           />
         ) : (
           <Presentation
             ptype="tile"
-            value={node.id}
+            /*
+             * A TileRef, not a node id (DATADROP-8 DR-68).
+             *
+             * The tile descriptor has to know which application this leaf
+             * holds, whether it is duplicable and whether it is the last tile
+             * in its workspace. None of that is in `PbuiEnvironment` and none
+             * of it should be — `field.ts` has no business seeing the tile tree
+             * — so the value carries it, resolved by the component that already
+             * computed every field for its own rendering.
+             */
+            value={{
+              nodeId: node.id,
+              app: node.app,
+              title: label,
+              ...(node.label ? { label: node.label } : {}),
+              docId: node.docId,
+              duplicable: app?.duplicable ?? false,
+              canClose,
+            }}
             doc={`<tile> ${label}`}
             /*
              * Rename is the tile title's DEFAULT VERB, not a double-click.
