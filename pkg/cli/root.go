@@ -13,12 +13,15 @@ import (
 	"strings"
 	"time"
 
+	"github.com/go-go-golems/glazed/pkg/help"
+	help_cmd "github.com/go-go-golems/glazed/pkg/help/cmd"
 	"github.com/go-go-golems/logcopter/pkg/logcopter"
 	"github.com/pkg/errors"
 	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/client"
+	"github.com/go-go-golems/go-go-datadrop/pkg/doc"
 )
 
 // ExitCode values are part of the CLI contract (guide §11.4). Scripts depend
@@ -41,7 +44,12 @@ type globalOptions struct {
 }
 
 // NewRootCmd builds the full command tree.
-func NewRootCmd() *cobra.Command {
+//
+// It returns an error rather than panicking when the embedded documentation
+// fails to load. That failure means a help page carries malformed frontmatter or
+// a duplicate slug — a mistake made at authoring time that the compiler cannot
+// see, so it must surface as a plain message rather than as a stack trace.
+func NewRootCmd() (*cobra.Command, error) {
 	opts := &globalOptions{}
 
 	root := &cobra.Command{
@@ -97,13 +105,30 @@ Then, from another shell:
 		newHealthcheckCmd(),
 	)
 
-	return root
+	// The Glazed help system, loaded from the pages embedded in pkg/doc.
+	//
+	// SetupCobraRootCommand replaces cobra's default help with one that knows
+	// about sections, so `datadrop help web-ui-object-model` resolves a slug and
+	// `datadrop help --topic web-ui` filters. It must be called exactly once, on
+	// the root, after the subcommands are attached.
+	helpSystem := help.NewHelpSystem()
+	if err := doc.AddDocToHelpSystem(helpSystem); err != nil {
+		return nil, errors.Wrap(err, "loading embedded documentation")
+	}
+	help_cmd.SetupCobraRootCommand(helpSystem, root)
+
+	return root, nil
 }
 
 // Execute runs the root command and maps errors onto the documented exit
 // codes. It is the only place in the CLI that writes to stderr directly.
 func Execute() int {
-	if err := NewRootCmd().Execute(); err != nil {
+	root, err := NewRootCmd()
+	if err != nil {
+		_, _ = os.Stderr.WriteString("datadrop: " + err.Error() + "\n")
+		return ExitError
+	}
+	if err := root.Execute(); err != nil {
 		// Diagnostics go to stderr so `datadrop query … | jq` keeps working.
 		_, _ = os.Stderr.WriteString("datadrop: " + err.Error() + "\n")
 		return exitCodeFor(err)
