@@ -11,13 +11,11 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"time"
 
+	"github.com/go-go-golems/glazed/pkg/cmds/logging"
 	"github.com/go-go-golems/glazed/pkg/help"
 	help_cmd "github.com/go-go-golems/glazed/pkg/help/cmd"
-	"github.com/go-go-golems/logcopter/pkg/logcopter"
 	"github.com/pkg/errors"
-	"github.com/rs/zerolog"
 	"github.com/spf13/cobra"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/client"
@@ -36,11 +34,15 @@ const (
 )
 
 // globalOptions are the flags shared by every subcommand.
+//
+// Logging is deliberately absent. It used to hold a logLevel string bound to a
+// hand-rolled --log-level flag; the Glazed logging section owns that flag now
+// and reads it straight off the cobra command, so a field here would be a
+// second copy nothing writes to.
 type globalOptions struct {
-	addr     string
-	token    string
-	logLevel string
-	output   string
+	addr   string
+	token  string
+	output string
 }
 
 // NewRootCmd builds the full command tree.
@@ -76,7 +78,7 @@ Then, from another shell:
 		SilenceUsage:  true,
 		SilenceErrors: true,
 		PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-			return configureLogging(opts.logLevel)
+			return logging.InitLoggerFromCobra(cmd)
 		},
 	}
 
@@ -85,8 +87,6 @@ Then, from another shell:
 		"datadrop server base URL (client commands) [$DATADROP_ADDR]")
 	flags.StringVar(&opts.token, "token", os.Getenv("DATADROP_TOKEN"),
 		"bearer token [$DATADROP_TOKEN]")
-	flags.StringVar(&opts.logLevel, "log-level", envOr("DATADROP_LOG_LEVEL", "info"),
-		"log level: trace, debug, info, warn, error")
 	flags.StringVar(&opts.output, "output", "table",
 		"output format: table, json, ndjson, csv")
 
@@ -117,7 +117,40 @@ Then, from another shell:
 	}
 	help_cmd.SetupCobraRootCommand(helpSystem, root)
 
+	if err := addLoggingSection(root); err != nil {
+		return nil, err
+	}
+
 	return root, nil
+}
+
+// addLoggingSection installs the Glazed logging flags and restores the
+// DATADROP_LOG_LEVEL fallback on top of them.
+//
+// The section registers --log-level itself, with the same name and the same
+// "info" default the hand-rolled flag had, and adds --log-file, --log-format,
+// --with-caller, --log-to-stdout, --log-config, --log-area and
+// --strict-log-areas beside it. This is not a change of logging backend:
+// glazed's logging package configures logcopter, which is what this project
+// already used. What it adds is the flag surface — in particular --log-area,
+// which turns the areas logcopter-gen already emits for every package under
+// pkg/ into something addressable from the command line.
+//
+// The environment fallback has to be applied by Set rather than by changing the
+// flag's default, and the reason is specific: InitLoggerFromCobra reads a flag
+// only when pflag reports it as Changed, so a default nobody typed is a default
+// it never sees. Set marks it Changed. An explicit --log-level on the command
+// line is parsed afterwards and still wins.
+func addLoggingSection(root *cobra.Command) error {
+	if err := logging.AddLoggingSectionToRootCommand(root, "datadrop"); err != nil {
+		return errors.Wrap(err, "adding the logging section")
+	}
+	if level := strings.TrimSpace(os.Getenv("DATADROP_LOG_LEVEL")); level != "" {
+		if err := root.PersistentFlags().Set("log-level", level); err != nil {
+			return errors.Wrapf(err, "invalid DATADROP_LOG_LEVEL %q", level)
+		}
+	}
+	return nil
 }
 
 // Execute runs the root command and maps errors onto the documented exit
@@ -152,33 +185,6 @@ func exitCodeFor(err error) int {
 		}
 	}
 	return ExitError
-}
-
-// configureLogging installs a console writer on stderr at the requested level.
-//
-// logcopter's default manager starts disabled with a Nop logger, so without
-// this call the per-package `log` variables silently drop everything.
-// Diagnostics go to stderr so that piping stdout stays clean (guide §11.4).
-func configureLogging(level string) error {
-	cfg := logcopter.Config{
-		Output:    logcopter.OutputStderr,
-		Format:    logcopter.FormatText,
-		Level:     strings.ToLower(strings.TrimSpace(level)),
-		Timestamp: true,
-	}
-
-	writer := logcopter.WriterForFormat(logcopter.WriterForOutput(cfg.Output), logcopter.OutputConfig{
-		Output:     cfg.Output,
-		Format:     cfg.Format,
-		Timestamp:  cfg.Timestamp,
-		TimeFormat: time.RFC3339,
-	})
-
-	base := zerolog.New(writer).With().Timestamp().Logger()
-	if err := logcopter.Configure(base, cfg); err != nil {
-		return errors.Wrapf(err, "invalid --log-level %q", level)
-	}
-	return nil
 }
 
 func envOr(key, fallback string) string {
