@@ -16,8 +16,14 @@ Owners: []
 RelatedFiles:
     - Path: repo://ttmp/2026/07/26/DATADROP-7--landing-page-and-embedded-tutorial-workbenches-multi-instance-workbench-lesson-rail-and-the-module-rack/design/01-the-landing-page-the-embedded-workbench-and-the-lesson-rail-analysis-design-and-implementation-guide.md
       Note: The guide this step produced
+    - Path: repo://ui/src/appkit/AppScope.tsx
+      Note: DR-53; the registry stays global and only the visible set is per instance (commit 24d0a07)
     - Path: repo://ui/src/appkit/usePersistence.ts
       Note: The debounced write, or nothing at all when the key is null (commit 4796da2)
+    - Path: repo://ui/src/components/pages/Workbench/WorkbenchProviders.tsx
+      Note: Separate so the lesson rail can be a sibling of the shell inside one PbuiProvider — DR-55 (commit 24d0a07)
+    - Path: repo://ui/src/components/pages/WorkbenchInstance/WorkbenchInstance.tsx
+      Note: The embeddable unit; the ref-with-null-check is correct under StrictMode where useState's initialiser is not (commit 24d0a07)
     - Path: repo://ui/src/main.tsx
       Note: Line 9 is the only runtime import of the store singleton in the whole frontend — the finding the design rests on
     - Path: repo://ui/src/store/index.ts
@@ -32,6 +38,7 @@ LastUpdated: 2026-07-26T11:34:56.470862624-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 
 
@@ -592,4 +599,237 @@ Verification, in full:
 bun run --cwd=ui typecheck   clean
 bun test --cwd=ui            187 pass, 0 fail, 15 files   (was 177 / 14)
 bun run --cwd=ui build       240 modules, 400.57 kB, 413 ms
+```
+
+## Step 3: Phase 2 — the shell splits, and two workbenches share a page
+
+`Workbench.tsx` became three files. The shell kept the chrome, the split tree
+and the three PBUI surfaces; the four application concerns — the signed-out
+gate, `useMeQuery`, the `?first=1` URL read and persistence — moved up into a
+component whose job is to know it is the application. `WorkbenchProviders` came
+out separately, and that third file is the one with a non-obvious reason.
+
+Then `WorkbenchInstance`, and the story that is this phase's acceptance test:
+two complete workbenches side by side, sharing a module graph, a registry and a
+stylesheet, and nothing else. I ran it in a browser rather than trusting the
+build, and the numbers came out right — left reaches two documents, right stays
+at one.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 2)
+
+**Assistant interpretation:** Continue with phase 2 of the ticket.
+
+**Inferred user intent:** (see Step 2)
+
+**Commit (code):** `24d0a07` — "DATADROP-7 phase 2: split the shell from the application, and embed it"
+
+### What I did
+
+- `WorkbenchShell.tsx` (95 lines): masthead, accept banner, workspace strip,
+  canvas, mouse-doc line, object menu. Props: `masthead`, `workspaces`,
+  `ambient`. No `useEffect` at all.
+- `WorkbenchProviders.tsx` (60 lines): the environment memo, the `perform`
+  callback, and `PbuiProvider` around `children`.
+- `Workbench.tsx` (90 lines): the gate, the URL read, `usePersistence`, and the
+  `.app` wrapper that claims the viewport.
+- `WorkbenchInstance.tsx` (130 lines) + module CSS + barrel + stories.
+- `appkit/AppScope.tsx`: a context of allowed application ids and
+  `useScopedApps()`, adopted by `Tile` and `LauncherApp`.
+- `Workbench.module.css`: `.shell` loses `height: 100vh`, gains
+  `flex: 1; min-height: 0`; new `.app` takes the viewport.
+- `.storybook/withPbui.tsx`: `parameters: { pbui: false }` opt-out.
+- `test/stories.test.ts`: `Applications/Embedding` added to the sidebar groups.
+
+### Why
+
+**`WorkbenchProviders` is a separate file because of one lesson.** The obvious
+shape is `WorkbenchShell` rendering its own `PbuiProvider` — it is the only
+thing that needs it today. But DR-55 requires the lesson rail to be a *sibling*
+of the shell, and lesson A4 teaches the accept protocol by pausing a command
+and asking the reader to click a field chip in another tile. Its ▶ runner has to
+call `accept()`, which returns a promise and lives in React context. With the
+provider inside the shell, a rail beside the shell cannot reach it, and the
+choice becomes duplicating the accept protocol or dropping the lesson that
+teaches the least familiar idea in the whole system.
+
+So the shape is `<WorkbenchProviders>{rail}<WorkbenchShell /></WorkbenchProviders>`,
+and the third file exists to make that expressible.
+
+**The tile picker keeps the tile's own application even when the scope excludes
+it.** This was not in the design and I nearly shipped without it. A
+`<select>` whose `value` matches no `<option>` renders blank, and the next
+change event reassigns it to whatever is first in the list — so a tour section
+that seeds a layout naming an out-of-scope application would silently lose that
+tile the moment anyone touched the dropdown. Showing the current app is the
+honest rendering: *this tile is that, and here is what else you may make it.*
+
+### What worked
+
+**Running the story in a browser instead of trusting the build.** DATADROP-6's
+sharpest lesson was a `ChartPanel` story that built, typechecked, passed the
+suite and rendered "Nothing to draw yet" — only the browser caught it. So I
+served `storybook-static` and opened the story:
+
+```text
+leftDoc:      "… 3 tiles · 1 workspaces · 2 documents"
+rightDoc:     "… 3 tiles · 1 workspaces · 1 documents"
+leftOptions:  63     (21 applications × 3 tile pickers, unscoped)
+rightOptions: 11     (3 allowed + the tile's own, × 3 pickers)
+```
+
+Both properties confirmed against the real DOM, by the real play function.
+
+**The play function reads the DOM, not the store**, and that is deliberate. A
+check that reached into `store.getState()` would pass even if the two instances
+shared one store and the components were subscribed to the wrong one — it would
+be testing my belief about which store is which rather than what the reader
+sees. The mouse-doc line reports "N tiles · N workspaces · N documents", which
+is the cheapest observable in the shell that describes the *world* rather than
+the layout.
+
+**Phase 1's `defaultSpaces()` change paid off immediately and visibly.** The
+`Applications/Workbench` story now renders the actual product cockpit —
+masthead, nine workspaces, the `build` layout with pipeline, encoding, chart and
+table. Before phase 1 it was a single empty launcher tile in one workspace. That
+story has existed since DATADROP-4 and has been showing the fallback the whole
+time.
+
+### What didn't work
+
+**The instance stories rendered a second accept banner and a second mouse-doc
+line, and I did not predict it.** The screenshot showed a stray strip reading
+"verbs fired by menu entries appear here" and a second READY line below both
+workbenches. The cause is the global `withPbui` decorator, which wraps *every*
+story in a `PbuiProvider` plus its own banner, doc line and verb log. React
+resolves context to the nearest provider, so the shell was using the right one
+and nothing was broken — but a reviewer cannot tell the decorator's chrome from
+the instance's own, and a story that teaches something false is worse than no
+story.
+
+Fixed by adding `parameters: { pbui: false }` to `withPbui`, returning the story
+unwrapped. Three lines, and it is the right escape hatch for any future story
+that brings its own context.
+
+**A wrong token name got through typecheck.** I wrote
+`border: var(--pbui-border-heavy)` in the instance stylesheet; the token is
+`--pbui-border-firm`. CSS custom properties fail silently — an undefined
+variable makes the whole declaration invalid and the border simply does not
+render. TypeScript cannot see inside a CSS module, and neither can the build.
+Caught by `grep border ui/src/styles/tokens.css` while double-checking, not by
+any tool. **There is no guard against this class of mistake in the tree**, and
+that is worth knowing: a mistyped token is invisible everywhere except in a
+browser.
+
+### What I learned
+
+**A `<select>` with a value outside its options is a silent data-loss bug, not
+a rendering bug.** It renders blank, which looks like a styling problem, and
+then reassigns on the next interaction, which looks like the user's doing. The
+general rule this suggests: whenever a list of options is filtered by
+configuration, the current value belongs in the list unconditionally.
+
+**Splitting a component along the seam its `useEffect`s already imply is
+mechanical.** `Workbench` had two effects and one hook call, and all three were
+session concerns; everything else was `useSelector` and JSX. Once that was
+visible the split wrote itself, and `WorkbenchShell` came out with *no effects
+at all* — which is the property that makes it safe to have five of.
+
+I had written in the guide that "those four lines were always implying" the
+split. Doing it confirmed the claim more strongly than I expected: no logic
+changed, nothing needed a new prop except the two visibility flags, and the
+shell got shorter rather than longer.
+
+### What was tricky to build
+
+**Where `usePersistence` goes inside `WorkbenchInstance`.** It needs the store,
+so it must be *below* the `Provider` — but `WorkbenchInstance` is the component
+that creates the `Provider`, so it cannot call the hook itself. The options were
+to split the component in two, to pass the store down manually, or to render a
+null component inside the tree that does nothing but call the hook.
+
+I took the third. `<InstancePersistence persistKey={…} />` renders nothing and
+exists solely to be inside the provider. It reads as a hack for about ten
+seconds and then reads as the obvious thing: the alternative is a wrapper
+component whose only job is to hold a `Provider`, which is the same trick with
+more ceremony.
+
+### What warrants a second pair of eyes
+
+- **The `.app` / `.shell` height split.** I verified the product story renders
+  full-viewport and the embedded ones respect their container, but only at one
+  viewport size. A short viewport with the masthead, strip and doc line all
+  present is the case where a missing `min-height: 0` would show.
+- **`useScopedApps()` returning registration order rather than the allow-list's
+  order.** I think a tour section should not be able to reorder the vocabulary
+  it is teaching, but that is a judgement and it is stated in the docstring
+  rather than tested.
+- **The `pbui: false` decorator opt-out.** It is a global decorator gaining a
+  per-story escape hatch, which is a pattern that can spread. Two stories use it
+  now; if it reaches five, the decorator is probably wrong.
+
+### What should be done in the future
+
+- **A guard for mistyped CSS custom properties.** `--pbui-border-heavy` cost
+  nothing this time because I happened to check, but nothing in the tree would
+  have caught it. A test that greps every `var(--pbui-…)` in `src/**/*.css`
+  against the names defined in `tokens.css` is about fifteen lines and would
+  have failed immediately. Not in this ticket's scope; worth its own.
+- **The null-key persistence test**, still owed from phase 1. The two-instance
+  story now exercises the real mount path, so the check has somewhere to live —
+  but neither instance in it opts in, so the story proves nothing about the key
+  being honoured. A third instance with a key, asserting the other two wrote
+  nothing, would close it.
+- Phase 3, the fixture base query, which is the last of the architectural three.
+
+### Code review instructions
+
+- Read the three files in this order: `WorkbenchShell.tsx` (what is left),
+  `Workbench.tsx` (what moved out, and the failure modes in its docstring),
+  `WorkbenchProviders.tsx` (why it is separate).
+- `WorkbenchInstance.tsx` — the ref-with-null-check, and the reason it is not
+  `useState`'s lazy initialiser. StrictMode double-invokes the initialiser.
+- Open `Applications/Embedding → TwoInstances` in Storybook and watch the play
+  function. Then break it: delete `AppScope` from the right instance's config
+  and confirm the third step fails.
+- `src/components/organisms/Tile/Tile.tsx:34-46` — the merged options list, and
+  whether the argument in the comment holds.
+- Validate: `bun run --cwd=ui typecheck && bun test --cwd=ui && bun run --cwd=ui build && bun run --cwd=ui build-storybook`.
+
+### Technical details
+
+The split, by line count:
+
+```text
+                          before   after
+Workbench.tsx                137      90    the application
+WorkbenchShell.tsx             —      95    the shell (no effects)
+WorkbenchProviders.tsx         —      60    environment + verb sink
+WorkbenchInstance.tsx          —     130    Provider + scope + shell
+appkit/AppScope.tsx            —      45    DR-53
+```
+
+The composition, which is the point of the phase:
+
+```tsx
+// the product — main.tsx supplies the store
+<Provider store={store}>
+  <Workbench persistKey={WORKBENCH_KEY} />       // gate · URL · persistence
+</Provider>
+
+// a tour section — same shell, different configuration
+<WorkbenchInstance config={{ apps: [...], preloaded: {...} }}>
+  <LessonRail lessons={lessonsC} />              // sibling, inside the providers
+</WorkbenchInstance>
+```
+
+The browser check, run against `storybook-static` on a local static server
+rather than a dev server, so what was verified is what would ship:
+
+```js
+leftDoc:      "… 3 tiles · 1 workspaces · 2 documents"   // ＋ pressed here
+rightDoc:     "… 3 tiles · 1 workspaces · 1 documents"   // untouched
+leftOptions:  63    // 21 applications × 3 pickers
+rightOptions: 11    // 3 allowed + own, × 3 pickers
 ```

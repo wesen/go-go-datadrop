@@ -28,3 +28,12 @@ Phase 1: the store is a factory and only a factory (commit 4796da2). Removed exp
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/index.ts — The factory, and the comment describing what one store could not reveal
 
+
+## 2026-07-26
+
+Phase 2: the shell splits from the application, and WorkbenchInstance embeds it (commit 24d0a07). WorkbenchShell now has no effects at all; the four session concerns moved up. DR-51 height, DR-53 app scope, DR-55 provider placement. Verified in a browser: two instances side by side, left reaches 2 documents while right stays at 1, scoped picker offers 11 options against 63. Found that a select whose value is outside its options is a silent data-loss bug, and that a mistyped CSS custom property has no guard anywhere in the tree
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/pages/Workbench/WorkbenchShell.tsx — What is left of the shell once the session concerns leave
+
