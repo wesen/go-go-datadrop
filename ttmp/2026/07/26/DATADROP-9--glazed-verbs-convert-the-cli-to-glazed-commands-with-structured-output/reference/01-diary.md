@@ -13,6 +13,8 @@ DocType: reference
 Intent: long-term
 Owners: []
 RelatedFiles:
+    - Path: repo://README.md
+      Note: The Output section and the renamed-flag table (commit 3eb3a29)
     - Path: repo://cmd/datadrop/main.go
       Note: Names the group registrars; the inverted edge that avoids an import cycle (commit fe5523f)
     - Path: repo://cmd/datadrop/tree_test.go
@@ -33,6 +35,8 @@ RelatedFiles:
       Note: Pins every documented exit code, the prefix, and the two pass-through errors (commit c759e77)
     - Path: repo://pkg/cli/fields.go
       Note: DropStreamField, ReadSpec and HumanBytes, shared by four packages (commit 34b9ce4)
+    - Path: repo://pkg/cli/ndjson.go
+      Note: The deprecation shim, and why the guide's replacement was dropped (commit 3eb3a29)
     - Path: repo://pkg/cli/rows.go
       Note: One projection per response type; event payloads flattened through tabular.FromEvents (commit 62e53d4)
     - Path: repo://pkg/cli/rows_test.go
@@ -43,12 +47,15 @@ RelatedFiles:
       Note: BareCommand; built without the DATADROP_ prefix so DATADROP_ADDR cannot become a listen address (commit 34b9ce4)
     - Path: repo://pkg/client/me.go
       Note: Typed /v1/me response so whoami errors map like every other verb (commit 62e53d4)
+    - Path: repo://pkg/doc/topics/06-cli-output.md
+      Note: datadrop help cli-output (commit 3eb3a29)
 ExternalSources: []
 Summary: Implementation diary for converting datadrop's nineteen CLI verbs to Glazed commands — the scaffolding, the one-verb spike, the reading verbs, the exit-code workaround around glazed issue 611, the writes and datasets, and the deletion of pkg/cli/output.go.
 LastUpdated: 2026-07-26T18:20:14-04:00
 WhatFor: Recording what was tried, what failed, and why each decision was made while implementing DATADROP-9.
 WhenToUse: Read before continuing DATADROP-9, before touching pkg/cli/exit.go, and when the upstream glazed exit-code hook lands and the workaround can be removed.
 ---
+
 
 
 
@@ -1188,4 +1195,207 @@ The last of the three exit codes, now through a converted verb:
 $ datadrop push strictdrop temperature=warm ; echo $?
 datadrop: SchemaValidationFailed: payload does not satisfy schema version 1
 5
+```
+
+## Step 6: Deprecate, document, and the replacement that does not exist
+
+The last phase: the `--output ndjson` shim, the `cli-output` help page, and the
+README. `pkg/cli/output.go` had already gone in phase 5 — the code stopped
+compiling without it once the last verb that called `newClient` was converted —
+so the acceptance check for this phase is a grep, and it comes back empty.
+
+The phase's finding is that **the design guide's line-oriented NDJSON
+replacement does not exist**. DR-78 says to name
+`--output template --template '{{ toJson . }}'` in the deprecation message as
+the strictly line-oriented successor. I wrote that message, then ran the
+command, and it printed nothing. Chasing it down took the phase from twenty
+minutes to an hour and changed what the message says.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** (see Step 1) — this step is phase 6.
+
+**Inferred user intent:** (see Step 1)
+
+**Commit (code):** `3eb3a29` — "DATADROP-9 phase 6: deprecate, document, and check the deletions"
+
+### What I did
+
+- Added `pkg/cli/ndjson.go`: `installNDJSONShim`, hooked into
+  `BuildCobraCommand`.
+- Added `pkg/doc/topics/06-cli-output.md`, slug `cli-output`.
+- Added an Output section to `README.md`, including a table of the three
+  renamed flags and the `whoami`/`healthcheck` rows the command table was
+  missing.
+- Added `TestNdjsonDeprecation` and verified it by breaking it twice.
+- Confirmed `deploy/compose/docker-compose.yml` needs no change.
+- `GOWORK=off golangci-lint run ./pkg/... ./cmd/...` — clean after one fix.
+
+### Why
+
+The shim runs in `PreRunE` rather than inside a command body, and that placement
+is forced. Glazed's `output` field is a choice and `ndjson` is not one of its
+choices, so by the time a command body runs, the parse has already failed with
+`Argument output has invalid choice ndjson` — which tells a reader the value is
+wrong and nothing about what to do instead. pflag has accepted the raw string by
+then (choice validation happens later, in glazed's own parse), so `PreRunE` is
+the one window where the value can still be rewritten into something the parser
+will accept.
+
+### What worked
+
+- The shim, first try: `--output ndjson` prints the warning on stderr and a
+  stream of concatenated JSON objects on stdout, and `TestDiagnosticsStayOffStdout`
+  stays green because the warning goes to stderr.
+- The help page loads and resolves — `datadrop help cli-output` — and
+  `pkg/doc/doc_test.go`'s slug-uniqueness guard passed without complaint.
+
+### What didn't work
+
+- **`--output template` produces nothing in glazed v1.3.8.** Not "the wrong
+  thing" — nothing at all, exit 0, for any template:
+
+  ```
+  $ datadrop query greenhouse --fields seq --output template --template '{{ toJson . }}'
+  $ datadrop query greenhouse --fields seq --output template --template '{{.seq}}'
+  $ datadrop query greenhouse --fields seq --output template --template 'HELLO'
+  $ echo $?
+  0
+  ```
+
+  Reading the source explains half of it: `formatters/template/template.go:38`
+  treats the template as a **whole-table** template over `{{.rows}}` and
+  `{{.data}}`, not a per-row one, so `{{.seq}}` was always going to be empty and
+  `{{ toJson . }}` would have emitted one object containing every row. It does
+  not explain the literal `HELLO` printing nothing, which looks like a genuine
+  bug in the template output path. Either way the guide's replacement is not
+  available.
+
+- **There is no compact JSON row output at all.** I looked for a fallback:
+  `formatters/json/json.go:204` calls `encoder.SetIndent("", "  ")`
+  unconditionally in `OutputRow`, so `--output json --output-as-objects` is
+  always multi-line. Nothing in the flag surface changes it.
+
+  So the message now names `datadrop export --format ndjson`, which *is* one
+  compact JSON object per line, streamed, of the original nested envelope —
+  verified with `cat -A`. It is also, on reflection, the better answer: someone
+  who wanted line-oriented NDJSON wanted the export, not a client-side
+  re-rendering of it.
+
+- One lint failure, worth recording only because the fix improved the code:
+
+  ```
+  pkg/cli/exit_test.go:23:1: named return "code" with type "int" found (nonamedreturns)
+  ```
+
+  Rewriting it without the named return made room for the comment explaining why
+  the sentinel is `-1` and not `0` — "did not exit" has to be distinguishable
+  from "exited successfully", which is the whole point of the two pass-through
+  cases.
+
+### What I learned
+
+- glazed's `--output` values are not all equal in capability, and the
+  differences are invisible from the flag surface. `table/ascii` cannot stream;
+  `table/csv` and `table/tsv` can stream but never flush; `table/markdown`,
+  `json` and `yaml` stream and flush; `template` appears not to work at all;
+  `excel` requires `--output-file`. A user picks one of nine values from a help
+  string that describes none of this. That is now written down in the
+  troubleshooting table of the help page, which is the most useful thing in it.
+- The compose file needed no change, and checking *why* was worth the two
+  minutes: it invokes only `serve` and `healthcheck`, whose flags are unchanged,
+  and it sets `DATADROP_TOKEN` in the container environment as the break-glass
+  credential. That still works because `serve`'s `token` field defaults to
+  `os.Getenv("DATADROP_TOKEN")` — the same fallback it had through the root's
+  persistent flag before. Had I moved that fallback to the section machinery it
+  would have been silently disabled by `buildOperatorCommand`.
+
+### What was tricky to build
+
+**Writing a deprecation message that is true.** The first draft was the guide's,
+and it was wrong in the specific way that matters most for a deprecation notice:
+it told people to do something that does not work. A deprecation message is read
+exactly once, by someone whose script just started printing a warning, and it is
+the only chance to send them somewhere correct. Getting it right meant testing
+every candidate replacement at the terminal rather than trusting the flag list —
+`--output template`, `--output json --output-as-objects` with and without
+`--stream`, and finally `export --format ndjson` under `cat -A` to confirm the
+line endings.
+
+### What warrants a second pair of eyes
+
+- **The shim mutates flags in `PreRunE`.** It calls `flags.Set` on `output` and
+  `output-as-objects`, which marks them `Changed`, which is exactly what makes
+  glazed's cobra source pick them up. If glazed ever moves its parse before
+  `PreRunE`, the shim silently stops working and the failure is an "invalid
+  choice" error rather than anything pointing here. `TestNdjsonDeprecation`
+  catches it.
+- **The help page claims `--output template` is unusable** only implicitly, by
+  omitting it from the list of accepted values. That may be too subtle; it is
+  the one value of the nine that does nothing.
+
+### What should be done in the future
+
+- Report the `--output template` behaviour upstream. It is a separate defect
+  from issue 611 and I did not file it, per the instruction not to send anything
+  to glazed.
+- Remove the ndjson shim next release, along with `pkg/cli/ndjson.go` and
+  `TestNdjsonDeprecation`.
+
+### Code review instructions
+
+- `pkg/cli/ndjson.go` top comment explains both the mechanism and why the
+  guide's advice was dropped.
+- `pkg/doc/topics/06-cli-output.md` — read the troubleshooting table; it is the
+  compressed form of everything this ticket learned by running things.
+- `datadrop help cli-output` to see it rendered.
+- Break the shim to check the guard: replace `os.Stderr` with `io.Discard` in
+  `rewriteNDJSONOutput` and run
+  `GOWORK=off go test ./cmd/datadrop/ -run TestNdjsonDeprecation`.
+
+### Technical details
+
+Both breaks of `TestNdjsonDeprecation`, verbatim.
+
+Warning silenced (`fmt.Fprintln(io.Discard, ndjsonWarning)`):
+
+```
+--- FAIL: TestNdjsonDeprecation (4.06s)
+    tree_test.go:194: no deprecation warning on stderr: ""
+    tree_test.go:197: the warning does not name its jq-compatible replacement: ""
+    tree_test.go:200: the warning does not name the line-oriented replacement: ""
+```
+
+Half the mapping removed (the `output-as-objects` set):
+
+```
+--- FAIL: TestNdjsonDeprecation (8.56s)
+    tree_test.go:205: --output ndjson produced a JSON array, so it was not mapped onto --output-as-objects: "[\n{\n  \"seq\": 2\n}\n, {\n  \"seq\": 1\n}\n]\n"
+    tree_test.go:220: --output ndjson emitted 0 decodable objects, want 2: "[\n{\n  \"seq\": 2\n}\n, {\n  \"seq\": 1\n}\n]\n"
+```
+
+The second is the more interesting failure: the output is still valid JSON and
+still contains the right data, so a human eyeballing it would probably accept
+it. Only the concatenated-versus-array distinction is wrong, and that is exactly
+the distinction the deprecation is about.
+
+The message as shipped:
+
+```
+datadrop: --output ndjson is deprecated and will be removed in the next release.
+  Piping into jq?           use --output json --output-as-objects
+  Reading one line at a time? use 'datadrop export --format ndjson', which is the
+                            server's own NDJSON: one compact object per line.
+  Continuing as --output json --output-as-objects, which is a stream of
+  concatenated JSON values and is NOT line-oriented.
+```
+
+And the thing it points at, confirmed line-oriented:
+
+```
+$ datadrop export greenhouse --format ndjson | cat -A | head -2
+{"specversion":"1.0","id":"01KYGAJCSYJDP0ECPRG8V794AS","type":"io.datadrop.event",...
+{"specversion":"1.0","id":"01KYGAJCV1N857FY6D0XGHCC0V","type":"io.datadrop.event",...
 ```

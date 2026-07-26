@@ -58,3 +58,12 @@ Phase 5: the remaining fourteen verbs converted; read.go/push.go/dataset.go/outp
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/cmd/datadrop/tree_test.go — Guards the command surface and the --format/--output rule
 
+
+## 2026-07-26
+
+Phase 6: --output ndjson deprecation shim, the cli-output help page, and the README Output section; the guide's template replacement does not work in glazed v1.3.8 and export --format ndjson is named instead (commit 3eb3a29)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/pkg/doc/topics/06-cli-output.md — The help page a script author reads
+
