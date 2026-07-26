@@ -87,5 +87,7 @@ registerApp({
   title: "tutorial 3 · encoding",
   tone: "var(--pbui-selected)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: Tut3,
 });

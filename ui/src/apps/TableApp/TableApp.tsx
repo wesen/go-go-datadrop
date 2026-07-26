@@ -27,5 +27,7 @@ registerApp({
   title: "table",
   tone: "var(--pbui-tone-source)",
   docBound: true,
+  duplicable: true,
+  singleton: false,
   Component: TableApp,
 });

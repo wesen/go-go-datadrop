@@ -42,5 +42,7 @@ registerApp({
   title: "compare a/b",
   tone: "var(--pbui-tone-cat)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: CompareApp,
 });

@@ -83,5 +83,7 @@ registerApp({
   title: "profile",
   tone: "var(--pbui-tone-doc)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: ProfileApp,
 });

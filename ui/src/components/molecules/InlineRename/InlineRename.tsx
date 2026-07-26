@@ -36,6 +36,23 @@ export function InlineRename({
       defaultValue={initial}
       aria-label={label}
       className={styles.input}
+      /*
+       * Focused on mount, and it is not a convenience.
+       *
+       * The component only ever mounts in response to a deliberate "rename
+       * this" gesture, so there is no case where focus arrives unasked — the
+       * objection autofocus normally attracts. Without it the field appears
+       * where a name was and does nothing until the user clicks it a second
+       * time, which reads as a broken control; and `onBlur={onCancel}` means an
+       * unfocused field can never be cancelled by clicking away either, so it
+       * sits there until something else re-renders.
+       *
+       * Found by clicking a tile title in DATADROP-8, where the rename is the
+       * default verb rather than a double-click and the missing focus is
+       * therefore immediate.
+       */
+      // biome-ignore lint/a11y/noAutofocus: see above — this element exists only as the direct result of a rename gesture, and focus is what the gesture asked for.
+      autoFocus
       onBlur={onCancel}
       onKeyDown={(event) => {
         if (event.key === "Enter") {

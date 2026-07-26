@@ -53,5 +53,7 @@ registerApp({
   title: "sign in",
   tone: "var(--pbui-tone-doc)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: SignInApp,
 });

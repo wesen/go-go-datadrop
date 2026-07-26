@@ -1,7 +1,9 @@
 import { useEffect } from "react";
-import { useDispatch } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useMeQuery } from "../../../api/client";
+import { AppScope } from "../../../appkit/AppScope";
 import { usePersistence } from "../../../appkit/usePersistence";
+import type { RootState } from "../../../store";
 import { layoutActions } from "../../../store/layout";
 import { ACCOUNT_STAGE_ID, SIGNIN_STAGE_ID } from "../../../store/stages";
 import { WorkbenchProviders } from "./WorkbenchProviders";
@@ -52,6 +54,9 @@ export interface WorkbenchProps {
   persistKey?: string | null;
 }
 
+/** What the sign-in stage offers, filtered rather than greyed. See below. */
+const SIGNIN_APPS = ["signin", "about"] as const;
+
 export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
   const dispatch = useDispatch();
   const { data: me } = useMeQuery();
@@ -94,16 +99,37 @@ export function Workbench({ persistKey = null }: WorkbenchProps = {}) {
     window.history.replaceState({}, "", window.location.pathname + (query ? `?${query}` : ""));
   }, [dispatch]);
 
+  const onSignIn = useSelector(
+    (state: RootState) => state.layout.currentStageId === SIGNIN_STAGE_ID,
+  );
+
   usePersistence(persistKey);
 
   return (
     <div className={styles.app}>
-      <WorkbenchProviders>
-        {/* No chrome props: the stage decides now. `workspaces={!lockedOut}`
-            used to be the whole of the signed-out chrome rule, and it lived
-            here because there was nowhere else to put it. */}
-        <WorkbenchShell />
-      </WorkbenchProviders>
+      {/*
+        The sign-in stage is the ONE stage that also narrows the instance scope.
+
+        Stage scope normally greys an application out with a reason, because
+        hiding an unavailable option hides the rule that makes it unavailable
+        (§6.3). On the sign-in screen that produces twenty-three greyed rows in
+        a two-tile layout, which is noise rather than teaching: a visitor who is
+        not signed in is not learning the vocabulary, they are signing in. An
+        instance scope filters, so the picker offers exactly `sign in` and
+        `about / help`.
+
+        It sits here, beside the gate that put the reader on that stage, rather
+        than as a flag on Stage — one exception written where its reason is
+        readable beats a field every future stage has to have an opinion about.
+      */}
+      <AppScope apps={onSignIn ? SIGNIN_APPS : undefined}>
+        <WorkbenchProviders>
+          {/* No chrome props: the stage decides now. `workspaces={!lockedOut}`
+              used to be the whole of the signed-out chrome rule, and it lived
+              here because there was nowhere else to put it. */}
+          <WorkbenchShell />
+        </WorkbenchProviders>
+      </AppScope>
     </div>
   );
 }

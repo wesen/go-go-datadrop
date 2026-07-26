@@ -1,12 +1,15 @@
+import { useMemo, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { appFor } from "../../../appkit/registry";
-import { useScopedApps } from "../../../appkit/AppScope";
+import { useAppScope } from "../../../appkit/AppScope";
 import { Presentation, usePbui } from "../../../pbui";
 import type { RootState } from "../../../store";
-import { layoutActions, type Node } from "../../../store/layout";
+import { countLeaves, layoutActions, type Node } from "../../../store/layout";
 import { Text } from "../../foundation";
 import { IconButton, SelectInput } from "../../atoms";
+import { InlineRename } from "../../molecules";
 import { useDrag } from "./useDrag";
+import { pickerOptions } from "./options";
 import styles from "./Tile.module.css";
 
 /**
@@ -20,33 +23,48 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
   const dispatch = useDispatch();
   const pbui = usePbui();
   const app = appFor(node.app);
+  const [renaming, setRenaming] = useState(false);
   const docName = useSelector((state: RootState) =>
     node.docId ? (state.world.docs[node.docId]?.name ?? null) : null,
   );
-  const canClose = useSelector((state: RootState) => {
-    const space = state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId);
-    if (!space) return false;
-    const count = (n: Node): number => (n.type === "leaf" ? 1 : count(n.a) + count(n.b));
-    return count(space.tree) > 1;
-  });
+  const tree = useSelector(
+    (state: RootState) =>
+      state.layout.spaces.find((s) => s.id === state.layout.currentSpaceId)?.tree ?? null,
+  );
+  const canClose = tree !== null && countLeaves(tree) > 1;
 
   const { dragging, zone, onGripPointerDown, register } = useDrag(node.id);
-  // The applications this instance offers (DR-53). Every registered app in
-  // the product; a narrower vocabulary in a tour section.
-  //
-  // The tile's OWN application is always in the list even when the scope
-  // excludes it. A select whose value matches no option renders as blank and
-  // silently reassigns on the next change, so a seeded layout naming an
-  // out-of-scope app would lose that tile the first time anyone touched the
-  // dropdown. Showing it is honest: this tile is that, and here is what else
-  // you may make it.
-  const scopedApps = useScopedApps();
-  const options = scopedApps.some((descriptor) => descriptor.id === node.app)
-    ? scopedApps
-    : [...(app ? [app] : []), ...scopedApps];
+  // The applications this instance offers (DR-53), plus the reasons the stage
+  // and the workspace give for the ones they do not (DATADROP-8 DR-61).
+  const { apps: scopedApps, reasonFor } = useAppScope();
+
+  /** Application ids held by the OTHER tiles in this workspace. */
+  const elsewhere = useMemo(() => {
+    const found = new Set<string>();
+    const walk = (n: Node | null) => {
+      if (!n) return;
+      if (n.type === "leaf") {
+        if (n.id !== node.id) found.add(n.app);
+        return;
+      }
+      walk(n.a);
+      walk(n.b);
+    };
+    walk(tree);
+    return found;
+  }, [tree, node.id]);
+
+  const options = useMemo(
+    () => pickerOptions({ apps: scopedApps, own: app, ownApp: node.app, elsewhere, reasonFor }),
+    [scopedApps, app, node.app, elsewhere, reasonFor],
+  );
 
   const title = app ? app.title : node.app;
-  const label = docName ? `${title} · ${docName}` : title;
+  const derived = docName ? `${title} · ${docName}` : title;
+  // `??` and not `||`: an empty label is normalised to undefined by the
+  // reducer, so `??` is what makes "clear the field and press Enter" mean *go
+  // back to the derived title* rather than *render an empty title bar*.
+  const label = node.label ?? derived;
 
   const zoneStyle =
     zone === "left"
@@ -95,13 +113,61 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
           ⠿
         </span>
 
-        <Presentation ptype="tile" value={node.id} doc={`<tile> ${label} — split / close / swap`}>
-          <Text size="tiny" strong>
-            <span style={{ textTransform: "uppercase", letterSpacing: "var(--pbui-track-label)" }}>
-              {label}
+        {renaming ? (
+          // The same control the workspace strip uses, for the same gesture at
+          // the level below it. Two interactions that look the same should be
+          // the same component — and this one already handles the
+          // read-on-Enter / Escape-means-never-happened semantics.
+          <InlineRename
+            initial={node.label ?? ""}
+            label="tile name"
+            // Empty commits as empty, which the reducer normalises back to
+            // "no label". `InlineRename`'s fallback exists for a workspace,
+            // where a blank name leaves nothing to click; a tile always has a
+            // derived title to fall back to, so clearing is a real outcome.
+            fallback=""
+            onCommit={(name) => {
+              dispatch(layoutActions.renameLeaf({ nodeId: node.id, label: name }));
+              setRenaming(false);
+            }}
+            onCancel={() => setRenaming(false)}
+          />
+        ) : (
+          <Presentation
+            ptype="tile"
+            value={node.id}
+            doc={`<tile> ${label}`}
+            /*
+             * Rename is the tile title's DEFAULT VERB, not a double-click.
+             *
+             * The workspace strip renames on double-click because its left
+             * button already means "switch to it". A tile title had no default
+             * verb, so `Presentation` fell back to its rule for chips with no
+             * obvious primary action — the left button opens the menu too —
+             * and a double-click therefore opened the menu, closed it, and
+             * opened it again. The rename never fired, which is not something
+             * a unit test can see: it needs a real click on a real menu.
+             *
+             * Making it the default verb fixes three things at once. The
+             * gesture works; the mouse-doc line announces "L: rename it   R:
+             * menu" before the user commits; and Enter on the focused
+             * presentation renames, which is the keyboard route the strip's
+             * equivalent still does not have. A double-click also still works —
+             * its first click enters the field and its second lands in it.
+             */
+            onActivate={() => setRenaming(true)}
+            activateDoc="rename it"
+          >
+            <span
+              style={{ textTransform: "uppercase", letterSpacing: "var(--pbui-track-label)" }}
+              title={node.label ? `renamed — the derived title is “${derived}”` : undefined}
+            >
+              <Text size="tiny" strong>
+                {label}
+              </Text>
             </span>
-          </Text>
-        </Presentation>
+          </Presentation>
+        )}
 
         <span style={{ flex: 1 }} />
 
@@ -112,10 +178,7 @@ export function Tile({ node }: { node: Extract<Node, { type: "leaf" }> }) {
           value={node.app}
           onValueChange={(app) => dispatch(layoutActions.setLeafApp({ nodeId: node.id, app }))}
           onPointerDown={(event) => event.stopPropagation()}
-          options={options.map((descriptor) => ({
-            value: descriptor.id,
-            label: descriptor.title,
-          }))}
+          options={options}
         />
 
         <TileButton

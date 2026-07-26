@@ -39,5 +39,7 @@ registerApp({
   title: "watchlist",
   tone: "var(--pbui-tone-chart)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: WatchlistApp,
 });

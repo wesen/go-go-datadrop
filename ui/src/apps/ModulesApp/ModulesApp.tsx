@@ -45,5 +45,7 @@ registerApp({
   title: "modules",
   tone: "var(--pbui-tone-neutral)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: ModulesApp,
 });

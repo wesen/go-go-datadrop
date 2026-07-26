@@ -91,5 +91,7 @@ registerApp({
   title: "encoding",
   tone: "var(--pbui-tone-chart)",
   docBound: true,
+  duplicable: true,
+  singleton: false,
   Component: EncodingApp,
 });

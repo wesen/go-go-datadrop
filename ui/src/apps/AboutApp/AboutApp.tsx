@@ -122,5 +122,7 @@ registerApp({
   title: "about / help",
   tone: "var(--pbui-selected)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: AboutApp,
 });

@@ -36,5 +36,7 @@ registerApp({
   title: "lessons",
   tone: "var(--pbui-tone-step)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: LessonsApp,
 });

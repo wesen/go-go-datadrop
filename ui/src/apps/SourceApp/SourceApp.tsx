@@ -99,5 +99,7 @@ registerApp({
   title: "sources",
   tone: "var(--pbui-tone-source)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: SourceApp,
 });

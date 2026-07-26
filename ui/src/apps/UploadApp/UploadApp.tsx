@@ -315,5 +315,7 @@ registerApp({
   title: "upload",
   tone: "var(--pbui-tone-datum)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: UploadApp,
 });

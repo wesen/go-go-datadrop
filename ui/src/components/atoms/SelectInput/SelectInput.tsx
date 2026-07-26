@@ -24,7 +24,29 @@ import styles from "./SelectInput.module.css";
 export interface SelectOption {
   value: string;
   label: string;
+  /**
+   * Rendered greyed and unselectable, never hidden.
+   *
+   * `verbs.ts` states the project's position and it applies here unchanged:
+   * hiding an unavailable option hides the rule that makes it unavailable. A
+   * user who never sees `trace` in the tile picker does not learn that it is a
+   * singleton, they conclude the application is missing.
+   *
+   * A native `<option disabled>` is unselectable by mouse AND by keyboard in
+   * every browser, and screen readers announce it as unavailable. Building a
+   * custom listbox to get a nicer grey would be a large accessibility
+   * regression for a cosmetic gain.
+   */
   disabled?: boolean;
+  /**
+   * Why it is disabled. Appended to the label and used as the `title`.
+   *
+   * On the option rather than left to the caller's `label` string, because the
+   * two are rendered differently — the reason belongs after an em dash and the
+   * label does not — and because a `title` on a disabled option is the only
+   * hover affordance a native select has.
+   */
+  reason?: string;
 }
 
 export interface SelectInputProps
@@ -78,8 +100,13 @@ export function SelectInput({
     >
       {placeholder !== undefined && <option value="">{placeholder}</option>}
       {options.map((option) => (
-        <option key={option.value} value={option.value} disabled={option.disabled}>
-          {option.label}
+        <option
+          key={option.value}
+          value={option.value}
+          disabled={option.disabled}
+          title={option.reason}
+        >
+          {option.reason ? `${option.label} — ${option.reason}` : option.label}
         </option>
       ))}
     </select>

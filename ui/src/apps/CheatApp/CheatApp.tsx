@@ -35,5 +35,7 @@ registerApp({
   title: "cheat sheet",
   tone: "var(--pbui-selected)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: CheatApp,
 });

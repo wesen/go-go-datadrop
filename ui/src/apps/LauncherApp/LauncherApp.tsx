@@ -41,5 +41,7 @@ registerApp({
   title: "new tile",
   tone: "var(--pbui-pane-alt)",
   docBound: false,
+  duplicable: false,
+  singleton: false,
   Component: LauncherApp,
 });

@@ -144,6 +144,8 @@ describe("the space pointer never desynchronises", () => {
     closeLeaf: "n",
     setLeafApp: { nodeId: "n", app: "trace" },
     setLeafDoc: { nodeId: "n", docId: null },
+    renameLeaf: { nodeId: "n", label: "mine" },
+    duplicateLeaf: "n",
     swapTiles: { a: "n1", b: "n2" },
     dockTile: { from: "n1", to: "n2", zone: "left" },
     addSpace: undefined,

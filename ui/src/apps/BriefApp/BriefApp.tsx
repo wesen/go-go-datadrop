@@ -37,5 +37,7 @@ registerApp({
   title: "the brief",
   tone: "var(--pbui-tone-chart)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: BriefApp,
 });

@@ -20,5 +20,7 @@ registerApp({
   title: "trace",
   tone: "var(--pbui-tone-source)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: TraceApp,
 });

@@ -73,5 +73,7 @@ registerApp({
   title: "chart",
   tone: "var(--pbui-tone-cat)",
   docBound: true,
+  duplicable: true,
+  singleton: false,
   Component: ChartApp,
 });

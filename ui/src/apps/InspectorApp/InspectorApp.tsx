@@ -20,5 +20,7 @@ registerApp({
   title: "inspector",
   tone: "var(--pbui-tone-step)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: InspectorApp,
 });

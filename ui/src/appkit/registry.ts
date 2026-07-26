@@ -42,6 +42,31 @@ export interface AppDescriptor {
    * stay in lockstep because they read one object rather than two copies.
    */
   docBound: boolean;
+  /**
+   * Does the tile's object menu offer **Duplicate**? (DATADROP-8 DR-63)
+   *
+   * Separate from `singleton`, not one enum with two values, because the two
+   * answer different questions and `launcher` answers them differently. A
+   * workspace may hold many launchers — every split creates one — so it is not
+   * a singleton; but *duplicating* an empty tile produces a second empty tile,
+   * which is what the split button already does, so it offers no duplicate.
+   *
+   * Required rather than optional-with-a-default: twenty-five one-line diffs
+   * are cheap, and a default that is right for twenty-four applications and
+   * wrong for one is the kind of thing nobody finds. `test/apps.test.ts`
+   * asserts this follows `docBound` unless a reason is written down.
+   */
+  duplicable: boolean;
+  /**
+   * May a workspace hold at most one of these? (DR-63)
+   *
+   * True for every application that is a pure function of the world — a second
+   * `trace` tile renders identical pixels forever. The application picker shows
+   * a singleton that is already open *disabled, with the reason*, rather than
+   * hiding it: a user who never sees `trace` in the list does not learn that it
+   * is a singleton, they conclude it is missing.
+   */
+  singleton: boolean;
   Component: ComponentType<AppProps>;
 }
 

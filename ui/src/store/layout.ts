@@ -16,8 +16,18 @@ export type NodeId = string;
 export type AppId = string;
 export type StageId = string;
 
+/**
+ * A leaf's optional user-chosen name (DATADROP-8 DR-62).
+ *
+ * Absent for every tile nobody has renamed, and the derived title —
+ * `chart · α` — stays right for those, because it is already doing the
+ * disambiguation four identical tiles would need. The rename exists for the
+ * case the derivation cannot reach: two tables on the *same* document showing
+ * different pipeline stages, or the tile whose meaning is "the one I keep the
+ * raw feed in".
+ */
 export type Node =
-  | { id: NodeId; type: "leaf"; app: AppId; docId: DocId | null }
+  | { id: NodeId; type: "leaf"; app: AppId; docId: DocId | null; label?: string }
   | { id: NodeId; type: "split"; dir: "row" | "col"; a: Node; b: Node; ratio: number };
 
 /**
@@ -280,6 +290,73 @@ export const layoutSlice = createSlice({
             : node,
         ),
       );
+    },
+
+    /**
+     * Name a tile, or clear the name back to the derived title.
+     *
+     * An empty string is how the rename control reports "the user cleared the
+     * field and pressed Enter", and it must mean *go back to the derived
+     * title*, not *render an empty title bar*. Normalised to `undefined` here
+     * so there is exactly one representation of "no label" in state, and read
+     * with `??` rather than `||` at the other end.
+     */
+    renameLeaf(state, action: PayloadAction<{ nodeId: NodeId; label: string }>) {
+      const label = action.payload.label.trim();
+      mutateTree(state, (tree) =>
+        updateNode(tree, action.payload.nodeId, (node) =>
+          node.type === "leaf" ? { ...node, label: label || undefined } : node,
+        ),
+      );
+    },
+
+    /**
+     * A second tile on the same application, the same document and a copied
+     * label.
+     *
+     * The SAME document, not a copy of it: two tiles on one document stay in
+     * lockstep because they read one object rather than two copies, and that
+     * is very often what "let me see this two ways" means. A user who wants a
+     * second document duplicates the document — `duplicateDoc` already exists
+     * as a verb and is in the document's own menu.
+     *
+     * `dir` defaults to "row" and the caller may override. The tile knows its
+     * own rendered aspect ratio and the reducer does not, so a caller that
+     * wants the closest-to-square split measures in `Tile` and passes it. A
+     * getBoundingClientRect does not belong in a reducer.
+     */
+    duplicateLeaf: {
+      reducer(
+        state,
+        action: PayloadAction<{ nodeId: NodeId; id: NodeId; splitId: NodeId; dir: "row" | "col" }>,
+      ) {
+        mutateTree(state, (tree) =>
+          updateNode(tree, action.payload.nodeId, (node) => {
+            if (node.type !== "leaf") return node;
+            const copy: Node = {
+              ...node,
+              id: action.payload.id,
+              label: node.label ? `${node.label} (copy)` : undefined,
+            };
+            return {
+              id: action.payload.splitId,
+              type: "split",
+              dir: action.payload.dir,
+              a: node,
+              b: copy,
+              ratio: 0.5,
+            };
+          }),
+        );
+      },
+      prepare(nodeId: NodeId, dir: "row" | "col" = "row") {
+        // BOTH ids are minted by the caller, as `duplicateDoc`'s is, so the
+        // reducer is a pure function of its payload and a replayed action
+        // rebuilds the identical tree. `splitLeaf` above predates the rule and
+        // still mints inside; it should be brought into line, and is not part
+        // of this ticket.
+        return { payload: { nodeId, id: newId(), splitId: newId(), dir } };
+      },
     },
 
     setLeafDoc(state, action: PayloadAction<{ nodeId: NodeId; docId: DocId | null }>) {

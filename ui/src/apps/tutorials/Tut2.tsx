@@ -99,5 +99,7 @@ registerApp({
   title: "tutorial 2 · pipeline",
   tone: "var(--pbui-selected)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: Tut2,
 });

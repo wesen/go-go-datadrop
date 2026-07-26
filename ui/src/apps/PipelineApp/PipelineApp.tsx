@@ -104,5 +104,7 @@ registerApp({
   title: "pipeline",
   tone: "var(--pbui-tone-step)",
   docBound: true,
+  duplicable: true,
+  singleton: false,
   Component: PipelineApp,
 });

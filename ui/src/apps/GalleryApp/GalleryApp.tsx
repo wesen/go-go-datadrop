@@ -43,5 +43,7 @@ registerApp({
   title: "snapshots",
   tone: "var(--pbui-tone-geom)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: GalleryApp,
 });

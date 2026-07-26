@@ -133,6 +133,55 @@ describe("the layout slice", () => {
     expect((after.b as { app: string }).app).toBe("chart");
   });
 
+  test("renaming a leaf and then clearing it restores the derived title", () => {
+    // `label: ""` must normalise to `undefined`, so there is one representation
+    // of "no label" and `Tile`'s `node.label ?? derived` sends it back to the
+    // derived title rather than rendering an empty bar (DR-62).
+    let state = start();
+    const only = (state.spaces[0] as { tree: Node }).tree;
+    state = layout(
+      state,
+      layoutSlice.actions.renameLeaf({ nodeId: only.id, label: "  raw feed  " }),
+    );
+    expect((state.spaces[0] as { tree: Node }).tree).toMatchObject({ label: "raw feed" });
+
+    state = layout(state, layoutSlice.actions.renameLeaf({ nodeId: only.id, label: "   " }));
+    expect((state.spaces[0] as { tree: { label?: string } }).tree.label).toBeUndefined();
+  });
+
+  test("duplicating a leaf keeps the document and marks the copy", () => {
+    // The SAME document, not a copy of it: two tiles on one document stay in
+    // lockstep because they read one object rather than two copies.
+    let state = start();
+    const only = (state.spaces[0] as { tree: Node }).tree;
+    state = layout(state, layoutSlice.actions.setLeafApp({ nodeId: only.id, app: "chart" }));
+    state = layout(state, layoutSlice.actions.setLeafDoc({ nodeId: only.id, docId: "doc-1" }));
+    state = layout(state, layoutSlice.actions.renameLeaf({ nodeId: only.id, label: "raw feed" }));
+    state = layout(state, layoutSlice.actions.duplicateLeaf(only.id));
+
+    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
+    expect(countLeaves(tree)).toBe(2);
+    const a = tree.a as Extract<Node, { type: "leaf" }>;
+    const b = tree.b as Extract<Node, { type: "leaf" }>;
+    expect(b.app).toBe("chart");
+    expect(b.docId).toBe(a.docId);
+    expect(b.label).toBe("raw feed (copy)");
+    // A duplicate that reused the id would give React duplicate keys AND make
+    // the hit-test return the wrong tile — the class of bug DR-12 removes.
+    expect(b.id).not.toBe(a.id);
+  });
+
+  test("duplicating an unlabelled leaf leaves it unlabelled", () => {
+    // Not "new tile (copy)": the derived title is already doing the work, and
+    // a label appearing out of nowhere would make the copy look renamed.
+    let state = start();
+    const only = (state.spaces[0] as { tree: Node }).tree;
+    state = layout(state, layoutSlice.actions.duplicateLeaf(only.id, "col"));
+    const tree = (state.spaces[0] as { tree: Node }).tree as Extract<Node, { type: "split" }>;
+    expect(tree.dir).toBe("col");
+    expect((tree.b as { label?: string }).label).toBeUndefined();
+  });
+
   test("docking never leaves the same leaf in two places", () => {
     let state = start();
     const first = (state.spaces[0] as { tree: Node }).tree.id;

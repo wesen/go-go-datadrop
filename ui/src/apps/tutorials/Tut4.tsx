@@ -70,5 +70,7 @@ registerApp({
   title: "tutorial 4 · documents",
   tone: "var(--pbui-selected)",
   docBound: false,
+  duplicable: false,
+  singleton: true,
   Component: Tut4,
 });
