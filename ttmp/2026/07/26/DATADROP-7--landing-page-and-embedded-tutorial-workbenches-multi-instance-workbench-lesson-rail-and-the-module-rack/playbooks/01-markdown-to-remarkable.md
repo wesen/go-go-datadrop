@@ -102,6 +102,56 @@ installed font has this codepoint" in one line, instead of guessing at font
 names. The three-line `fallback.tex` above maps that one codepoint and leaves
 everything else on DejaVu.
 
+## Two fallback families, chosen per codepoint (DATADROP-8)
+
+The instinct on the second document was to add every suspect glyph to the one
+`\symbolfont` mapping above. That is wrong in both directions, and it produced
+16 missing characters on a first build that had had none before the mapping was
+widened.
+
+**Noto Sans Symbols2 is not a superset of DejaVu.** It has `⌖` and `⠿`, and it
+has *neither* `⌾` (U+233E), `⋯` (U+22EF) nor `▏` (U+258F) — all three of which
+DejaVu Sans Mono does have. Mapping a codepoint to a font that lacks it is
+strictly worse than leaving it alone: the glyph was rendering, and now it is
+not.
+
+**Prefer DejaVu Sans Mono for the fallback, and reach for Symbols2 only for
+what DejaVu has in no face at all.** Beyond coverage there is a second reason,
+which matters for documents with ASCII figures: the substituted glyph sits
+inside a `verbatim` block whose surrounding characters are DejaVu Sans Mono, so
+a proportional fallback shifts every column to its right. Same metrics, same
+alignment.
+
+```tex
+\usepackage{newunicodechar}
+\newfontfamily\dvmono{DejaVu Sans Mono}
+\newfontfamily\symbolfont{Noto Sans Symbols2}
+\newunicodechar{✓}{{\dvmono ✓}}
+\newunicodechar{✕}{{\dvmono ✕}}
+\newunicodechar{⌾}{{\dvmono ⌾}}
+\newunicodechar{⋯}{{\dvmono ⋯}}
+\newunicodechar{▏}{{\dvmono ▏}}
+\newunicodechar{⊳}{{\dvmono ⊳}}
+\newunicodechar{⌖}{{\symbolfont ⌖}}
+\newunicodechar{⠿}{{\symbolfont ⠿}}
+```
+
+The check for a candidate, before adding a line:
+
+```console
+$ fc-list ':charset=233E' family | grep -x 'DejaVu Sans Mono'
+DejaVu Sans Mono
+```
+
+`grep -x` on the exact family, not a substring match. `fc-list ':charset=2713'
+family | grep DejaVu` reports a hit on *DejaVu Sans*, which tells you nothing
+about whether *DejaVu Serif* — the `mainfont` — has it. That per-family versus
+per-face confusion is what the section above this one is about, and it comes
+back in this form.
+
+Verify with `grep -c 'Missing character'` as before. It is 0 or the build
+failed; there is no third outcome.
+
 ## Mermaid
 
 Pandoc renders ` ```mermaid ` blocks as verbatim code. That is acceptable — the
