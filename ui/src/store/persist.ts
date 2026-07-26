@@ -44,22 +44,16 @@ interface Persisted {
   layout: LayoutState;
 }
 
-/** Keys that must never reach durable storage. */
-const FORBIDDEN = /^(token|authorization|auth|bearer|secret|password|apikey|api_key)$/i;
-
-/** Walk a value and report any forbidden key. Depth-limited, cycle-safe. */
-export function findSecrets(value: unknown, path = "", seen = new Set<unknown>()): string[] {
-  if (value === null || typeof value !== "object") return [];
-  if (seen.has(value)) return [];
-  seen.add(value);
-
-  const found: string[] = [];
-  for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-    if (FORBIDDEN.test(key)) found.push(path ? `${path}.${key}` : key);
-    found.push(...findSecrets(child, path ? `${path}.${key}` : key, seen));
-  }
-  return found;
-}
+/**
+ * The credential guard, re-exported from where it now lives.
+ *
+ * It moved to `model/secrets.ts` in DATADROP-8, because a *bundle* has to be
+ * audited in both directions and `model` may not import `store`. Re-exported
+ * here so this file still reads as the one that guards durable storage — the
+ * import site is the documentation.
+ */
+export { findSecrets } from "../model/secrets";
+import { findSecrets } from "../model/secrets";
 
 function isNode(value: unknown): value is Node {
   if (!value || typeof value !== "object") return false;
