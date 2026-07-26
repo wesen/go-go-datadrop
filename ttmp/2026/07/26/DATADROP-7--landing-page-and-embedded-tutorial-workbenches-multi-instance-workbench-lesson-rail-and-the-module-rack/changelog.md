@@ -14,3 +14,8 @@ DATADROP-7 opened: imported sources/pbui-landing.jsx (2719 lines, five embedded 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/components/pages/Workbench/Workbench.tsx — Four of the seven singletons, all of them application concerns in the shell
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/index.ts — makeStore is already a factory; the singleton beside it is what has to go
 
+
+## 2026-07-26
+
+Ticket committed as f858f68; guide built to a 27-page PDF and uploaded to Projects/2026/07 on the reMarkable. The pandoc playbook corrects DATADROP-6's font fallback — DejaVu Serif lacks U+2713, which a per-family fc-list check hides
+

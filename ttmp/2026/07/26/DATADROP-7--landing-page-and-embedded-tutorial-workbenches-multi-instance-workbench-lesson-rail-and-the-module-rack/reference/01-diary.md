@@ -67,7 +67,7 @@ analysis done before any code — the same sequence as DATADROP-6, which worked.
 The specific worry named in the prompt is architectural: "now that we can embed
 multiple workspaces in one page" is a request to find out what breaks.
 
-**Commit (docs):** `<pending>` — "DATADROP-7: the landing page, the embedded workbench, and the lesson rail"
+**Commit (docs):** `f858f68` — "DATADROP-7: the landing page, the embedded workbench, and the lesson rail"
 
 ### What I did
 
