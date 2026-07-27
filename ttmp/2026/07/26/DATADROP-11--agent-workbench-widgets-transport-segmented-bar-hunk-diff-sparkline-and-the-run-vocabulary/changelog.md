@@ -14,3 +14,8 @@ Step 1: gap analysis over two prototypes, ticket + 7 phases + intern guide (14pp
 
 Phase 1: format helpers + Meter, Sparkline, CodeLine; both guards broken and restored (commit f6e9a54)
 
+
+## 2026-07-26
+
+Phase 2: MoreBar, JsonBlock, KindLegend + InspectorPanel substitution; 3 defects found, 2 only visible in the rendered DOM (commit 42d36dd)
+

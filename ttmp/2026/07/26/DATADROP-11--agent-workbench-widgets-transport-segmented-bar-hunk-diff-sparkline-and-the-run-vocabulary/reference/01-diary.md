@@ -390,3 +390,157 @@ $ # var(--pbui-tone-neutral) -> var(--pbui-tone-invented)
 $ # after restoring both
  362 pass, 0 fail, 7635 expect() calls
 ```
+
+## Step 3: Three molecules, and three defects the tests could not see
+
+Phase 2 built `MoreBar`, `JsonBlock` and `KindLegend`, and substituted
+`JsonBlock` into `InspectorPanel` so there is one JSON renderer rather than two.
+The components are small. The interesting part is that the phase produced three
+defects and only one of them was caught by a test — the other two were found by
+measuring the rendered DOM after the suite was already green, which is the
+second of this repository's two verification conventions and the one that keeps
+earning its place.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 2 of the plan.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `42d36dd` — "DATADROP-11 phase 2: MoreBar, JsonBlock, KindLegend -- and three defects"
+
+### What I did
+
+- Built the three molecules with CSS modules, barrels and stories.
+- Replaced the inlined `<pre>` at `InspectorPanel.tsx:38` with `JsonBlock`, and
+  deleted `InspectorPanel.module.css`, which had nothing left in it.
+- Gave `JsonBlock` a `maxHeight` of `number | "none"`.
+- Fixed three defects, below.
+
+### What worked
+
+**`no-raw-controls.test.ts` caught `MoreBar` on its first run**, naming the file
+and the line and saying what to use instead:
+
+```text
++   "components/molecules/MoreBar/MoreBar.tsx:17 — use Button or IconButton from components/atoms"
+```
+
+That is the guard genre working exactly as designed: I wrote a hand-rolled
+`<button>` because the prototype's `MoreBar` is a clickable `<div>`, and the
+test refused it before review.
+
+**`stories.test.ts` caught all three story titles.** Molecules and organisms use
+a `Component Library/` prefix; atoms, foundation and layout use `Design System/`.
+I had assumed one convention covered all five and was wrong about three files.
+
+### What didn't work
+
+**`Meter` rendered `+Infinity` as an empty bar.** The guard was
+`Number.isFinite(fraction) ? clamp(…) : 0`, which folds NaN and both infinities
+into the same answer. They are not the same fact. NaN is `0/0` — nothing
+measured yet — and an empty bar is honest. `+Infinity` is `x/0` with `x > 0`:
+something used against a budget of nothing, which is unbounded overflow. An
+empty bar there states "nothing used" about the one case where usage is
+infinite. Measured:
+
+```text
+before: {label: "Infinity", valuenow: "0",   fillPct: 0}
+after:  {label: "+Infinity …", valuenow: "100", fillPct: 100}
+```
+
+I had written the `HostileInput` story specifically to exercise this and still
+did not see it, because the story renders four bars and three of them were
+right. Reading the *numbers* found it; looking at the picture would not have.
+
+**`KindLegend`'s `aria-label` never reached the DOM.** I passed it to `Stack`
+with `as="ul"`. `Stack` accepts a fixed prop set — `children, direction, gap,
+align, justify, wrap, grow, as, className` — and does not spread the rest, so
+the attribute was dropped silently. TypeScript did not object. The rendered
+element carried classes and nothing else:
+
+```text
+firstUlAttrs: ["class=\"_stack_1ilcn_8 _column_1ilcn_17 _gap-1_1ilcn_27 _list_1avd5_8\""]
+```
+
+The `<ul>` is now written out directly with its own flex column, and the
+component owns its own attributes. **The general lesson is worth more than the
+fix:** passing an accessibility attribute through a layout component that does
+not spread props fails silently, in a way neither the compiler nor the test
+suite can see. Any future `aria-*` on a `Stack`, `Surface` or `Toolbar` has the
+same problem.
+
+### What I learned
+
+**Both conventions were needed, and they caught different things.** The
+structural tests caught a rule violation and a naming violation — facts about
+the source. The DOM measurement caught two facts about the *rendered result*
+that no amount of source inspection would reveal. Neither convention subsumes
+the other, which is the argument for keeping both.
+
+**Measuring beats looking.** The last two cycles describe "read the rendered
+output" as a visual check. Two of three defects here were found by computing
+properties in the page — fill widths as a percentage of track width, the
+attribute list of an element, row heights and contrast ratios — rather than by
+looking at a picture. A screenshot of the `HostileInput` story shows four bars;
+three are correct and the fourth is wrong only if you already know what it
+should be. The number says so directly.
+
+### What was tricky to build
+
+**`InspectorPanel` wanted no height cap, and `Infinity` is not a CSS length.**
+The first substitution passed `maxHeight={Number.POSITIVE_INFINITY}`, which
+produces `max-height: Infinitypx` — invalid, silently ignored, and therefore
+accidentally correct, which is the worst kind of working. The prop now accepts
+`number | "none"` and the panel passes `"none"`, so the intent is in the type
+rather than in a coincidence.
+
+### What warrants a second pair of eyes
+
+- **`Stack` silently dropping unknown props** is a trap that will catch someone
+  else. It might deserve a rest-spread, or a documented refusal. Out of scope
+  here, but I would rather it were decided than left.
+- **`MoreBar`'s full-width geometry lives in the molecule's wrapper**, stretching
+  the `Button` from outside. The alternative is a `fullWidth` prop on the atom,
+  which one caller wants and every other would ignore. I think the wrapper is
+  right; it is a judgement call.
+
+### What should be done in the future
+
+- Consider a structural test asserting that `aria-*` props are not passed to
+  layout components that do not forward them. It is checkable — the layout
+  components are a known, short list.
+
+### Code review instructions
+
+- `ui/src/components/atoms/Meter/Meter.tsx:54-65` — the NaN / ±Infinity split.
+- `ui/src/components/molecules/KindLegend/KindLegend.tsx:48-53` — why the `<ul>`
+  is not a `Stack`.
+- `ui/src/components/organisms/InspectorPanel/InspectorPanel.tsx` — the
+  substitution, and the deleted stylesheet.
+
+### Technical details
+
+Rendered-DOM verification after the suite was green:
+
+```text
+KindLegend/SortsItself
+  ariaLabel:           "deliberately shuffled input"
+  renderedOrder:       ["file", "tool", "system", "memory"]   (input was shuffled)
+  barsShareLeftEdge:   true
+  barsShareWidth:      true
+  worstContrast:       {t: "8.4k · 12", ratio: 5.14}
+
+CodeLine/BlankLines
+  allRowsHaveHeight:   true
+  distinctHeights:     [11]        ← the two blank rows are 11px like the rest
+  guttersAlignWithText: true
+
+Meter/HostileInput
+  NaN         valuenow 0   fillPct 0
+  +Infinity   valuenow 100 fillPct 100
+  1.4         valuenow 100 fillPct 100
+  -0.3        valuenow 0   fillPct 0
+```
