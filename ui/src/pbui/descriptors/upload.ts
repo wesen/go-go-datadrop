@@ -5,7 +5,12 @@ import type { Action } from "../verbs";
 /** `<upload>` — one file in an upload batch. */
 export const uploadDescriptor: PresentationDescriptor<UploadRef> = {
   ptype: "upload",
-  tone: "var(--pbui-tone-datum)",
+  // --pbui-tone-datum has never existed. This said so from DATADROP-5 until
+  // DATADROP-11's descriptor-coverage test found it, and every upload chip
+  // rendered with no tone at all in the meantime -- var() with no fallback and
+  // no declaration resolves to nothing, silently. `datum` itself is neutral,
+  // which is plainly what was meant.
+  tone: "var(--pbui-tone-neutral)",
 
   label: (upload) => `${upload.path} · ${upload.state}`,
 
