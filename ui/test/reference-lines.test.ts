@@ -68,7 +68,7 @@ describe("reference lines land where the constant is", () => {
     );
 
     const panel = plot.panels[0];
-    expect(panel, "the plot refused to draw: " + plot.problems.join("; ")).toBeDefined();
+    expect(panel, `the plot refused to draw: ${plot.problems.join("; ")}`).toBeDefined();
 
     const rule = rules(panel!.marks)[0];
     expect(rule).toBeDefined();

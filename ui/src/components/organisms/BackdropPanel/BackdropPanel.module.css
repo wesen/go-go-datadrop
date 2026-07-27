@@ -1,0 +1,16 @@
+/*
+ * A figure whose backdrop is its coordinate system.
+ *
+ * The viewBox does the scaling, so the caller's coordinates never need to know
+ * the rendered size. `height: auto` keeps the aspect ratio: a court squashed to
+ * fit a tile is a court that lies about where the three-point line is.
+ */
+.figure {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-width: 100%;
+  background: var(--pbui-pane);
+  border: var(--pbui-border-firm);
+  border-radius: var(--pbui-radius);
+}
