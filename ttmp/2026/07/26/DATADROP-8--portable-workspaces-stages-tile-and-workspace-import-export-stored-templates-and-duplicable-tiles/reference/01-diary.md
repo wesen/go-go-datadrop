@@ -16,6 +16,8 @@ Owners: []
 RelatedFiles:
     - Path: repo://ttmp/2026/07/26/DATADROP-8--portable-workspaces-stages-tile-and-workspace-import-export-stored-templates-and-duplicable-tiles/scripts/smoke-firefox-import.ts
       Note: The Firefox check the phase calls not optional, and the two defects it found
+    - Path: repo://ttmp/2026/07/26/DATADROP-8--portable-workspaces-stages-tile-and-workspace-import-export-stored-templates-and-duplicable-tiles/scripts/smoke-stories.ts
+      Note: Renders every story in a built Storybook — the gap stories.test.ts leaves by design (commit 03fd19e)
     - Path: repo://ttmp/2026/07/26/DATADROP-8--portable-workspaces-stages-tile-and-workspace-import-export-stored-templates-and-duplicable-tiles/scripts/smoke-templates.ts
       Note: The save-reload-load round trip, which is what a fake localStorage cannot check (commit b710bea)
     - Path: repo://ui/src/components/organisms/BundleDialog/BundleDialog.tsx
@@ -62,6 +64,7 @@ LastUpdated: 2026-07-26T18:18:37.781026543-04:00
 WhatFor: Recording what was built, what failed, and what a reviewer should look at hardest for DATADROP-8.
 WhenToUse: Read before reviewing DATADROP-8, and before touching stages, the bundle format or the clipboard path afterwards.
 ---
+
 
 
 
@@ -1381,3 +1384,146 @@ first row expanded:
       [ Load into this stage ] [ Copy to clipboard ] [ Rename ] [ Delete ]
   ▸ raw feed, unfiltered  [tile]       2026-07-22                     [ Load ]
 ```
+
+## Step 7: Guards, stories and the tour
+
+The phase whose whole content is verification. Most of the work — the tour seeds
+gaining a stage, the module rack gaining the templates card — landed in earlier
+phases because the anti-rot guards forced it at the moment the change was made,
+which is the point of having them. What was left was one story, the §16 sweep of
+breaking every guard, and looking at the rendered output of everything new.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 7 — finish the story coverage, break every
+test the guide lists, and confirm the tour still renders as it did.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `03fd19e` — "DATADROP-8 phase 7: the three layout menus, as a story"
+
+### What I did
+
+- `ui/src/pbui/Pbui.stories.tsx`: a `LayoutMenus` story with all three new
+  presentations side by side, including the two disabled cases.
+- Broke every guard in §16 of the design guide, plus two more.
+- Built Storybook and rendered all 328 stories through a script, with
+  screenshots.
+- `ttmp/…/scripts/smoke-stories.ts` (new).
+
+### What worked
+
+**Every guard broke the way it was supposed to, and each named the fix.** The
+full sweep is in the technical details below. Two of them are worth calling out
+because they fired *during* the work rather than during this phase:
+`test/tour.test.ts` failed the moment `templates` was registered, and
+`test/stories.test.ts` failed the moment `TemplateTable/` existed. Neither is an
+obstacle — they are the only mechanisms that stop an application shipping with
+nobody having a model of it, and a component shipping that nobody has looked at.
+
+**328 stories render.** `test/stories.test.ts` proves a story *exists* and that
+its title has the right prefix; it parses the file with a regular expression and
+deliberately never imports it. The gap that leaves is obvious once stated — a
+story can exist, carry the right title and throw on render — and
+`smoke-stories.ts` closes it in the one place where the bundling cost is already
+paid.
+
+### What didn't work
+
+**The tour is unreachable in the dev server.** `main.tsx` chooses the landing
+page with `window.location.pathname.startsWith("/ui/tour")`, and Vite's `base`
+is `/static/`, so the dev URL is `/static/ui/tour` and the test never matches:
+
+```
+http://localhost:5173/ui/tour        →  404 (outside Vite's base)
+http://localhost:5173/static/ui/tour →  the product, not the tour
+```
+
+Pre-existing and not this ticket's, but it is why the tour was verified through
+the built Storybook rather than the dev server.
+
+**`serve` silently broke the story checks.** `bunx serve` rewrites
+`/iframe.html?id=…` to `/iframe` and drops the query, so every story rendered
+Storybook's "No Preview" panel — which looks exactly like a component that
+failed to load:
+
+```
+Page URL: http://localhost:6008/iframe
+No Preview
+Sorry, but you either have no stories or none are selected somehow.
+```
+
+`python3 -m http.server` serves it literally. The README says so.
+
+### What I learned
+
+Fixing one atom does not fix a class. `--pbui-ink-on-pane` went into
+`SelectInput` in phase 1 because the stage switcher was invisible; the contrast
+sweep in phase 5 then found the identical composition on `IconButton.framed` at
+1.13:1. The sweep is now a script precisely because "I fixed the one I saw" is
+not the same as "the class is gone".
+
+### What was tricky to build
+
+Nothing new. The one judgement call was what to *put* in the `LayoutMenus`
+story: not the happy path, but the two states where a verb is greyed with a
+reason, because that is the behaviour a reviewer can look at and say "that is
+wrong" about — a verb that fires is either right or absent, and a verb that
+refuses has a sentence attached that could be the wrong sentence.
+
+### What warrants a second pair of eyes
+
+- The smoke scripts are not wired into anything. They need a dev server and two
+  browser downloads, so making them a CI step is a bigger conversation.
+- `smoke-stories.ts` takes about two minutes for 328 stories. That is fine to
+  run by hand and too slow for a pre-commit hook.
+
+### What should be done in the future
+
+- The dev-server tour path. One line in `main.tsx` or one rewrite in
+  `vite.config.ts`, and it is outside this ticket.
+
+### Code review instructions
+
+```bash
+bun run --cwd=ui typecheck && bun run --cwd=ui lint && bun test --cwd ui
+bun run --cwd=ui build:check          # NOT `build` — that writes into pkg/webui/dist
+bun run --cwd=ui build-storybook && python3 -m http.server 6008 -d ui/storybook-static &
+bun run ttmp/…/scripts/smoke-stories.ts
+```
+
+### Technical details
+
+**Every guard, broken.** The design guide's §16 table, in order, plus two.
+
+| Guard | Broken by | It said |
+|---|---|---|
+| ids do not travel | `portableTree` writes `id: node.id` | `Expected to not contain: "e66131c1-…"` on the bundle text, plus the worked-example and stage tests |
+| sharing survives | `DocCollector.at` appends per leaf | `Expected length: 1 / Received length: 2`, three tests |
+| the space-pointer invariant | `setCurrentSpace` writes only the mirror | `"setCurrentSpace desynchronised the pointer: layout s2-b, stage s2-a"` |
+| `duplicable` follows `docBound` | flip it on `TableApp` | `"apps/TableApp/TableApp.tsx: table.duplicable is false but docBound is true — change it, or add table to EXCEPTIONS with a sentence saying why"` |
+| `save()` excludes a dialog | spread `layout` instead of enumerating | the whole payload, with `"pendingImport":{…"prefill":"{\"format\":\"datadrop.layout\"}"…}` in it |
+| the secret guard | `parseBundle` stops calling `findSecrets` | two credential tests, including all nine spellings |
+| the caps | build a 64-leaf tree where the test wants 65 | the bundle is accepted, so the expected refusal never arrives — the boundary is exactly at 65 |
+| migration | the fixture's `version` set to 3 | `Expected: 1 / Received: 3`, then four migration tests going null |
+| the tour's module set | delete the `templates` card | `+ ["templates"]` under "every registered application has a module card" |
+| story coverage (extra) | delete `TemplateTable.stories.tsx` | `+ ["organisms/TemplateTable"]` |
+| story prefixes (extra) | retitle `StageBar` to `Applications/…` | `"components/organisms/StageBar/StageBar.stories.tsx: \"Applications/StageBar\" should start \"Component Library/Organisms/\""` |
+
+All restored; 362 tests pass.
+
+**The tour, unchanged.** §C rendered out of the built Storybook: five tiles, the
+chart drawing four stations against time, the lesson rail at 0/6, no stage bar
+and no workspace strip — because `LandingPage` passes `workspaces: false` and
+`WorkbenchInstance` defaults `stageBar` to false, and `??` keeps both meaning
+what they meant.
+
+**The three new dialog states, rendered.** `Rejected` shows the dashed invalid
+field, `✕ That is not a DATALAB layout.` and a disabled confirm;
+`UnknownApplication` shows `✓ A tile: chartsy on a document called α, reading
+sensors / readings. 1 kB.` with the warning beneath it and the confirm button
+**enabled** — a bundle naming an application this build lacks imports anyway,
+because a four-tile layout with one unfillable tile is true and a three-tile
+layout is a lie about what a colleague sent.

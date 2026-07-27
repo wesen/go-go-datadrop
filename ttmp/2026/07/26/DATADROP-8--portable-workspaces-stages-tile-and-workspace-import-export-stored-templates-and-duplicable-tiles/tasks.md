@@ -8,4 +8,4 @@
 - [x] Phase 4 — The verb seam widened: actionsForVerb over whole state returning thunks, applyLayoutVerb.ts, ClipboardPort on the thunk extra argument, effects.ts, TileRef/WorkspaceRef/StageRef and the three descriptors, pendingImport with save() enumerating layout fields <!-- t:416y -->
 - [x] Phase 5 — Export and import in the interface: TextArea atom, Dialog organism, BundleDialog, clipboard prefill only on a successful parse, live describeBundle, and a Firefox verification of the empty path <!-- t:2h2c -->
 - [x] Phase 6 — Templates: store/templates.ts with the three caps, TemplateTable, TemplatesApp on the account stage, store/load/rename/delete/copy, delete confirms <!-- t:recw -->
-- [ ] Phase 7 — Guards, stories and the tour: stories for the seven new components, tour seeds gain a stage, the module rack gains the templates card, verify every test by breaking it <!-- t:jyz1 -->
+- [x] Phase 7 — Guards, stories and the tour: stories for the seven new components, tour seeds gain a stage, the module rack gains the templates card, verify every test by breaking it <!-- t:jyz1 -->

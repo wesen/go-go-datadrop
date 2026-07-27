@@ -67,3 +67,12 @@ Phase 6: the template library — store/templates.ts (one localStorage key, thre
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/templates.ts — One key, three caps, and a Bundle stored verbatim
 
+
+## 2026-07-26
+
+Phase 7: guards, stories and the tour — a LayoutMenus story showing all three new presentations with their disabled entries, and the §16 sweep breaking every guard in the ticket (eleven, including two beyond the guide's table) with the verbatim failure recorded. A new smoke-stories.ts renders all 328 stories out of a built Storybook, closing the gap stories.test.ts leaves by parsing rather than importing. (commit 03fd19e)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/pbui/Pbui.stories.tsx — The three layout menus, side by side, with their greyed entries
+
