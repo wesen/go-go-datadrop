@@ -544,3 +544,181 @@ Meter/HostileInput
   1.4         valuenow 100 fillPct 100
   -0.3        valuenow 0   fillPct 0
 ```
+
+## Step 4: SegmentedBar, and the overflow claim that was not true
+
+Phase 3 built the widget I said I would build first if I could only build one.
+It went smoothly. The finding was not in the code but in the prose I wrote
+around it: the story asserted a property the component does not have, and I only
+noticed by measuring the rendered geometry of the case the prose was about.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 3 — `SegmentedBar`.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `e2dac48` — "DATADROP-11 phase 3: SegmentedBar, and an honest note about overflow"
+
+### What I did
+
+Built the component, its CSS module, barrel and six stories, and measured the
+degenerate and overflow cases in the browser.
+
+### What worked
+
+**Flex weights were the right geometry.** Percentage widths accumulate rounding
+error across many segments and leave a visible gap at the right edge, which on a
+bar whose whole job is "these add up to the whole" reads as a defect. At 60
+segments the measured widths distribute cleanly.
+
+**`renderSegment` matched an existing pattern rather than inventing one.** I had
+planned it as a novel escape hatch and then found `Legend` already does exactly
+this with `renderEntry`, documented as DR-38. Using the same shape means one
+idea in the codebase rather than two.
+
+### What didn't work
+
+**The overflow story asserted something false.** I wrote:
+
+> The border turns and the bar says OVER, because the alternative — silently
+> renormalising so it still fits — would draw an over-budget state identically
+> to an exactly-full one.
+
+Then measured the overflow story: three segments of 774 + 378 + 203 px inside a
+1355px bar. **That is renormalising.** Flex distributes the available width in
+proportion to the weights and has no way to express "wider than the container",
+so an over-budget bar has exactly the same segment geometry as an exactly-full
+one. The red border and the OVER badge carry the entire signal.
+
+The prose was not describing a design decision. It was describing a design
+decision I had imagined making. Both the story and the component now say what is
+actually true, including that a caller needing overflow legible *as size* wants a
+different widget.
+
+This is the second time in this project that a story's prose has contradicted
+what the story renders, and both times the prose was the confident part.
+
+### What I learned
+
+**Writing the explanation before measuring the result produces authoritative
+fiction.** The sentence was well-formed, plausible, and would have survived
+review — a reviewer reading "we do not renormalise" has no reason to open a
+browser and check. The measurement took thirty seconds.
+
+### What warrants a second pair of eyes
+
+- The 2px minimum segment width. Below it a segment is invisible, and an
+  invisible segment is indistinguishable from an absent one — so the floor is
+  right, but it means the bar stops being proportional in the tail, and the
+  `Density` story says so rather than hiding it.
+
+## Step 5: DiffHunk, and a split-view algorithm that was quietly wrong
+
+Phase 4 produced the most serious defect of the ticket, in code rather than
+prose, and it came from copying the prototype's structure without checking it.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 4 — `DiffHunk`, unified then split.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `906dc05` — "DATADROP-11 phase 4: DiffHunk, and a wrong split-view algorithm caught"
+
+### What I did
+
+- Built `DiffHunk` with unified and split rendering, a header, and the row cap
+  behind `MoreBar`.
+- Found the split pairing wrong, rewrote it, extracted it as `pairRows()`, and
+  pinned it with seven cases in `ui/test/diff-pairing.test.ts`.
+- Fixed the blank-cell height.
+
+### What didn't work
+
+**The split-view pairing was wrong.** The algorithm I wrote — and the one the
+prototype uses at `pbui-agent-workbench(1).jsx:2280-2284` — pushes context rows
+to both sides, removals to the left, additions to the right, then renders to the
+longer column. It passes every balanced hunk.
+
+On an unbalanced one the two columns advance at different rates and nothing
+re-synchronises them. One removal answered by three additions leaves the left
+column two entries short, so **every context row after that change faces an
+addition instead of facing itself.** Measured in the browser on the six-row
+example this file ships:
+
+```text
+{ l: {op: "context", text: "}"},
+  r: {op: "add", text: "if (!s || s.expiresAt < Date.n"} }
+```
+
+The closing brace sat opposite an unrelated conditional. Both columns held the
+right rows in the right order, so the output reads as a completely plausible
+diff while asserting that unrelated lines correspond — which is the worst thing
+a diff can do, because the reader's entire reason for choosing the split view is
+to see correspondence.
+
+**The blank cell was the wrong height.** `min-height: 1.4em` measured 16px
+against a `CodeLine`'s 11px, so every unpaired row drove the two columns a
+further 5px apart. Alignment is the whole value of a side-by-side view.
+
+### What I learned
+
+**Copying a prototype's structure carries its bugs, and the bugs are in the
+parts that look too simple to check.** I read `diffLines` carefully — it is a
+real LCS with head/tail trimming and it is correct — and skimmed the eight-line
+pairing beneath it because eight lines of pushing into two arrays cannot be
+wrong. The complicated part was fine. The simple part was not.
+
+**Extracting the logic was worth more than fixing it.** The rewrite could have
+stayed inside the component, verified by the browser measurement that found it.
+Pulling `pairRows` out as a pure function made it testable with literals, and
+that test is what will catch the next person who "simplifies" it back.
+
+### What was tricky to build
+
+The correct rule is not obvious from first principles: a context row is a
+**synchronisation point**. Consecutive removals and additions accumulate into
+blocks; a context row, or the end of the hunk, flushes them with the shorter
+side padded, then lands on both sides at the same index. Within a block the
+pairing stays positional, which is what makes a substitution read as a
+substitution rather than as a deletion followed by an unrelated insertion.
+
+### What warrants a second pair of eyes
+
+- **`pairRows` pads within a block only.** Two adjacent change blocks separated
+  by a context row pad independently, which is correct, but means a hunk with no
+  context rows at all pads once across the whole thing. That is the right
+  behaviour and it is worth someone agreeing.
+
+### Code review instructions
+
+- `ui/src/components/molecules/DiffHunk/DiffHunk.tsx:89-144` — the docstring
+  explains the wrong version before the right one, deliberately.
+- `ui/test/diff-pairing.test.ts` — seven cases. The first is the regression.
+
+### Technical details
+
+The guard verified by restoring the naive algorithm:
+
+```text
+error: a context row faced something other than itself — the columns have drifted
++   "}  ||    if (!s || s.expiresAt < Date.now()) return null;"
+(fail) split-view pairing keeps the two columns in step > a context row always faces itself
+(fail) split-view pairing keeps the two columns in step > the closing context row is the last pair on both sides
+```
+
+After restoring the correct version: 369 pass across 27 files.
+
+Geometry, measured after the fix — every pair the same height, every context
+row facing itself:
+
+```text
+contextRowsAlwaysFaceThemselves: true
+allPairHeightsEqual: true
+heights: [11]
+```

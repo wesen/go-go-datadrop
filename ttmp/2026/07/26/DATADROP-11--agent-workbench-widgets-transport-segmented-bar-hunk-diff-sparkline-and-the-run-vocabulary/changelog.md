@@ -19,3 +19,8 @@ Phase 1: format helpers + Meter, Sparkline, CodeLine; both guards broken and res
 
 Phase 2: MoreBar, JsonBlock, KindLegend + InspectorPanel substitution; 3 defects found, 2 only visible in the rendered DOM (commit 42d36dd)
 
+
+## 2026-07-26
+
+Phases 3-4: SegmentedBar (overflow prose corrected) and DiffHunk (split pairing was wrong; pairRows extracted and pinned) (commits e2dac48, 906dc05)
+
