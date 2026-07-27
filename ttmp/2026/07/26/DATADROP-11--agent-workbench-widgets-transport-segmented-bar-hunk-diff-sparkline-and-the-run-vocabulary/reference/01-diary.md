@@ -233,3 +233,160 @@ The PDF invocation is the DATADROP-7 playbook plus two lines:
 \newunicodechar{⏮}{{\symbolfont ⏮}}
 \newunicodechar{⏭}{{\symbolfont ⏭}}
 ```
+
+## Step 2: The formatters and the three atoms
+
+Phase 1 is the boring foundation, and it produced two findings worth more than
+the components did. The first is that `model/format.ts` already existed — I was
+about to create it — and its docstring already explained the layer reasoning
+for why shared formatting lives in `model/` rather than in an app. Appending to
+it rather than creating a rival was the whole of the work; noticing was the
+part that mattered.
+
+The second is that the "restore" half of break-verification has a failure mode
+nobody had written down, and it bit me on the first attempt.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phase 1 of the plan — the shared number
+formatting plus `Meter`, `Sparkline` and `CodeLine`, each with a CSS module, a
+barrel and stories.
+
+**Inferred user intent:** Working components in the design system, not a
+document describing components.
+
+**Commit (code):** `f6e9a54` — "DATADROP-11 phase 1: the formatters and three atoms"
+
+### What I did
+
+- Read `model/format.ts` before writing it, found `formatBytes` already there,
+  and appended `clamp`, `kfmt`, `msfmt`, `pctfmt` instead of replacing the file.
+- Found a private `clamp` in `model/plot.ts:102` and pointed it at the shared
+  one, removing the duplicate.
+- Built `Meter`, `Sparkline`, `CodeLine` — component, CSS module, barrel,
+  stories each — and added all three to `components/atoms/index.ts`.
+- Broke two guards, confirmed the failures, restored.
+
+### Why
+
+`kfmt` and `msfmt` were about to be reinvented three times, exactly as the
+prototype reinvented them (`pbui-agent-workbench(1).jsx:41-47` has `fmt`,
+`msfmt` and `kfmt` side by side). One implementation means one place to argue
+about the rounding rules.
+
+### What worked
+
+**Reading before writing caught a would-be duplicate file.** `model/format.ts`
+existed, with a docstring explaining that it lives in `model/` because
+`components/molecules` may not import `apps` and the uploader was simply the
+first thing to need it. Overwriting it would have deleted `formatBytes` and
+broken three importers.
+
+**Both guards fired precisely, naming the offending thing:**
+
+```text
++   "atoms/Meter"
+(fail) story coverage > every component directory has a story
+
++   "components/atoms/Meter/Meter.module.css: var(--pbui-tone-invented)"
+(fail) design tokens resolve > every var(--pbui-…) in a stylesheet names a declared token
+```
+
+### What didn't work
+
+**`git checkout --` did not restore the second break, and I nearly missed it.**
+The sequence was: edit `Meter.module.css` to use an undeclared token, run the
+suite, watch it fail correctly, then `git checkout -- <path>` to restore. That
+last step printed:
+
+```text
+error: pathspec 'ui/src/components/atoms/Meter/Meter.module.css' did not match any file(s) known to git
+```
+
+The file was new and untracked, so there was no committed version to restore
+from and the break stayed in the tree. The suite exited 1 immediately
+afterwards, which is the only reason I noticed — had I broken something in an
+already-committed file *and* something in a new one in the same sweep, the
+checkout would have "worked" and I would have committed a live defect while
+believing I had cleaned up.
+
+The rule this yields: **restoring a break in an untracked file needs an edit,
+not a checkout**, and the way to be sure either way is to re-run the suite after
+restoring rather than assuming the restore worked.
+
+**`--pbui-font-mono` is not a token.** I reached for it out of habit for
+`CodeLine`. The whole design system's base `--pbui-font` is already IBM Plex
+Mono, so there is no separate mono token and there does not need to be. Caught
+by reading `styles/tokens.css` rather than by the test, though
+`tokens-used.test.ts` would have caught it a minute later.
+
+**Biome rejected the first `Meter.module.css`** with
+`lint/style/noDescendingSpecificity` at :30, because `.track` was declared after
+`.inline .track` and `.row .track`. It is right to: a reader scanning for what
+`.track` does should meet the base rule before the overrides.
+
+### What I learned
+
+The `alarm` prop on `Meter` started as unconditional threshold colouring, copied
+from the prototype's context bar, and that is wrong for a general-purpose atom.
+The prototype's only meter measures a token budget, where "nearly full" is
+genuinely bad. Ours will also measure things like lesson progress, where nearly
+full is *good* — and a learner being told in red that they are running out of
+tutorial is an interface actively lying about its own domain. Opt-in, defaulting
+off.
+
+### What was tricky to build
+
+**The `Sparkline` domain has to include the threshold.** The obvious
+implementation takes min and max of the data, which puts a budget line above
+every observed value off the top of the box, where it is silently not drawn.
+That is the same class of defect as the missing PDF glyphs — the thing you most
+need to see is the thing that disappears. Fixed by including `threshold` in the
+domain candidates.
+
+**A flat series divides by zero.** `(v − lo) / (hi − lo)` with `hi === lo` is
+NaN for every point, and an SVG path full of NaN renders nothing at all with no
+error in the console. `|| 1` on the span, and a story that pins it.
+
+### What warrants a second pair of eyes
+
+- **`Meter`'s `tone` is ignored while alarming.** A bar cannot simultaneously
+  say "this is the `step` colour" and "this is dangerous"; I chose dangerous.
+  Someone might reasonably want the tone to win and the alarm to show elsewhere.
+- **`CodeLine` renders a non-breaking space for an empty line.** It is the
+  standard fix, but it means the rendered text differs from the source text by
+  one character, which would matter to anyone copying out of the DOM.
+
+### What should be done in the future
+
+Nothing new from this phase. Phases 2-7 continue as planned in the guide.
+
+### Code review instructions
+
+- `ui/src/model/format.ts` — the appended half. Check the rounding cutoffs.
+- `ui/src/components/atoms/Meter/Meter.tsx:54` — the clamp and the NaN path.
+- `ui/src/components/atoms/Sparkline/Sparkline.tsx:44-47` — the domain
+  including the threshold, and the `|| 1` span.
+- Storybook: `Atoms/Meter → HostileInput` and `Atoms/Sparkline → Degenerate`
+  are the two that would show a defect visually.
+
+### Technical details
+
+Verification, verbatim:
+
+```console
+$ mv ui/src/components/atoms/Meter/Meter.stories.tsx /tmp/ && bun run --cwd=ui test
++   "atoms/Meter"
+(fail) story coverage > every component directory has a story
+ 1 fail
+
+$ # var(--pbui-tone-neutral) -> var(--pbui-tone-invented)
++   "components/atoms/Meter/Meter.module.css: var(--pbui-tone-invented)"
+(fail) design tokens resolve > every var(--pbui-…) in a stylesheet names a declared token
+ 1 fail
+
+$ # after restoring both
+ 362 pass, 0 fail, 7635 expect() calls
+```
