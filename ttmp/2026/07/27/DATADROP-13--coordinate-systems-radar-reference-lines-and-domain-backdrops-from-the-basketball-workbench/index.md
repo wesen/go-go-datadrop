@@ -1,7 +1,7 @@
 ---
 Title: 'Coordinate systems: radar, reference lines and domain backdrops from the basketball workbench'
 Ticket: DATADROP-13
-Status: active
+Status: review
 Topics:
     - frontend
     - design-system
@@ -14,10 +14,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-07-27T10:00:36.161627169-04:00
+LastUpdated: 2026-07-27T10:20:41.602618566-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Coordinate systems: radar, reference lines and domain backdrops from the basketball workbench
 
