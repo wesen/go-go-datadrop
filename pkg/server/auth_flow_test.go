@@ -258,6 +258,36 @@ func TestCallbackRejectsAFailedExchange(t *testing.T) {
 	}
 }
 
+func TestUnverifiedEmailIsRefusedByDefault(t *testing.T) {
+	srv, provider := newSignInServer(t)
+	provider.claims.EmailVerified = false
+
+	flow := startSignIn(t, srv, "")
+	rec := callback(t, srv, "?code=abc&state="+provider.lastState, flow)
+	if !strings.Contains(rec.Header().Get("Location"), "auth_error=email_unverified") {
+		t.Fatalf("location = %q", rec.Header().Get("Location"))
+	}
+	if _, err := srv.store.GetUserBySubject(
+		context.Background(), "https://idp.example/", "sub-ada"); err == nil {
+		t.Error("a refused sign-in still provisioned a user")
+	}
+}
+
+func TestUnverifiedEmailOptOutAllowsSignIn(t *testing.T) {
+	srv, provider := newSignInServer(t)
+	provider.claims.EmailVerified = false
+
+	// The local compose stack has no SMTP; this explicit opt-out is what lets a
+	// self-registered user sign in there while exported server.Config remains
+	// safe when the field is omitted.
+	srv.cfg.OIDC.RequireVerifiedEmail = false
+	flow := startSignIn(t, srv, "")
+	rec := callback(t, srv, "?code=abc&state="+provider.lastState, flow)
+	if strings.Contains(rec.Header().Get("Location"), "auth_error") {
+		t.Fatalf("with the check off, the sign-in should proceed: %q", rec.Header().Get("Location"))
+	}
+}
+
 func TestUnverifiedEmailIsRefusedWhenRequired(t *testing.T) {
 	srv, provider := newSignInServer(t)
 	srv.cfg.OIDC.RequireVerifiedEmail = true

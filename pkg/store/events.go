@@ -99,6 +99,10 @@ func (s *Store) AppendEvent(ctx context.Context, e datadrop.Envelope) (datadrop.
 			if getErr != nil {
 				return datadrop.Envelope{}, errors.Wrapf(err, "store: append event %q", e.ID)
 			}
+			if existing.Drop != e.Drop || existing.Stream != e.Stream {
+				return datadrop.Envelope{}, errors.Wrapf(ErrConflict,
+					"event id %q already exists outside %s/%s", e.ID, e.Drop, e.Stream)
+			}
 			return existing, errors.Wrapf(ErrAlreadyExists, "event %q", e.ID)
 		}
 		if isForeignKeyViolation(err) {

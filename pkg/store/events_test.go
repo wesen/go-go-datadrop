@@ -259,6 +259,35 @@ func TestAppendEventIsIdempotentByID(t *testing.T) {
 	}
 }
 
+func TestAppendEventIDCollisionOutsideDestinationIsConflict(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	newTestDrop(t, st, "greenhouse")
+	newTestDrop(t, st, "orchard")
+
+	if _, err := st.AppendEvent(ctx, datadrop.Envelope{
+		Drop: "greenhouse", ID: "fixed-id", Data: json.RawMessage(`{"from":"greenhouse"}`),
+	}); err != nil {
+		t.Fatalf("first append: %v", err)
+	}
+
+	if leaked, err := st.AppendEvent(ctx, datadrop.Envelope{
+		Drop: "orchard", ID: "fixed-id", Data: json.RawMessage(`{"from":"orchard"}`),
+	}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("cross-drop collision returned (%+v, %v), want ErrConflict", leaked, err)
+	} else if leaked.ID != "" || leaked.Drop != "" || leaked.Seq != 0 {
+		t.Fatalf("cross-drop collision leaked the original event: %+v", leaked)
+	}
+
+	if leaked, err := st.AppendEvent(ctx, datadrop.Envelope{
+		Drop: "greenhouse", Stream: "archive", ID: "fixed-id", Data: json.RawMessage(`{"from":"archive"}`),
+	}); !errors.Is(err, ErrConflict) {
+		t.Fatalf("cross-stream collision returned (%+v, %v), want ErrConflict", leaked, err)
+	} else if leaked.ID != "" || leaked.Drop != "" || leaked.Seq != 0 {
+		t.Fatalf("cross-stream collision leaked the original event: %+v", leaked)
+	}
+}
+
 // A duplicate ID must not burn a sequence number.
 func TestAppendEventReplayDoesNotConsumeASequence(t *testing.T) {
 	ctx := context.Background()

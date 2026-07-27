@@ -49,10 +49,15 @@ type OIDCConfig struct {
 	// Scopes requested from the provider. These are OAuth scopes, not datadrop
 	// scopes; the two never mix.
 	Scopes []string
-	// RequireVerifiedEmail refuses a sign-in whose email_verified claim is
-	// false. Defaults to true in code: the safe value belongs where it applies
-	// to every deployment that does not explicitly opt out.
+	// RequireVerifiedEmail refuses a sign-in whose email_verified claim is false.
+	// New defaults it to true for OIDC unless AllowUnverifiedEmail is set, because
+	// the safe value belongs where it applies to every embedding, not just the
+	// CLI's flag defaults.
 	RequireVerifiedEmail bool
+	// AllowUnverifiedEmail is the explicit opt-out for local identity providers
+	// that cannot send verification email. It exists because a plain bool cannot
+	// distinguish "omitted" from "intentionally false".
+	AllowUnverifiedEmail bool
 	// SessionLifetime is absolute and is never extended by activity.
 	SessionLifetime time.Duration
 	// SessionIdle expires a session that has not been used. A non-positive
@@ -187,6 +192,9 @@ func New(cfg Config, st *store.Store, blobs *blob.Store) (*Server, error) {
 	if cfg.Auth == AuthToken && cfg.Token == "" {
 		return nil, errors.New("server: auth mode \"token\" requires a token")
 	}
+	if cfg.Auth == AuthOIDC && !cfg.OIDC.AllowUnverifiedEmail {
+		cfg.OIDC.RequireVerifiedEmail = true
+	}
 	// Defaults for the session deadlines. Filled in here rather than left zero
 	// because a zero SessionIdle disables the idle check entirely, and a
 	// fail-open default should not be reachable by forgetting a field.
@@ -291,10 +299,10 @@ func (s *Server) Handler() http.Handler {
 	return chain(mux,
 		s.recoverMiddleware,
 		s.requestIDMiddleware,
-		s.loggingMiddleware,
-		// Innermost, so a panic while resolving a credential is still caught
-		// and still carries a request id. It never rejects; see resolve.
+		// After request IDs and before logging: a resolver panic is still caught
+		// with an ID, and the access log sees the resolved actor.
 		s.principalMiddleware,
+		s.loggingMiddleware,
 	)
 }
 

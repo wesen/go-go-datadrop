@@ -79,6 +79,22 @@ func TestUpsertUserKeysOnIssuerAndSubject(t *testing.T) {
 	}
 }
 
+func TestFindUserByEmailRefusesAmbiguousMatches(t *testing.T) {
+	st := newTestStore(t)
+	ctx := context.Background()
+
+	if _, err := st.UpsertUser(ctx, "https://idp-a.example/", "sub-a", "shared@example.org", "A"); err != nil {
+		t.Fatalf("upsert a: %v", err)
+	}
+	if _, err := st.UpsertUser(ctx, "https://idp-b.example/", "sub-b", "shared@example.org", "B"); err != nil {
+		t.Fatalf("upsert b: %v", err)
+	}
+
+	if _, err := st.FindUserByEmail(ctx, "shared@example.org"); !errors.Is(err, ErrConflict) {
+		t.Fatalf("FindUserByEmail returned %v, want ErrConflict for duplicate email", err)
+	}
+}
+
 func TestUserDisplayNameNeverEmpty(t *testing.T) {
 	cases := []struct {
 		user datadrop.User

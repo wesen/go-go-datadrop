@@ -105,8 +105,35 @@ func (s *Store) FindUserByEmail(ctx context.Context, email string) (datadrop.Use
 		return datadrop.User{}, errors.Wrap(ErrNotFound, "user")
 	}
 	// NOCASE-insensitive comparison via lower(): addresses are handed around by
-	// people, who capitalise them inconsistently.
-	return s.userBy(ctx, `lower(email) = lower(?)`, email)
+	// people, who capitalise them inconsistently. Read up to two rows rather than
+	// using QueryRow: email is not unique, and guessing among duplicates would
+	// let a member invitation target the wrong OIDC identity.
+	rows, err := s.db.QueryContext(ctx,
+		`SELECT `+userColumns+` FROM users WHERE lower(email) = lower(?) LIMIT 2`, email)
+	if err != nil {
+		return datadrop.User{}, errors.Wrap(err, "store: find user by email")
+	}
+	defer func() { _ = rows.Close() }()
+
+	matches := []datadrop.User{}
+	for rows.Next() {
+		user, err := scanUser(rows)
+		if err != nil {
+			return datadrop.User{}, errors.Wrap(err, "store: scan user")
+		}
+		matches = append(matches, user)
+	}
+	if err := rows.Err(); err != nil {
+		return datadrop.User{}, errors.Wrap(err, "store: find user by email")
+	}
+	switch len(matches) {
+	case 0:
+		return datadrop.User{}, errors.Wrap(ErrNotFound, "user")
+	case 1:
+		return matches[0], nil
+	default:
+		return datadrop.User{}, errors.Wrap(ErrConflict, "email matches multiple users")
+	}
 }
 
 // SetUserDisabled locks or unlocks an account within datadrop, leaving the

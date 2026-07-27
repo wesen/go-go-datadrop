@@ -135,11 +135,12 @@ func (r *statusRecorder) Flush() {
 
 // principalMiddleware resolves the caller once and puts them in the context.
 //
-// It runs innermost so that a panic during resolution is still caught by
-// recoverMiddleware and still carries a request id. It never writes a response:
-// rejection is a per-handler decision, because the required role and scope are
-// per-handler facts. A resolver that wrote its own 401 would make /healthz and
-// the SPA shell unreachable without special-casing.
+// It runs after requestIDMiddleware and before loggingMiddleware: a panic during
+// resolution is still caught by recoverMiddleware and still carries a request
+// id, while the completed access log can record the resolved actor. It never
+// writes a response: rejection is a per-handler decision, because the required
+// role and scope are per-handler facts. A resolver that wrote its own 401 would
+// make /healthz and the SPA shell unreachable without special-casing.
 func (s *Server) principalMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		next.ServeHTTP(w, r.WithContext(auth.WithPrincipal(r.Context(), s.resolve(r))))

@@ -297,6 +297,7 @@ func resolveAuth(opts *serveSettings) (server.Config, error) {
 			ClientSecret:         opts.OIDCClientSecret,
 			Scopes:               []string{"openid", "profile", "email"},
 			RequireVerifiedEmail: opts.RequireVerified,
+			AllowUnverifiedEmail: !opts.RequireVerified,
 			SessionLifetime:      opts.sessionLifetime,
 			SessionIdle:          opts.sessionIdle,
 		},

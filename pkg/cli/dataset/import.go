@@ -135,8 +135,15 @@ func (c *ImportCommand) RunIntoGlazeProcessor(
 	}
 	if result.Truncated {
 		fmt.Fprintf(os.Stderr,
-			"note: stopped at the %d-row limit; pass --max-rows to raise it\n", s.MaxRows)
+			"note: stopped at %s; pass --max-rows to raise it\n", importLimitDescription(s.MaxRows))
 	}
 
 	return gp.AddRow(ctx, ddcli.RowForImportResult(result))
+}
+
+func importLimitDescription(maxRows int) string {
+	if maxRows > 0 {
+		return fmt.Sprintf("the %d-row limit", maxRows)
+	}
+	return "the server's row limit"
 }
