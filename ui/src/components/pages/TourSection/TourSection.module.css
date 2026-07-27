@@ -1,0 +1,84 @@
+.section {
+  padding: var(--pbui-space-6) 0 var(--pbui-space-4);
+  border-top: var(--pbui-border-grid);
+}
+
+.heading {
+  display: flex;
+  align-items: baseline;
+  gap: var(--pbui-space-4);
+  margin-bottom: var(--pbui-space-3);
+  flex-wrap: wrap;
+}
+
+.tag {
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  padding: 3px 12px;
+  font-size: var(--pbui-fs-small);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-banner);
+  flex-shrink: 0;
+}
+
+.title {
+  margin: 0;
+  font-size: var(--pbui-fs-title);
+  font-weight: 700;
+}
+
+.blurb {
+  max-width: 900px;
+  margin-bottom: var(--pbui-space-4);
+}
+
+/*
+ * The height lives on this wrapper, NOT on the instance.
+ *
+ * It was on the instance — passed through as a className — until the full-frame
+ * control went in and did not work: `position: fixed; inset: 0` sets top and
+ * bottom, but an explicit `height` on the same element wins, so an expanded
+ * §C stayed 820px tall inside an 800px window and overflowed. Specificity was
+ * only the proximate cause; the real mistake was two rules from two files
+ * arguing about one element's height.
+ *
+ * Putting it on a wrapper settles it and buys something else: when the instance
+ * goes `position: fixed` it leaves the flow, and this box holds its place — so
+ * the page does not jump under the reader as they expand and collapse.
+ *
+ * 720px, up from the 520 this shipped with. The first version put the lesson
+ * rail beside the workbench, so the tiles had two thirds of the width and 520
+ * was merely tight; with the rail moved INSIDE as a tile, §A has three tiles
+ * sharing that band and §C has five. At 520 the pipeline tile showed two steps
+ * and a scrollbar, which teaches "this application is cramped" rather than
+ * anything about pipelines.
+ *
+ * A section knows how crowded its own layout is; the shell does not (DR-51).
+ * And beyond a point no height fits on a scrolling page at all, which is what
+ * the full-frame control in the shell chrome is for.
+ */
+.body {
+  display: flex;
+  height: 720px;
+}
+
+/* §C and the brief open on five tiles and earn the extra. */
+.tall {
+  height: 820px;
+}
+
+/*
+ * Below 900px, shorter — a phone in portrait has no 720px to spare, and a page
+ * where every section claims one is a page nobody scrolls to the end of.
+ *
+ * A media query rather than the prototype's `useNarrow` resize listener
+ * (pbui-landing.jsx:2076): the decision is a layout one, CSS can make it, and a
+ * JS listener re-renders the whole section on every resize frame to do what one
+ * rule does for free.
+ */
+@media (max-width: 900px) {
+  .body,
+  .tall {
+    height: 560px;
+  }
+}

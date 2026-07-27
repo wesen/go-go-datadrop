@@ -1,0 +1,48 @@
+/*
+ * No border, no shadow, no header. The tile draws the frame and writes
+ * "MODULES" across the top of it; a rack that did the same produced a box
+ * inside a box with the title twice.
+ */
+.rack {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.groups {
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  border-bottom: var(--pbui-border-rule);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-2);
+  flex-shrink: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--pbui-space-2);
+  margin-bottom: var(--pbui-space-3);
+}
+
+/*
+ * Doubled selectors for the reason LessonStep.module.css gives: these override
+ * `Button.module.css`'s `.framed` background, and two single-class rules are
+ * settled by stylesheet order rather than by intent.
+ */
+.chip.chip {
+  background: var(--pbui-pane);
+}
+
+.active.active {
+  background: var(--pbui-selected);
+}
+
+.detail {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: var(--pbui-space-4);
+}

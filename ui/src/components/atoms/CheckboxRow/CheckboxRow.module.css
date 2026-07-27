@@ -1,0 +1,29 @@
+/*
+ * The gap replaces the literal `{" "}` the hand-written version used between
+ * the input and its text. A JSX space is invisible in a diff and disappears the
+ * first time someone reformats the file.
+ */
+.root {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  cursor: pointer;
+  min-width: 0;
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+
+.root:has(input:disabled) {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.root input {
+  margin: 0;
+  flex-shrink: 0;
+}

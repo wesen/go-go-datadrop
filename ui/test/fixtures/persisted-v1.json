@@ -1,0 +1,391 @@
+{
+  "version": 1,
+  "world": {
+    "docs": {
+      "8f2c0f9e-1d3a-4a7b-9c11-2b7e5a0d4f31": {
+        "id": "8f2c0f9e-1d3a-4a7b-9c11-2b7e5a0d4f31",
+        "name": "α",
+        "limit": 2000,
+        "spec": {
+          "source": {
+            "kind": "stream",
+            "drop": "sensors",
+            "stream": "readings"
+          },
+          "steps": [
+            {
+              "id": "s1",
+              "kind": "filter",
+              "on": true,
+              "field": "data.temp_c",
+              "op": ">",
+              "value": "20"
+            }
+          ],
+          "geom": "point",
+          "mapping": {
+            "x": "time",
+            "y": "data.temp_c",
+            "color": "data.station",
+            "size": null,
+            "facet": null
+          },
+          "yScale": "linear"
+        }
+      }
+    },
+    "docOrder": ["8f2c0f9e-1d3a-4a7b-9c11-2b7e5a0d4f31"],
+    "activeDocId": "8f2c0f9e-1d3a-4a7b-9c11-2b7e5a0d4f31",
+    "snapshots": {},
+    "snapshotOrder": [],
+    "pins": [null, null],
+    "watch": []
+  },
+  "layout": {
+    "spaces": [
+      {
+        "id": "ws-welcome",
+        "name": "welcome",
+        "pinned": true,
+        "tree": {
+          "id": "29569510-09ac-4e4d-a27d-e4105007e958",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "7a223946-1c90-4c28-8e9d-11b04a81ae0d",
+            "type": "leaf",
+            "app": "signin",
+            "docId": null
+          },
+          "b": {
+            "id": "4099dad1-3e32-4665-b6a8-b2f3c12f54f8",
+            "type": "leaf",
+            "app": "about",
+            "docId": null
+          },
+          "ratio": 0.42
+        }
+      },
+      {
+        "id": "ws-account",
+        "name": "account",
+        "pinned": true,
+        "tree": {
+          "id": "eab0670b-9520-4fe3-a897-3d719da61a22",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "e7f4690c-13a5-4c02-a738-7e0af90931f9",
+            "type": "leaf",
+            "app": "profile",
+            "docId": null
+          },
+          "b": {
+            "id": "1d5a2e23-1828-4b8c-9879-477d6bc1bb43",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "c37dcd2a-432a-4068-b6d8-940ab90672d1",
+              "type": "leaf",
+              "app": "tokens",
+              "docId": null
+            },
+            "b": {
+              "id": "c536ceb4-c36b-4cdb-910e-6134826e8631",
+              "type": "leaf",
+              "app": "upload",
+              "docId": null
+            },
+            "ratio": 0.55
+          },
+          "ratio": 0.38
+        }
+      },
+      {
+        "id": "5383e2ff-771c-4ccc-ac85-6e50f5c35cee",
+        "name": "my cockpit",
+        "tree": {
+          "id": "7957454f-63d0-47fa-864b-7febb6c2a300",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "06b16552-8e69-48d8-979f-8c8f0e48ceae",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "ecf7dc61-497c-42c5-a097-5b74d9926ab7",
+              "type": "leaf",
+              "app": "pipeline",
+              "docId": null
+            },
+            "b": {
+              "id": "89b4f0f7-0978-4c5f-98af-caed194bdc76",
+              "type": "leaf",
+              "app": "encode",
+              "docId": null
+            },
+            "ratio": 0.55
+          },
+          "b": {
+            "id": "6c23585d-e341-40a9-92b1-451c9d54d0a7",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "d14e821b-5481-4907-935d-b7283ebfadab",
+              "type": "leaf",
+              "app": "chart",
+              "docId": null
+            },
+            "b": {
+              "id": "9031d4e3-999c-44a3-bb51-4c7c5b6c09d8",
+              "type": "leaf",
+              "app": "table",
+              "docId": null
+            },
+            "ratio": 0.6
+          },
+          "ratio": 0.4
+        }
+      },
+      {
+        "id": "9777d2c4-3946-4f5a-981f-48775a0d7d70",
+        "name": "explore",
+        "tree": {
+          "id": "c60c7ed1-97dc-4e67-b72a-38f56541731c",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "08254e91-703e-429b-9302-b6a93f268593",
+            "type": "leaf",
+            "app": "sources",
+            "docId": null
+          },
+          "b": {
+            "id": "25400636-d046-4813-9673-6e6d402abc14",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "2bd559b6-37d2-40ca-abc5-e8f7d9c5ec14",
+              "type": "leaf",
+              "app": "chart",
+              "docId": null
+            },
+            "b": {
+              "id": "646a3b9b-e583-4ea1-aa3c-18a9c15022a7",
+              "type": "leaf",
+              "app": "inspector",
+              "docId": null
+            },
+            "ratio": 0.6
+          },
+          "ratio": 0.34
+        }
+      },
+      {
+        "id": "8033842e-64c1-4852-861f-387c55c8f9c7",
+        "name": "gallery",
+        "tree": {
+          "id": "98d0af60-3eb8-4d7c-82f1-b758544693e0",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "5702d676-eb4d-487a-991d-d032a61a6c98",
+            "type": "leaf",
+            "app": "charts",
+            "docId": null
+          },
+          "b": {
+            "id": "09250afc-1038-4c1e-9954-c4b998a5ef25",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "ca4f2e4f-33d9-469e-b13e-b57554006a8f",
+              "type": "leaf",
+              "app": "gallery",
+              "docId": null
+            },
+            "b": {
+              "id": "11937fb5-2d14-424a-b515-aa6eea92de15",
+              "type": "leaf",
+              "app": "compare",
+              "docId": null
+            },
+            "ratio": 0.5
+          },
+          "ratio": 0.4
+        }
+      },
+      {
+        "id": "7ccd5550-e633-40fb-9714-c80af3d1942a",
+        "name": "1·objects",
+        "tree": {
+          "id": "af7bbcb1-f819-4c63-9c75-ba3c5ee8723b",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "82112ca2-2e9d-42bd-82ea-bbc809c202a8",
+            "type": "leaf",
+            "app": "tut1",
+            "docId": null
+          },
+          "b": {
+            "id": "8309a135-9921-4fbe-b03c-b9b7cb8ee6d7",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "c727320d-51f8-454f-9c07-2ea8a3765fa8",
+              "type": "leaf",
+              "app": "sources",
+              "docId": null
+            },
+            "b": {
+              "id": "05bc3fbc-51a3-4df6-b7f4-d86bc8485053",
+              "type": "leaf",
+              "app": "inspector",
+              "docId": null
+            },
+            "ratio": 0.55
+          },
+          "ratio": 0.44
+        }
+      },
+      {
+        "id": "2079c05c-6ba1-4d9d-ba2e-ae8669cc99f3",
+        "name": "2·pipeline",
+        "tree": {
+          "id": "400ae580-bd31-4470-a284-9166d108b384",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "36753f16-49ad-44d5-88f6-eb0a0156682b",
+            "type": "leaf",
+            "app": "tut2",
+            "docId": null
+          },
+          "b": {
+            "id": "b817de3e-b369-4db0-ae26-21839b5083aa",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "37c2a096-8f0f-421d-8c94-a2d706156611",
+              "type": "leaf",
+              "app": "pipeline",
+              "docId": null
+            },
+            "b": {
+              "id": "cabc54f4-fc71-4d78-b0eb-3dd63eb5b3fb",
+              "type": "leaf",
+              "app": "table",
+              "docId": null
+            },
+            "ratio": 0.5
+          },
+          "ratio": 0.42
+        }
+      },
+      {
+        "id": "b13ec24a-0937-4bb9-9f12-e1280f71a669",
+        "name": "3·encode",
+        "tree": {
+          "id": "127ecc00-a891-4efa-96cb-2caf4e44d3a5",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "cecf4161-4eff-4b3e-a7e1-4f2d994b1381",
+            "type": "leaf",
+            "app": "tut3",
+            "docId": null
+          },
+          "b": {
+            "id": "79ae4a03-04ea-46d9-b8b6-3eff8b723865",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "e4db1fda-5b3b-494b-a020-4bbf78e261ee",
+              "type": "leaf",
+              "app": "encode",
+              "docId": null
+            },
+            "b": {
+              "id": "e0273013-2978-4574-a38a-9df7b2942aa1",
+              "type": "leaf",
+              "app": "chart",
+              "docId": null
+            },
+            "ratio": 0.45
+          },
+          "ratio": 0.42
+        }
+      },
+      {
+        "id": "02b05629-5d59-43e1-91f2-586f012bbc14",
+        "name": "4·docs",
+        "tree": {
+          "id": "9f8c8df4-1e54-4b2b-8522-ea8e1e8b62df",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "5ab8c954-7c35-4e03-8e6e-a7aa93e9c053",
+            "type": "leaf",
+            "app": "tut4",
+            "docId": null
+          },
+          "b": {
+            "id": "adf6ad29-c992-46af-8339-5e7aca5ecf4e",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "d564aa05-1cd4-4217-9c28-17d039114c48",
+              "type": "leaf",
+              "app": "charts",
+              "docId": null
+            },
+            "b": {
+              "id": "6cdad5cd-c944-463b-904e-dbbb63aadf77",
+              "type": "leaf",
+              "app": "gallery",
+              "docId": null
+            },
+            "ratio": 0.55
+          },
+          "ratio": 0.42
+        }
+      },
+      {
+        "id": "064f4f20-1fb4-44c7-8a89-a935f1bb741f",
+        "name": "help",
+        "tree": {
+          "id": "36ca1067-da6a-463c-947e-cffc7014a42d",
+          "type": "split",
+          "dir": "row",
+          "a": {
+            "id": "fcbd5cde-6639-4f53-9018-f547496afee4",
+            "type": "leaf",
+            "app": "about",
+            "docId": null
+          },
+          "b": {
+            "id": "58c16631-b9ea-42c6-adb0-fdb7d19fa657",
+            "type": "split",
+            "dir": "col",
+            "a": {
+              "id": "274478e2-c634-4e24-b1cf-7d36c9cd651c",
+              "type": "leaf",
+              "app": "watch",
+              "docId": null
+            },
+            "b": {
+              "id": "69f6b953-4dd1-4e18-bbb1-3dbff690e9df",
+              "type": "leaf",
+              "app": "trace",
+              "docId": null
+            },
+            "ratio": 0.45
+          },
+          "ratio": 0.55
+        }
+      }
+    ],
+    "currentSpaceId": "5383e2ff-771c-4ccc-ac85-6e50f5c35cee"
+  }
+}

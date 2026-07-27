@@ -1,0 +1,8 @@
+.badge {
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+  border-bottom: 1px dotted var(--pbui-faint);
+  cursor: help;
+}

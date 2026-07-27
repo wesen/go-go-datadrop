@@ -30,9 +30,8 @@ Use capture-pane to read the output.
 
 <goGuidelines>
 - When implementing go interfaces, use the var _ Interface = &Foo{} to make sure the interface is always implemented correctly.
-- When building web applications, use bootstrap CSS unless otherwise indicated.
 - Always use a context argument when appropriate.
-- Use cobra for command-line applications.
+- Use glazed command framework for command-line applications.
 - Use the "defaults" package name, instead of "default" package name, as it's reserved in go.
 - Use github.com/pkg/errors for wrapping errors.
 - When starting goroutines, use errgroup.
@@ -48,12 +47,58 @@ Use capture-pane to read the output.
 </libraryGuidelines>
 
 <webGuidelines>
+- The frontend lives in `ui/`. Run its scripts as `bun run --cwd=ui <script>` —
+  the equals sign is mandatory; `bun run --cwd ui X` silently runs in the wrong
+  directory.
 - Use bun, react and rtk-query. Use typescript.
-- Use bootstrap for styling.
 - Store css, html and js in different files in a static directory.
 - Use go:embed to serve static files.
 - Always serve static files under /static/ URL paths, never directly under functional paths like /admin/
 </webGuidelines>
+
+<diaryGuidelines>
+ALWAYS keep a detailed diary while working on a ticket, and ALWAYS commit at
+appropriate intervals. This is not optional and it is not something to be
+remembered only when asked. Do it from the first step, not retroactively at the
+end — a backfilled diary loses exactly the thing it exists to capture, which is
+what was tried and did not work.
+
+- Load the `diary` skill for the required step format. Every step needs the
+  prose paragraphs, the `Prompt Context` block with the user's prompt verbatim,
+  and the `What didn't work` / `What was tricky to build` /
+  `What warrants a second pair of eyes` sections.
+- The diary lives in the ticket: `docmgr doc add --ticket TICKET --doc-type reference --title "Diary"`.
+- The working loop per step: implement, format, test, commit the code, check the
+  task with `docmgr task check`, write the diary step with the commit hash,
+  update the changelog with `docmgr changelog update`, commit the docs.
+- Record failures with the exact error text, the command and the version. A step
+  that only records what worked is a step that will be repeated by the next
+  person hitting the same wall.
+- Commit at intervals that make `git diff` reviewable: one commit per phase or
+  per coherent change, never one commit at the end of a day's work.
+</diaryGuidelines>
+
+<parallelAgentGuidelines>
+Two or more agents may be working in this checkout at the same time, on tickets
+whose file sets are disjoint. The branch is shared, so the git index is shared.
+
+- **Commit explicit paths, not the index.** Staging carefully is necessary and
+  *not sufficient*: `git commit` commits the whole index, including whatever the
+  other agent staged a second ago. Both agents on DATADROP-8/9 did stage explicit
+  paths, and commits leaked across tickets in both directions anyway. Use
+  `git commit -- <paths>` so the commit is limited to your files regardless of
+  what else is staged, and check `git diff --cached --name-only` first. Never
+  `git add -A`, `git add .` or `git commit -a`.
+- **`git rm` stages immediately.** `git rm --cached <f>` puts a deletion in the
+  shared index before you are ready to commit it. Prefer removing the file and
+  letting your own `git commit -- <paths>` pick the deletion up.
+- **`index.lock` contention is expected, not an error.** If a git command fails
+  with `Unable to create '.git/index.lock': File exists`, wait a couple of
+  seconds and retry once. Do not delete the lock file — the other agent is
+  mid-commit and removing it corrupts their index.
+- **Stay inside your ticket's file set.** If you need a change outside it, say so
+  in the diary and in your final report rather than making it.
+</parallelAgentGuidelines>
 
 <debuggingGuidelines>
 If me or you the LLM agent seem to go down too deep in a debugging/fixing rabbit hole in our conversations, remind me to take a breath and think about the bigger picture instead of hacking away. Say: "I think I'm stuck, let's TOUCH GRASS".  IMPORTANT: Don't try to fix errors by yourself more than twice in a row. Then STOP. Don't do anything else.

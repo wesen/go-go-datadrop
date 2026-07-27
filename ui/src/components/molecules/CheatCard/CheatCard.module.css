@@ -1,0 +1,53 @@
+/*
+ * No frame by default. The tile that holds this already has one.
+ */
+.card {
+  max-width: 560px;
+}
+
+.framed {
+  border: var(--pbui-border-firm);
+  background: var(--pbui-pane);
+}
+
+/*
+ * A rule under the label rather than a filled bar.
+ *
+ * The selected-yellow bar was reading as a second title bar directly beneath
+ * the tile's own, which is the doubling this component was corrected for. A
+ * hairline rule says "heading" without competing.
+ */
+.head {
+  border-bottom: var(--pbui-border-hair);
+  padding: var(--pbui-space-2) var(--pbui-space-4) var(--pbui-space-1);
+}
+
+.rows {
+  margin: 0;
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+}
+
+/*
+ * Each row is its own flex line rather than a grid over the whole list.
+ *
+ * A grid would align every gloss to the widest term across all rows, which for
+ * a card containing both "⠿ drag" and "the types" leaves the short terms
+ * stranded. A fixed 108px column is what the prototype settled on and it reads
+ * better than either alternative at this width.
+ */
+.row {
+  display: flex;
+  gap: var(--pbui-space-4);
+  margin-bottom: var(--pbui-space-2);
+}
+
+.term {
+  flex-shrink: 0;
+  width: 108px;
+  margin: 0;
+}
+
+.gloss {
+  margin: 0;
+  min-width: 0;
+}

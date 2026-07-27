@@ -1,0 +1,112 @@
+/*
+ * Two treatments, one component.
+ *
+ * `.framed` is the six `const btn` objects reconciled, property for property:
+ *
+ *     border:     var(--pbui-border-hair)
+ *     background: var(--pbui-pane-alt)
+ *     padding:    0 var(--pbui-space-3)
+ *     fontWeight: 700
+ *
+ * `.bare` reproduces what reset.css already does to an unstyled button, stated
+ * explicitly here so that the two treatments read as a deliberate pair rather
+ * than as "styled" and "forgot to style".
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--pbui-radius);
+  text-align: inherit;
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+
+.bare {
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+/* `color` before the background, and see `.raised` below for why it is stated
+ * rather than inherited. */
+.framed {
+  color: var(--pbui-ink-on-pane);
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-3);
+  font-weight: 700;
+}
+
+/*
+ * The heaviest of the three: a firm border, roomier padding, and a tone fill.
+ *
+ * It carried `--pbui-shadow-hard` as well, which is what originally
+ * distinguished it from `framed`. The offset shadows are off across the whole
+ * interface now (tokens.css says why), so `raised` is border weight and padding
+ * against `framed`'s hairline — still two clearly different controls, and
+ * without every button in a tile title bar casting a black rectangle onto the
+ * one beside it.
+ *
+ * The default fill is the alt surface, so a raised button with no `fill` still
+ * reads as a control rather than as an unfilled box.
+ */
+/*
+ * A control that paints its OWN pale background must state its own ink.
+ *
+ * `color: inherit` on `.root` is right on a pale surface and catastrophic on an
+ * inverted one: `Surface`'s `.inverted` re-points `--pbui-ink` to paper for
+ * every descendant, so the inherited colour is white and the background is
+ * `--pbui-pane-alt` — 1.13:1, found by a contrast sweep over the rendered page
+ * after DATADROP-8 put the first controls on the masthead.
+ *
+ * `--pbui-ink-on-pane` exists to be excluded from that re-point.
+ */
+.raised {
+  color: var(--pbui-ink-on-pane);
+  border: var(--pbui-border-firm);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-4);
+  font-weight: 700;
+}
+
+.danger {
+  color: var(--pbui-danger);
+}
+
+.selected {
+  background: var(--pbui-selected);
+}
+
+/*
+ * Every hand-written site that dimmed a button also set `disabled`, so the
+ * opacity was the disabled treatment all along — written out longhand at each
+ * call site as `opacity: index === 0 ? 0.4 : 1`. Attaching it to `:disabled`
+ * means a disabled button cannot look enabled, which is the failure that shape
+ * invites.
+ *
+ * **0.55, not the 0.4 those call sites used.** Composited over --pbui-pane-alt,
+ * --pbui-ink at 0.4 measures 2.32:1 — under the 3:1 a disabled control should
+ * still clear, and a disabled control is not exempt from being *read*. 0.55
+ * gives 3.45:1 on the alt surface and 3.56:1 on the pane, and it is not a new
+ * number: Chip.module.css has used exactly 0.55 for `.disabled` since
+ * DATADROP-4, for the same reason.
+ *
+ * Deferred out of phase 2 deliberately — it is a visual change, and a
+ * substitution commit that also changes appearance is one nobody can verify by
+ * reading (DATADROP-6 phase 6).
+ */
+.root:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

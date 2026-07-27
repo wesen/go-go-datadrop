@@ -1,0 +1,37 @@
+/*
+ * A series at a glance.
+ *
+ * `preserveAspectRatio: none` on the element plus vector-effect on the stroke:
+ * the box stretches to whatever the caller sizes it, and the line stays one
+ * pixel wide rather than being scaled into a wedge.
+ */
+.sparkline {
+  display: block;
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+}
+
+.line {
+  fill: none;
+  stroke: var(--pbui-tone-field);
+  stroke-width: 1.4;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+  vector-effect: non-scaling-stroke;
+}
+
+/* Any point at or above the threshold recolours the whole line. The series is
+ * one object; colouring only the offending segment implies the rest is fine,
+ * which is the opposite of what crossing a budget means. */
+.line[data-over="true"] {
+  stroke: var(--pbui-danger);
+}
+
+.threshold {
+  stroke: var(--pbui-danger);
+  stroke-width: 1;
+  stroke-dasharray: 3 2;
+  opacity: 0.7;
+  vector-effect: non-scaling-stroke;
+}

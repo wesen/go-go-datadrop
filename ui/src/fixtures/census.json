@@ -1,0 +1,192 @@
+{
+  "source": {
+    "kind": "dataset",
+    "drop": "lab",
+    "dataset": "census",
+    "version": 2,
+    "path": "rows.csv"
+  },
+  "fields": [
+    {
+      "name": "station_id",
+      "type": "n",
+      "inferred_from": "schema",
+      "distinct": 24,
+      "distinct_capped": false,
+      "null_count": 0
+    },
+    {
+      "name": "region",
+      "type": "n",
+      "inferred_from": "values",
+      "distinct": 3,
+      "distinct_capped": false,
+      "null_count": 0
+    },
+    {
+      "name": "population",
+      "type": "q",
+      "inferred_from": "schema",
+      "distinct": 24,
+      "distinct_capped": false,
+      "null_count": 0
+    },
+    {
+      "name": "area_km2",
+      "type": "q",
+      "inferred_from": "values",
+      "distinct": 24,
+      "distinct_capped": false,
+      "null_count": 0
+    }
+  ],
+  "rows": [
+    {
+      "station_id": "001",
+      "region": "north",
+      "population": 4095,
+      "area_km2": 46.46
+    },
+    {
+      "station_id": "002",
+      "region": "south",
+      "population": 2549,
+      "area_km2": 74.41
+    },
+    {
+      "station_id": "003",
+      "region": "coastal",
+      "population": 1080,
+      "area_km2": 43.06
+    },
+    {
+      "station_id": "004",
+      "region": "north",
+      "population": 3698,
+      "area_km2": 67.13
+    },
+    {
+      "station_id": "005",
+      "region": "south",
+      "population": 1892,
+      "area_km2": 60.9
+    },
+    {
+      "station_id": "006",
+      "region": "coastal",
+      "population": 2193,
+      "area_km2": 53.55
+    },
+    {
+      "station_id": "007",
+      "region": "north",
+      "population": 3221,
+      "area_km2": 45.6
+    },
+    {
+      "station_id": "008",
+      "region": "south",
+      "population": 2539,
+      "area_km2": 74.07
+    },
+    {
+      "station_id": "009",
+      "region": "coastal",
+      "population": 2645,
+      "area_km2": 61.91
+    },
+    {
+      "station_id": "010",
+      "region": "north",
+      "population": 4628,
+      "area_km2": 55.05
+    },
+    {
+      "station_id": "011",
+      "region": "south",
+      "population": 2747,
+      "area_km2": 60.25
+    },
+    {
+      "station_id": "012",
+      "region": "coastal",
+      "population": 1538,
+      "area_km2": 48.5
+    },
+    {
+      "station_id": "013",
+      "region": "north",
+      "population": 2175,
+      "area_km2": 54.1
+    },
+    {
+      "station_id": "014",
+      "region": "south",
+      "population": 3044,
+      "area_km2": 70.82
+    },
+    {
+      "station_id": "015",
+      "region": "coastal",
+      "population": 2828,
+      "area_km2": 57.27
+    },
+    {
+      "station_id": "016",
+      "region": "north",
+      "population": 5565,
+      "area_km2": 51.46
+    },
+    {
+      "station_id": "017",
+      "region": "south",
+      "population": 2400,
+      "area_km2": 58.28
+    },
+    {
+      "station_id": "018",
+      "region": "coastal",
+      "population": 3215,
+      "area_km2": 62.07
+    },
+    {
+      "station_id": "019",
+      "region": "north",
+      "population": 3673,
+      "area_km2": 60.41
+    },
+    {
+      "station_id": "020",
+      "region": "south",
+      "population": 3545,
+      "area_km2": 48.18
+    },
+    {
+      "station_id": "021",
+      "region": "coastal",
+      "population": 3213,
+      "area_km2": 68.17
+    },
+    {
+      "station_id": "022",
+      "region": "north",
+      "population": 3721,
+      "area_km2": 58.92
+    },
+    {
+      "station_id": "023",
+      "region": "south",
+      "population": 3503,
+      "area_km2": 61.4
+    },
+    {
+      "station_id": "024",
+      "region": "coastal",
+      "population": 4116,
+      "area_km2": 33.84
+    }
+  ],
+  "row_count": 24,
+  "truncated": false,
+  "strategy": "head"
+}

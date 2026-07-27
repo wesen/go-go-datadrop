@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="DATALAB">
+  <!--
+    The mark, as geometry rather than as a raster.
+
+    An SVG because it is what this codebase can honestly ship: the bundle is
+    embedded in a Go binary and served offline, so the icon has to be small,
+    dependency-free, and crisp at 16px as well as at 512. A PNG would mean
+    shipping four sizes and still being soft on a HiDPI tab strip.
+
+    Proportions are taken from the source artwork as fractions of its 1250px
+    square, so the mark reads the same at any size: the D occupies the middle
+    46%, the rule and its series sit on the 72% line, and everything is inset
+    18% from the left edge.
+
+    The four squares are the categorical palette from model/plot.ts. A chart's
+    first four series are exactly these colours, so the icon is made of the
+    thing the application draws rather than of a separate brand palette that
+    could drift away from it.
+  -->
+  <rect width="64" height="64" rx="11" fill="#f7f2ec"/>
+
+  <!--
+    The D, with its right edge chamfered top and bottom.
+
+    Zero radius and a cut corner rather than a curve, which is the same
+    geometry every surface in the workbench uses (§10.3 rule 1: no radius, and
+    a deliberate exception must name itself). The rounded frame is that
+    exception, and it is the platform's, not ours — an app icon is masked to a
+    superellipse whatever we draw.
+  -->
+  <path fill="#23262b" d="M15 10h28l8 8v18l-8 8H15z"/>
+  <path fill="#f7f2ec" d="M25 18h10l5 5v7l-5 5H25z"/>
+
+  <!--
+    The rule, and the four series it introduces.
+
+    It sits at 80% rather than centred under the D, and it runs past the D's
+    right edge. Both are deliberate: the mark reads as a letter with a chart
+    beneath it, and a rule that stopped where the letter stops would read as an
+    underline instead.
+  -->
+  <rect x="11" y="51" width="24" height="3.5" fill="#23262b"/>
+  <rect x="36" y="51" width="4.5" height="3.5" fill="#7a9a6b"/>
+  <rect x="41.5" y="51" width="4.5" height="3.5" fill="#8f7bb0"/>
+  <rect x="47" y="51" width="4.5" height="3.5" fill="#d6a419"/>
+  <rect x="52.5" y="51" width="4.5" height="3.5" fill="#c0504d"/>
+</svg>

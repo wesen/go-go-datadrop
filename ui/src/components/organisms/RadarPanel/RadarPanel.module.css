@@ -1,0 +1,49 @@
+/*
+ * A radar chart.
+ *
+ * The polygons are translucent so overlaps stay readable — which is also why
+ * buildRadar caps at three series: past that, translucency stops helping and
+ * the shapes become one wash.
+ */
+.row {
+  display: flex;
+  gap: var(--pbui-space-3);
+  align-items: flex-start;
+  flex-wrap: wrap;
+}
+
+.chart {
+  flex: 0 0 auto;
+  max-width: 100%;
+  height: auto;
+}
+
+.legend {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.ring {
+  fill: none;
+  stroke: var(--pbui-line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.spoke {
+  stroke: var(--pbui-line);
+  stroke-width: 1;
+  vector-effect: non-scaling-stroke;
+}
+
+.axisLabel {
+  font-size: 9px;
+  font-weight: 700;
+  fill: var(--pbui-ink);
+}
+
+.series {
+  fill-opacity: 0.22;
+  stroke-width: 2;
+  vector-effect: non-scaling-stroke;
+}

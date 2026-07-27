@@ -1,0 +1,12 @@
+# Tasks
+
+## TODO
+
+- [x] Phase 1 — model/format.ts (kfmt, msfmt, clamp) and the three atoms: Meter, Sparkline, CodeLine, each with CSS module, barrel and stories <!-- t:kgto -->
+- [x] Phase 2 — MoreBar, JsonBlock, KindLegend; JsonBlock replaces the inlined <pre> in InspectorPanel.tsx:38 <!-- t:isrr -->
+- [x] Phase 3 — SegmentedBar: flex-weight geometry, renderSegment escape hatch, stories at 3/12/60 segments, overflow verified <!-- t:a8bt -->
+- [x] Phase 4 — DiffHunk: unified then split, the blank-line case, the row cap behind MoreBar <!-- t:kk7x -->
+- [x] Phase 5 — traceEntry presentation type: union, descriptor, registry, tone token, verbs and applyVerb mapping <!-- t:8wqc -->
+- [x] Phase 6 — TransportBar and the trace review panel; the review-only note is part of the deliverable <!-- t:qumm -->
+- [x] Phase 7 — barrels, stories coverage, and the break sweep with verbatim failures in the diary <!-- t:ei9s -->
+- [x] Phase 8 — ResultLog: the shell prototype's listener idea. An output history whose entries are presentations, not strings, so a result can be pointed at as the next command's argument <!-- t:eymm -->

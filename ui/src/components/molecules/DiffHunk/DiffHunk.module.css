@@ -1,0 +1,79 @@
+/*
+ * One hunk of a text diff.
+ *
+ * The body scrolls horizontally only as a last resort — CodeLine wraps — but
+ * the container allows it so a pathological line cannot widen the whole panel.
+ */
+.hunk {
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  margin-bottom: var(--pbui-space-3);
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  padding: 0 var(--pbui-space-2);
+  background: var(--pbui-pane-alt);
+  border-bottom: var(--pbui-border-hair);
+  font-size: var(--pbui-fs-micro);
+  font-variant-numeric: tabular-nums;
+}
+
+.range {
+  font-weight: 700;
+  color: var(--pbui-faint);
+}
+
+.spacer {
+  flex: 1 1 auto;
+}
+
+.added {
+  color: var(--pbui-ok);
+}
+
+.removed {
+  color: var(--pbui-danger);
+}
+
+.body {
+  padding: var(--pbui-space-1) 0;
+  overflow-x: auto;
+}
+
+/*
+ * Side by side. Each column is half, and neither may grow past it — min-width 0
+ * on a flex child is what stops a long unbroken line from pushing its column
+ * wider than its share and shoving the other one off screen.
+ */
+.pair {
+  display: flex;
+  gap: var(--pbui-space-2);
+}
+
+.side {
+  flex: 1 1 50%;
+  min-width: 0;
+}
+
+/*
+ * An empty cell opposite a real one.
+ *
+ * The height must match a CodeLine EXACTLY, which means the same font-size and
+ * line-height rather than a guessed min-height. The first version used
+ * `min-height: 1.4em`, which measured 16px against a CodeLine's 11px, so every
+ * unpaired row made the two columns drift a further 5px apart. Alignment is the
+ * entire value of a side-by-side view; a version that drifts is worse than one
+ * that does not exist.
+ */
+.blank {
+  font-size: var(--pbui-fs-micro);
+  line-height: var(--pbui-lh-tight);
+  background: var(--pbui-pane-alt);
+}
+
+.blank::before {
+  content: " ";
+}

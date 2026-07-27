@@ -1,0 +1,63 @@
+/*
+ * An embedded workbench fills whatever box it is given.
+ *
+ * No height of its own — that is DR-51, seen from the other side. The product's
+ * root sets `height: 100vh`; a tour section sets an aspect ratio or a
+ * `min-height` in its own stylesheet; and this component works inside both
+ * because it declares neither.
+ *
+ * `min-height: 0` because the shell inside is a flex column that has to be able
+ * to shrink below its content — without it the canvas grows to fit a 360-row
+ * table instead of scrolling it, which is the exact defect DATADROP-6 found in
+ * the Storybook decorator chain.
+ */
+.root {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+/*
+ * The framed workbench itself.
+ *
+ * Separate from `.root` so that a caller's children — a lesson rail — can be a
+ * flex sibling of the frame rather than a child of it, laid out beside it with
+ * a gap, while still living inside the providers (DR-55).
+ */
+.instance {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  border: var(--pbui-border-firm);
+  background: var(--pbui-paper);
+}
+
+/*
+ * Full frame: the workbench covers the window.
+ *
+ * `position: fixed` rather than the Fullscreen API, deliberately. The API puts
+ * the element in a top-layer that escapes the page's stacking context — which
+ * sounds like what we want until an object menu, rendered `position: fixed` by
+ * `pbui/ObjectMenu`, lands *behind* it and right-click stops working. Every
+ * verb in this interface arrives through that menu, so a mode that breaks it is
+ * not a mode.
+ *
+ * It also means Escape belongs to us rather than to the browser, which is why
+ * `WorkbenchShell` binds it — and binds it only while expanded, so an Escape
+ * meant for a pending accept is never stolen by a workbench sitting quietly in
+ * a page.
+ *
+ * The z-index sits below `pbui.module.css`'s menu (100) and banner, on purpose.
+ */
+.expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 50;
+  height: auto;
+  padding: var(--pbui-space-3);
+  background: var(--pbui-wash);
+}

@@ -1,0 +1,15 @@
+/* A key cap. Hard border, no radius, offset shadow — the same construction as
+ * a button, one step smaller, because it depicts one. */
+.kbd {
+  display: inline-block;
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-micro);
+  font-weight: 700;
+  line-height: 1.4;
+  padding: 0 var(--pbui-space-2);
+  color: var(--pbui-ink);
+  background: var(--pbui-pane-alt);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  white-space: nowrap;
+}

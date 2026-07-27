@@ -1,0 +1,25 @@
+/*
+ * A pretty-printed JSON value.
+ *
+ * `pre-wrap` plus `break-word`: a long string value inside the JSON would
+ * otherwise force the whole panel to scroll sideways, and a panel that scrolls
+ * sideways hides the keys, which are the part being read.
+ */
+.block {
+  margin: 0;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-micro);
+  line-height: var(--pbui-lh-tight);
+  white-space: pre-wrap;
+  word-break: break-word;
+  overflow: auto;
+  background: var(--pbui-pane-alt);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+}
+
+.block[data-failed="true"] {
+  border-left: var(--pbui-tone-edge) solid var(--pbui-danger);
+  color: var(--pbui-danger);
+}

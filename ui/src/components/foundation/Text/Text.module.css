@@ -1,0 +1,72 @@
+/* Typography roles. Every size comes from the six-step scale in tokens.css;
+ * there are no ad-hoc font sizes anywhere above this file. */
+
+.text {
+  font-family: var(--pbui-font);
+  line-height: var(--pbui-lh-tight);
+  margin: 0;
+}
+
+.prose {
+  line-height: var(--pbui-lh-prose);
+}
+
+/* ---- sizes ---- */
+.micro {
+  font-size: var(--pbui-fs-micro);
+}
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+.base {
+  font-size: var(--pbui-fs-base);
+}
+.title {
+  font-size: var(--pbui-fs-title);
+}
+
+/* ---- tones ---- *
+ * `inherit`, not `var(--pbui-ink)`. Body text takes its colour from the surface
+ * it is on, so an inverted surface does not need every descendant to be told.
+ * Hard-coding ink here is what made the shell bars render invisible text. */
+.default {
+  color: inherit;
+}
+.faint {
+  color: var(--pbui-faint);
+}
+.danger {
+  color: var(--pbui-danger);
+}
+.ok {
+  color: var(--pbui-ok);
+}
+
+/* ---- weight ---- */
+.strong {
+  font-weight: 700;
+}
+
+/*
+ * The uppercase section label: SOURCE, DOC, GEOM, OUT →.
+ * Rule 6 of §10.3 — this is the only place uppercase-plus-tracking appears
+ * inside a tile, which is what makes it read as structure rather than emphasis.
+ */
+.label {
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: var(--pbui-track-label);
+  color: var(--pbui-faint);
+}
+
+/* Truncate to one line. Used for field names, which are dotted paths and can be
+ * long; the full value always remains available as a title attribute. */
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

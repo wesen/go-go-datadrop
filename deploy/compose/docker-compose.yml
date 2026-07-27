@@ -1,0 +1,276 @@
+name: datadrop
+
+# The local stack: PostgreSQL, Zitadel, Zitadel's login UI, a reverse proxy, a
+# one-shot provisioning job, and datadrop.
+#
+# See ttmp/2026/07/25/DATADROP-5--*/design/01-*.md §13. The two things to know
+# before you change anything here:
+#
+#   1. An OIDC issuer is an IDENTITY, not an address. The URL datadrop uses to
+#      reach Zitadel must be character-for-character the URL the browser is
+#      redirected to, or go-oidc refuses the discovery document. That is what
+#      the proxy's network aliases and the matching inside/outside ports are
+#      for. Delete either and you get:
+#        oidc: issuer did not match the issuer returned by provider
+#
+#   2. ZITADEL_FIRSTINSTANCE_* applies ONLY on first init. Change one and
+#      restart and nothing happens, because the instance already exists. The
+#      reset is `make compose-nuke` (down -v), which destroys the database.
+
+services:
+  # ── PostgreSQL: Zitadel's event store ──────────────────────────────────────
+  #
+  # Zitadel's, not ours. datadrop keeps its single SQLite file: the storage
+  # engine is not what this ticket is about, and coupling datadrop to Postgres
+  # to save a container would be the largest change in the ticket and entirely
+  # incidental to it.
+  postgres:
+    image: ${POSTGRES_IMAGE}
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: zitadel
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d zitadel"]
+      interval: 5s
+      timeout: 10s
+      retries: 20
+      start_period: 10s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks: [datadrop]
+
+  # ── Zitadel core: the OIDC provider, the APIs, the console ─────────────────
+  zitadel-api:
+    image: ghcr.io/zitadel/zitadel:${ZITADEL_VERSION}
+    restart: unless-stopped
+    user: "0"
+    command: start-from-init --masterkey "${ZITADEL_MASTERKEY}"
+    environment:
+      ZITADEL_PORT: 8080
+      # The issuer identity. These three together produce
+      # http://zitadel.test:17070, which must equal ZITADEL_BASE.
+      ZITADEL_EXTERNALDOMAIN: ${ZITADEL_DOMAIN}
+      ZITADEL_EXTERNALPORT: ${ZITADEL_EXTERNALPORT}
+      ZITADEL_EXTERNALSECURE: "false"
+      ZITADEL_TLS_ENABLED: "false"
+      ZITADEL_DATABASE_POSTGRES_DSN: ${ZITADEL_DATABASE_POSTGRES_DSN}
+
+      ZITADEL_FIRSTINSTANCE_ORG_HUMAN_PASSWORDCHANGEREQUIRED: "false"
+
+      # An IAM_OWNER *machine* user whose personal access token is written to
+      # the shared volume. This is what makes provisioning scriptable at all:
+      # without it the only credential that exists is a password behind an
+      # interactive login.
+      ZITADEL_FIRSTINSTANCE_PATPATH: /zitadel/bootstrap/admin.pat
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_USERNAME: provisioner
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_MACHINE_NAME: datadrop provisioner
+      ZITADEL_FIRSTINSTANCE_ORG_MACHINE_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+
+      # The Login v2 UI is a separate service and authenticates as its own
+      # machine user, reading this PAT from the shared volume.
+      ZITADEL_FIRSTINSTANCE_LOGINCLIENTPATPATH: /zitadel/bootstrap/login-client.pat
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_USERNAME: login-client
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_MACHINE_NAME: IAM_LOGIN_CLIENT
+      ZITADEL_FIRSTINSTANCE_ORG_LOGINCLIENT_PAT_EXPIRATIONDATE: "2099-01-01T00:00:00Z"
+
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_REQUIRED: "true"
+      ZITADEL_DEFAULTINSTANCE_FEATURES_LOGINV2_BASEURI: ${ZITADEL_BASE}/ui/v2/login/
+      ZITADEL_OIDC_DEFAULTLOGINURLV2: ${ZITADEL_BASE}/ui/v2/login/login?authRequest=
+      ZITADEL_OIDC_DEFAULTLOGOUTURLV2: ${ZITADEL_BASE}/ui/v2/login/logout?post_logout_redirect=
+      ZITADEL_SAML_DEFAULTLOGINURLV2: ${ZITADEL_BASE}/ui/v2/login/login?samlRequest=
+    healthcheck:
+      test: ["CMD", "/app/zitadel", "ready"]
+      interval: 10s
+      timeout: 30s
+      retries: 20
+      # First boot initialises the event store and runs projections: thirty to
+      # ninety seconds on a laptop.
+      start_period: 30s
+    volumes:
+      - bootstrap:/zitadel/bootstrap:rw
+    depends_on:
+      postgres: {condition: service_healthy}
+    networks: [datadrop]
+    labels:
+      - traefik.enable=true
+      - datadrop.stack=true
+      - traefik.docker.network=datadrop
+      - traefik.http.services.zitadel-api.loadbalancer.server.port=8080
+      # h2c: the core speaks gRPC and Connect-RPC over cleartext HTTP/2.
+      - traefik.http.services.zitadel-api.loadbalancer.server.scheme=h2c
+      - traefik.http.routers.zitadel-api.rule=Host(`${ZITADEL_DOMAIN}`) && !PathPrefix(`/ui/v2/login`)
+      - traefik.http.routers.zitadel-api.entrypoints=zitadel
+      - traefik.http.routers.zitadel-api.service=zitadel-api
+      - traefik.http.routers.zitadel-api.priority=100
+
+  # ── The login and registration UI ──────────────────────────────────────────
+  zitadel-login:
+    image: ghcr.io/zitadel/zitadel-login:${ZITADEL_VERSION}
+    restart: unless-stopped
+    user: "0"
+    environment:
+      # Talks to the core directly on the internal network; only the browser
+      # needs the public hostname.
+      ZITADEL_API_URL: http://zitadel-api:8080
+      NEXT_PUBLIC_BASE_PATH: /ui/v2/login
+      ZITADEL_SERVICE_USER_TOKEN_FILE: /zitadel/bootstrap/login-client.pat
+      CUSTOM_REQUEST_HEADERS: Host:${ZITADEL_DOMAIN},X-Forwarded-Proto:http
+    volumes:
+      - bootstrap:/zitadel/bootstrap:ro
+    depends_on:
+      zitadel-api: {condition: service_healthy}
+    networks: [datadrop]
+    labels:
+      - traefik.enable=true
+      - datadrop.stack=true
+      - traefik.docker.network=datadrop
+      - traefik.http.services.zitadel-login.loadbalancer.server.port=3000
+      - traefik.http.routers.zitadel-login.rule=Host(`${ZITADEL_DOMAIN}`) && PathPrefix(`/ui/v2/login`)
+      - traefik.http.routers.zitadel-login.entrypoints=zitadel
+      - traefik.http.routers.zitadel-login.service=zitadel-login
+      - traefik.http.routers.zitadel-login.priority=250
+
+  # ── The proxy ──────────────────────────────────────────────────────────────
+  proxy:
+    image: ${TRAEFIK_IMAGE}
+    restart: unless-stopped
+    command:
+      - --providers.docker=true
+      - --providers.docker.exposedbydefault=false
+      - --providers.docker.network=datadrop
+      # Only OUR containers. The docker provider reads the whole socket, so
+      # without this constraint another compose project's Traefik labels are
+      # picked up here — producing a stream of "EntryPoint doesn't exist"
+      # errors and, worse, foreign routers competing for our hostnames.
+      - --providers.docker.constraints=Label(`datadrop.stack`,`true`)
+      # SAME port inside and outside the network, for both entrypoints. This is
+      # what lets one URL string mean the same thing to the browser and to the
+      # datadrop container (§13.2).
+      - --entrypoints.dd.address=:7070
+      - --entrypoints.zitadel.address=:17070
+      - --api.dashboard=false
+      - --log.level=${TRAEFIK_LOG_LEVEL}
+    ports:
+      - "${DATADROP_PORT}:7070"
+      - "${ZITADEL_PORT}:17070"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      datadrop:
+        # A FIXED address, so the services that must reach the proxy by
+        # hostname can be told what the hostname means (see extra_hosts on the
+        # datadrop service). The aliases below are belt and braces.
+        ipv4_address: ${PROXY_IP}
+        aliases:
+          - ${ZITADEL_DOMAIN}
+
+  # ── One-shot provisioning ──────────────────────────────────────────────────
+  provision:
+    image: ${ALPINE_IMAGE}
+    restart: "no"
+    entrypoint: ["/bin/sh", "/provision.sh"]
+    environment:
+      ZITADEL_BASE: ${ZITADEL_BASE}
+      DATADROP_BASE: ${DATADROP_BASE}
+    volumes:
+      - bootstrap:/bootstrap:rw
+      - ./provision.sh:/provision.sh:ro
+    extra_hosts:
+      # The hostnames are .test, not .localhost, and pinned here rather than
+      # left to the proxy's network alias.
+      #
+      # RFC 6761 reserves "localhost" and EVERY SUBDOMAIN OF IT for loopback,
+      # and resolvers honour it BEFORE reading /etc/hosts — so inside a
+      # container "zitadel.test" means that container, and neither a
+      # network alias nor an extra_hosts entry can override it. Verified: curl
+      # goes straight to ::1 then 127.0.0.1 with the entry sitting unread.
+      #
+      # ".test" is reserved too but carries no resolution rule, so it can be
+      # pointed at the proxy here and at 127.0.0.1 in your /etc/hosts.
+      - "${ZITADEL_DOMAIN}:${PROXY_IP}"
+    depends_on:
+      zitadel-api: {condition: service_healthy}
+      proxy: {condition: service_started}
+    networks: [datadrop]
+
+  # ── datadrop ───────────────────────────────────────────────────────────────
+  datadrop:
+    build:
+      context: ../..
+      dockerfile: deploy/compose/Dockerfile.datadrop
+    restart: unless-stopped
+    command:
+      - serve
+      - --addr=:8080
+      - --db=/data/datadrop.db
+      - --auth=oidc
+      - --external-url=${DATADROP_BASE}
+      - --oidc-issuer=${ZITADEL_BASE}
+      - --oidc-client-id-file=/bootstrap/datadrop-client-id
+      - --oidc-client-secret-file=/bootstrap/datadrop-client-secret
+      # LOCAL STACK ONLY. This compose has no SMTP service, so a self-registered
+      # user can never verify their address and would be permanently locked out.
+      # The server's own default is true; this line is a development affordance
+      # and must be removed for anything real (§13.6).
+      - --oidc-require-verified-email=false
+      - --log-level=info
+    environment:
+      # The operator break-glass, and what the CLI uses against this stack.
+      DATADROP_TOKEN: ${DATADROP_ROOT_TOKEN}
+    # The runtime image is distroless: no shell, no curl, nothing for a
+    # healthcheck to run — so the binary probes itself. Without this,
+    # `up --wait` reports the stack healthy while datadrop crash-loops, which
+    # is precisely what happened the first time this stack was built.
+    healthcheck:
+      test: ["CMD", "/usr/local/bin/datadrop", "healthcheck", "--url", "http://127.0.0.1:8080"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+      start_period: 10s
+    volumes:
+      - datadrop-data:/data
+      - bootstrap:/bootstrap:ro
+    extra_hosts:
+      # The hostnames are .test, not .localhost, and pinned here rather than
+      # left to the proxy's network alias.
+      #
+      # RFC 6761 reserves "localhost" and EVERY SUBDOMAIN OF IT for loopback,
+      # and resolvers honour it BEFORE reading /etc/hosts — so inside a
+      # container "zitadel.test" means that container, and neither a
+      # network alias nor an extra_hosts entry can override it. Verified: curl
+      # goes straight to ::1 then 127.0.0.1 with the entry sitting unread.
+      #
+      # ".test" is reserved too but carries no resolution rule, so it can be
+      # pointed at the proxy here and at 127.0.0.1 in your /etc/hosts.
+      - "${ZITADEL_DOMAIN}:${PROXY_IP}"
+    depends_on:
+      # Not service_started: datadrop must not start before the client
+      # credentials exist on the volume. This is what makes `up --wait`
+      # correct rather than racy.
+      provision: {condition: service_completed_successfully}
+    networks: [datadrop]
+    labels:
+      - traefik.enable=true
+      - datadrop.stack=true
+      - traefik.docker.network=datadrop
+      - traefik.http.services.datadrop.loadbalancer.server.port=8080
+      - traefik.http.routers.datadrop.rule=Host(`${DATADROP_DOMAIN}`)
+      - traefik.http.routers.datadrop.entrypoints=dd
+      - traefik.http.routers.datadrop.service=datadrop
+
+networks:
+  datadrop:
+    name: datadrop
+    ipam:
+      config:
+        - subnet: ${DATADROP_SUBNET}
+
+volumes:
+  postgres-data:
+  datadrop-data:
+  # Holds the machine PATs Zitadel writes on first boot and the OIDC client
+  # credentials the provisioning job writes. `down` without -v keeps this while
+  # discarding the database that issued them, which is trap number two in §13.7.
+  bootstrap:

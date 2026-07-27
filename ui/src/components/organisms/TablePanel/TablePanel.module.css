@@ -1,0 +1,48 @@
+.table {
+  width: 100%;
+  font-size: var(--pbui-fs-small);
+}
+
+.table th {
+  text-align: left;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border-bottom: var(--pbui-border-firm);
+  position: sticky;
+  top: 0;
+  background: var(--pbui-pane);
+  z-index: 1;
+}
+
+.table td {
+  padding: 0 var(--pbui-space-2);
+  white-space: nowrap;
+}
+
+.table tbody tr:nth-child(even) {
+  background: var(--pbui-pane-alt);
+}
+
+.num {
+  text-align: right;
+  color: var(--pbui-faint);
+  font-weight: 400;
+}
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.rowNumber {
+  border-bottom: 1px dotted var(--pbui-faint);
+  color: var(--pbui-faint);
+}
+
+/*
+ * The padded region for anything that is not the table itself.
+ *
+ * `AppBody flush` removes the body padding so the table can draw to its own
+ * edges, which means every message beside it has to supply its own.
+ */
+.notice {
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+}

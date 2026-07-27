@@ -1,0 +1,93 @@
+.prompt {
+  border: var(--pbui-border-rule);
+  background: var(--pbui-paper);
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  margin-top: var(--pbui-space-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-3);
+}
+
+.options {
+  display: flex;
+  gap: var(--pbui-space-3);
+  flex-wrap: wrap;
+}
+
+/*
+ * The options are `Button variant="framed"` — hairline border, alt fill, bold —
+ * which is already exactly what a prediction option should look like. Only the
+ * state fills are defined here.
+ *
+ * Doubled selectors for the same reason `LessonStep.module.css` gives: these
+ * override `Button.module.css`'s `.framed` background, and two single-class
+ * rules are settled by stylesheet order rather than by intent.
+ */
+.idle.idle:hover {
+  background: var(--pbui-selected);
+}
+
+/*
+ * Restore full opacity on the two options that still have to be read.
+ *
+ * Every option is `disabled` once the reader commits — they genuinely cannot be
+ * pressed again — and `Button.module.css`'s `.root:disabled` fades to 0.55.
+ * That is right for a control nobody may use and wrong here: the whole point of
+ * the locked state is comparing *your* answer against the *correct* one, and
+ * fading both to 3.45:1 makes that comparison harder at the exact moment it
+ * matters. `.other` keeps the fade, which is what leaves the two that matter
+ * standing out.
+ *
+ * The specificity has to beat `.root:disabled` (0,2,0), which is why these are
+ * doubled classes plus `:disabled` rather than plain doubled classes.
+ */
+.right.right:disabled,
+.chosen.chosen:disabled {
+  opacity: 1;
+}
+
+/*
+ * The correct answer, filled with the ok tone.
+ *
+ * `--pbui-ok` is #317a53, tuned to clear 4.5:1 as TEXT on a pale surface; used
+ * as a fill under white it measures comfortably past that in the other
+ * direction. The ✓ glyph beside the label is what actually carries the meaning
+ * (WCAG 1.4.1) — this is reinforcement.
+ */
+.right.right {
+  background: var(--pbui-ok);
+  color: var(--pbui-paper);
+}
+
+/* The reader's pick, when it was wrong: unfilled, but not faded. */
+.chosen.chosen {
+  background: var(--pbui-pane-alt);
+}
+
+/*
+ * The unpicked wrong answers fade, but only to 0.55 — the same floor
+ * Button.module.css settled on for `:disabled` after 0.4 measured 2.32:1
+ * against the pane. Faded is not the same as unreadable, and a reader
+ * comparing their guess to the answer still has to be able to read both.
+ */
+.other.other {
+  opacity: 0.55;
+}
+
+.reveal {
+  border-top: var(--pbui-border-rule);
+  padding-top: var(--pbui-space-3);
+}
+
+/* Announced, never shown: the ✓ needs a word behind it for a screen reader. */
+.hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}

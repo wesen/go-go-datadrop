@@ -1,0 +1,37 @@
+/*
+ * The sequence gutter and the event-type badge.
+ *
+ * Both were inline style objects in `TraceApp` until DATADROP-6 phase 4.
+ */
+
+/*
+ * A fixed-width right-aligned column, so the numbers form a column rather than
+ * a ragged edge that shifts every time the trace passes a power of ten.
+ */
+.seq {
+  display: inline-block;
+  width: 26px;
+  text-align: right;
+}
+
+.kind {
+  border: var(--pbui-border-hair);
+  padding: 0 var(--pbui-space-2);
+  font-size: var(--pbui-fs-micro);
+  font-weight: 700;
+  /* The type names are short and must never wrap: a wrapped badge breaks the
+     baseline alignment of every entry after it. */
+  white-space: nowrap;
+}
+
+/*
+ * The entry under the transport's cursor, while the reader is reviewing.
+ *
+ * Only applied when `reviewing` is a number. Highlighting the tail entry
+ * permanently would make the newest verb look selected at all times, which is
+ * a claim about attention the panel has no business making.
+ */
+.reviewing {
+  background: var(--pbui-selected);
+  outline: var(--pbui-border-hair);
+}

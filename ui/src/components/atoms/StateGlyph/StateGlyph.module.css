@@ -1,0 +1,16 @@
+/* A fixed width so a column of glyphs stays a column: the queue reads down the
+ * left edge, and a ✓ that is wider than a · makes the paths beside them ragged. */
+.glyph {
+  display: inline-block;
+  width: 1em;
+  text-align: center;
+  flex-shrink: 0;
+  font-size: var(--pbui-fs-small);
+}
+
+.ok {
+  color: var(--pbui-ok);
+}
+.danger {
+  color: var(--pbui-danger);
+}

@@ -1,0 +1,8 @@
+node_modules/
+# Proof-of-compile output for the phase 0-3 interval; never embedded.
+dist-check/
+# Storybook's build output. pkg/webui embeds `all:dist` and only that — a stray
+# build directory inside the Go tree would silently bloat the binary.
+storybook-static/
+# Playwright MCP scratch output — screenshots and console logs from browser checks.
+.playwright-mcp/

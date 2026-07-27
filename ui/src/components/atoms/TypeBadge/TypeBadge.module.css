@@ -1,0 +1,20 @@
+/*
+ * The type letter: q, n, t.
+ *
+ * This is not decoration and it must not be removed to "clean up". The
+ * presentation-type tones sit below WCAG 1.4.11's 3:1 (see
+ * test/tokens.test.ts), which is only defensible because the type is ALSO
+ * carried textually. This badge is that text.
+ */
+.badge {
+  display: inline-block;
+  min-width: 11px;
+  text-align: center;
+  font-size: var(--pbui-fs-micro);
+  font-weight: 700;
+  line-height: 1.5;
+  padding: 0 2px;
+  color: var(--pbui-ink);
+  border: 1px solid var(--pbui-ink);
+  border-radius: var(--pbui-radius);
+}

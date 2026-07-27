@@ -1,0 +1,13 @@
+/*
+ * The verdict line under the text area.
+ *
+ * `display: block` so the ✓/✕ glyph and its sentence stay on their own line
+ * when the size follows them, and so a long "reading sensors/readings,
+ * census/2024" wraps under itself rather than around the glyph.
+ *
+ * The glyph is what carries the state without colour: green prose and red prose
+ * are the same prose in a greyscale screenshot, and ✓ against ✕ is not.
+ */
+.verdict {
+  display: block;
+}

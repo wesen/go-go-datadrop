@@ -1,0 +1,126 @@
+/*
+ * The reset. There is no CSS framework (DR-13), so this is ours.
+ *
+ * Deliberately not modern-normalize, though the guide suggested it: almost
+ * everything normalize fixes concerns document-oriented pages with proportional
+ * type and default margins. This application sets one font family on the root,
+ * removes margins from everything, and has no prose flow to protect — which is
+ * about thirty lines, and thirty lines we control beats a dependency inside a
+ * bundle that gets embedded in a Go binary.
+ *
+ * The one rule that matters most is at the bottom: focus is REPLACED, never
+ * removed. Deleting the default outline without putting something back is the
+ * single most common way an application becomes keyboard-hostile, and it is
+ * invisible to anyone testing with a mouse.
+ */
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  /* Stop iOS inflating text in landscape; we have chosen these sizes carefully. */
+  -webkit-text-size-adjust: 100%;
+}
+
+body,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd,
+ol,
+ul,
+pre {
+  margin: 0;
+}
+
+ol,
+ul {
+  padding: 0;
+  list-style: none;
+}
+
+body {
+  min-height: 100vh;
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-base);
+  line-height: var(--pbui-lh-tight);
+  color: var(--pbui-ink);
+  background: var(--pbui-paper);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* One family everywhere, including form controls, which do not inherit it. */
+input,
+button,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+/* Bare tables; every table in the app draws its own rules from tokens. */
+table {
+  border-collapse: collapse;
+  border-spacing: 0;
+}
+
+img,
+picture,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+code,
+pre,
+kbd,
+samp {
+  font-family: inherit;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 2px;
+}
+
+/* Honour the OS setting. §15: the accept pulse is decoration and the outline
+ * carries the meaning, so removing animation must never remove information. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms;
+    animation-iteration-count: 1;
+    transition-duration: 0.01ms;
+    scroll-behavior: auto;
+  }
+}
+
+/* Focus is replaced, not removed. :focus-visible so a mouse click on a button
+ * does not leave a ring, while every keyboard path does. */
+:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}
+
+:focus:not(:focus-visible) {
+  outline: none;
+}

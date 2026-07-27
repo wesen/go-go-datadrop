@@ -1,0 +1,72 @@
+/*
+ * The four identical inline literals, transcribed:
+ *
+ *     font: inherit          -> inherited from reset.css, restated for clarity
+ *     padding: 2px 4px       -> var(--pbui-space-1) var(--pbui-space-2)
+ *     border: hairline
+ *
+ * The two pixel values were literals at every call site and map exactly onto
+ * the spacing scale, so nothing changes on screen and the next reader gets a
+ * token instead of a magic number.
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  min-width: 0;
+}
+
+/* 64px, from ChartsApp's document-name field — the only call site that ever
+ * constrained a width. `.auto` states the absence deliberately so that adding
+ * a third size later is a decision rather than a default. */
+.auto {
+  width: auto;
+}
+.narrow {
+  width: 64px;
+}
+.compact {
+  max-width: 96px;
+}
+/* flex: 1 with a floor, from SourceApp's token field. The floor matters: a
+ * password field that collapses to nothing in a narrow tile looks broken. */
+.fill {
+  flex: 1;
+  min-width: 120px;
+}
+
+/* `.base` is what `font: inherit` already gives; stated so that `.small` reads
+ * as one of a pair rather than as the only size anyone thought about. */
+.base {
+  font-size: var(--pbui-fs-base);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+
+/* Dashed, not only red: a field can be invalid on a monochrome display too
+ * (guide §5.4, and the .stale rule in Chip.module.css that named the rule). */
+.invalid {
+  border-style: dashed;
+  color: var(--pbui-danger);
+}
+
+.root:disabled {
+  background: var(--pbui-pane-alt);
+  opacity: 0.55;
+}
+
+.root::placeholder {
+  color: var(--pbui-faint);
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

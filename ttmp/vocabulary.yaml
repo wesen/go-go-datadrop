@@ -5,6 +5,28 @@ topics:
       description: Backend services
     - slug: websocket
       description: WebSocket lifecycle & events
+    - slug: mvp
+      description: Minimum viable product slice
+    - slug: server
+      description: HTTP/API server component
+    - slug: design
+      description: Architecture and design documents
+    - slug: auth
+      description: authentication, authorization, sessions and credentials
+    - slug: oidc
+      description: OpenID Connect and OAuth 2.0
+    - slug: zitadel
+      description: the self-hosted Zitadel identity provider
+    - slug: docker-compose
+      description: the local multi-service deployment stack
+    - slug: accounts
+      description: user accounts, profiles and membership
+    - slug: upload
+      description: dataset upload flows
+    - slug: tokens
+      description: API tokens and credential management
+    - slug: frontend
+      description: the web UI
 docTypes:
     - slug: design-doc
       description: Structured rationale and architecture notes
@@ -16,6 +38,8 @@ docTypes:
       description: Ticket landing page
     - slug: skill
       description: Skill documentation (what it's for and when to use it)
+    - slug: design
+      description: architecture and design documents
 intent:
     - slug: long-term
       description: Likely to persist

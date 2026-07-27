@@ -1,0 +1,49 @@
+/*
+ * The atom that does the most work.
+ *
+ * Every presentation chip is a Chip with a different tone and badge: same
+ * geometry, same padding, same border, one 4px coloured edge. That sameness is
+ * not a style choice — it is what makes a chip in a legend read as the same
+ * KIND of object as a chip in a table header, which is the premise of a
+ * presentation-based interface (§10.3 rule 5).
+ */
+.chip {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--pbui-space-2);
+  padding: 0 var(--pbui-space-3);
+  font-size: var(--pbui-fs-small);
+  line-height: 1.6;
+  white-space: nowrap;
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-neutral);
+  border-radius: var(--pbui-radius);
+  max-width: 100%;
+}
+
+.strong {
+  font-weight: 700;
+}
+
+.label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.active {
+  background: var(--pbui-selected);
+}
+
+/* A mapping whose field the pipeline no longer produces. The dashed border and
+ * the warning glyph carry it, not the colour — the control must never read as
+ * simply "unset", which is the defect EncodingEditor.tsx shipped. */
+.stale {
+  border-style: dashed;
+  color: var(--pbui-danger);
+}
+
+.disabled {
+  opacity: 0.55;
+  background: var(--pbui-pane-alt);
+}

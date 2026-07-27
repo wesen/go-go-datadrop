@@ -1,0 +1,12 @@
+.badge {
+  display: inline-block;
+  min-width: 1.1em;
+  padding: 0 0.25em;
+  margin-left: var(--pbui-space-2);
+  border: var(--pbui-border-hair);
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+  color: var(--pbui-faint);
+}

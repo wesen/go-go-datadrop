@@ -1,0 +1,174 @@
+.page {
+  background: var(--pbui-wash);
+  color: var(--pbui-ink);
+  min-height: 100vh;
+}
+
+.masthead {
+  background: var(--pbui-ink);
+  color: var(--pbui-paper);
+  text-align: center;
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+  font-weight: 700;
+  display: flex;
+  gap: var(--pbui-space-4);
+  align-items: baseline;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.wordmark {
+  letter-spacing: var(--pbui-track-banner);
+  font-size: var(--pbui-fs-title);
+}
+
+.tagline {
+  letter-spacing: var(--pbui-track-label);
+  font-size: var(--pbui-fs-tiny);
+  color: var(--pbui-faint-inverted);
+}
+
+/*
+ * The section index, revealed once the hero has scrolled past.
+ *
+ * Collapsed by height rather than removed from the DOM so the transition has
+ * something to animate, and `aria-hidden` + `tabIndex={-1}` while collapsed so
+ * a keyboard user does not tab into a strip of zero-height buttons. Hiding
+ * something visually without hiding it from assistive technology is the more
+ * common bug, and this is the less common inverse of it.
+ */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--pbui-paper);
+  border-bottom: var(--pbui-border-grid);
+  display: flex;
+  gap: var(--pbui-space-3);
+  align-items: center;
+  flex-wrap: wrap;
+  height: 0;
+  padding: 0 var(--pbui-space-5);
+  overflow: hidden;
+  transition: padding 120ms linear;
+}
+
+.navOn {
+  height: auto;
+  padding: var(--pbui-space-2) var(--pbui-space-5);
+}
+
+.navLabel {
+  font-size: var(--pbui-fs-micro);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-label);
+  text-transform: uppercase;
+  color: var(--pbui-faint);
+}
+
+/*
+ * The nav entries are `Button variant="framed"` — hairline border, alt fill —
+ * so only the hover and the roomier padding are defined here.
+ *
+ * Doubled selectors, as elsewhere: these override `Button.module.css`'s
+ * `.framed`, and two single-class rules are settled by stylesheet order rather
+ * than by intent.
+ */
+.navItem.navItem {
+  padding: 0 var(--pbui-space-4);
+}
+
+.navItem.navItem:hover {
+  background: var(--pbui-selected);
+}
+
+.column {
+  max-width: 1180px;
+  margin: 0 auto;
+  padding: 0 var(--pbui-space-5) var(--pbui-space-6);
+}
+
+.hero {
+  padding: var(--pbui-space-6) 0 var(--pbui-space-4);
+}
+
+.eyebrow {
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  letter-spacing: var(--pbui-track-banner);
+  color: var(--pbui-faint);
+  text-transform: uppercase;
+  margin-bottom: var(--pbui-space-3);
+}
+
+.headline {
+  margin: 0 0 var(--pbui-space-4);
+  font-size: 27px;
+  line-height: 1.25;
+  font-weight: 700;
+  max-width: 760px;
+}
+
+.lede {
+  max-width: 720px;
+  margin-bottom: var(--pbui-space-5);
+}
+
+/*
+ * The hero workbench.
+ *
+ * A height here rather than inside the component — DR-51, the same rule
+ * `TourSection` follows. 330px is enough to show a chart beside its pipeline
+ * without the page opening on a wall of tiles.
+ */
+.heroPanel {
+  display: flex;
+  height: 460px;
+}
+
+.heroFoot {
+  display: flex;
+  gap: var(--pbui-space-4);
+  align-items: center;
+  margin-top: var(--pbui-space-4);
+  flex-wrap: wrap;
+}
+
+.closing {
+  padding: var(--pbui-space-6) 0 0;
+  border-top: var(--pbui-border-grid);
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-4);
+  max-width: 900px;
+}
+
+.closingNav {
+  display: flex;
+  gap: var(--pbui-space-3);
+  flex-wrap: wrap;
+  margin-top: var(--pbui-space-3);
+}
+
+.colophon {
+  margin-top: var(--pbui-space-6);
+  padding-top: var(--pbui-space-3);
+  border-top: var(--pbui-border-grid);
+  display: flex;
+  gap: var(--pbui-space-5);
+  flex-wrap: wrap;
+}
+
+.spacer {
+  flex: 1;
+}
+
+@media (max-width: 900px) {
+  .headline {
+    font-size: 21px;
+  }
+
+  .heroPanel {
+    height: 460px;
+  }
+}

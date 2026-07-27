@@ -1,0 +1,4 @@
+/* Pushes the remove button to the right edge, so the ✕ column is a column. */
+.spacer {
+  flex: 1;
+}

@@ -1,0 +1,66 @@
+/*
+ * The same two treatments as Button, plus a minimum hit area.
+ *
+ * A bare `✕` is about 7px wide at --pbui-fs-tiny. WCAG 2.5.8 asks for 24px and
+ * this interface is deliberately dense, so the compromise is a square that is
+ * at least as tall as the line it sits on, with the padding doing the work
+ * rather than a width that would break toolbar rhythm.
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--pbui-radius);
+  min-width: 1.5em;
+  text-align: center;
+  line-height: 1.4;
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+
+.bare {
+  background: none;
+  border: none;
+  padding: 0 var(--pbui-space-1);
+}
+
+/*
+ * A control that paints its OWN pale background must state its own ink.
+ *
+ * `color: inherit` on `.root` is right on a pale surface and catastrophic on an
+ * inverted one: `Surface`'s `.inverted` re-points `--pbui-ink` to paper for
+ * every descendant, so the inherited colour is white and the background is
+ * `--pbui-pane-alt` — 1.13:1, found by a contrast sweep over the rendered page
+ * after DATADROP-8 put the first controls on the masthead.
+ *
+ * `--pbui-ink-on-pane` exists to be excluded from that re-point.
+ */
+.framed {
+  color: var(--pbui-ink-on-pane);
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-3);
+  font-weight: 700;
+}
+
+.danger {
+  color: var(--pbui-danger);
+}
+
+/* See Button.module.css: 0.55, not the 0.4 the call sites used, because 0.4
+ * composites to 2.32:1 on --pbui-pane-alt and a disabled control still has to
+ * be readable. */
+.root:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

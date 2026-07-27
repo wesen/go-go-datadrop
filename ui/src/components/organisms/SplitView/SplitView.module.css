@@ -1,0 +1,64 @@
+.split {
+  flex: 1;
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  align-items: stretch;
+}
+
+.row {
+  flex-direction: row;
+}
+.col {
+  flex-direction: column;
+}
+
+.pane {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+}
+
+.divider {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+}
+
+.dividerRow {
+  width: 8px;
+  cursor: col-resize;
+  align-self: stretch;
+}
+.dividerCol {
+  height: 8px;
+  cursor: row-resize;
+}
+
+.divider:hover {
+  background: var(--pbui-pane-alt);
+}
+.dragging {
+  background: var(--pbui-tone-source);
+}
+/* A snapped divider changes colour, so the snap is visible rather than merely
+ * felt — the prototype does this and it is the difference between a helpful
+ * magnet and an unpredictable one. */
+.snapped {
+  background: var(--pbui-tone-chart);
+}
+
+.grip {
+  border-left: 2px dotted var(--pbui-line);
+  width: 2px;
+  height: 26px;
+}
+.gripCol {
+  border-top: 2px dotted var(--pbui-line);
+  height: 2px;
+  width: 26px;
+}

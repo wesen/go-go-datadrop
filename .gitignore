@@ -13,7 +13,15 @@
 
 # Dependency directories (remove the comment below to include it)
 # vendor/
-dist/
+
+# The goreleaser / `make install` output at the repository root only. NOT a
+# blanket "dist/" rule: pkg/webui/dist holds the built web UI and must be
+# committed, because go:embed needs the files present at compile time and a
+# `go install` of this module must not require a JavaScript toolchain.
+/dist/
+
+# Frontend dependencies. The build output is committed; the inputs are not.
+ui/node_modules/
 
 # misc files and directories
 .env

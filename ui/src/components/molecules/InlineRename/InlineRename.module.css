@@ -1,0 +1,18 @@
+/* Sized to sit in the workspace strip without shifting its neighbours: the row
+ * must not jump when a name turns into a field. */
+.input {
+  font: inherit;
+  font-size: var(--pbui-fs-small);
+  color: inherit;
+  padding: 0 var(--pbui-space-2);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  width: 96px;
+  min-width: 0;
+}
+
+.input:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

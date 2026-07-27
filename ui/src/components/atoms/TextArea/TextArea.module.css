@@ -1,0 +1,50 @@
+/*
+ * The only multi-line field in the tree. Geometry copied from TextInput so the
+ * two read as one family, plus the two things a text area needs and an input
+ * does not.
+ */
+.root {
+  font: inherit;
+  color: var(--pbui-ink-on-pane);
+  padding: var(--pbui-space-1) var(--pbui-space-2);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  background: var(--pbui-pane);
+  /* Width comes from the container, not from the `cols` attribute, which is
+   * measured in average character widths and is meaningless in a flex layout. */
+  width: 100%;
+  min-width: 0;
+  /* Vertical only. A field the user can drag WIDER escapes its dialog. */
+  resize: vertical;
+  font-size: var(--pbui-fs-small);
+}
+
+/*
+ * JSON: wrap, and never break a token in the middle of a key.
+ *
+ * `pre-wrap` rather than the default `normal` because a bundle's leading
+ * whitespace is what makes it readable, and `break-word` because a source path
+ * can be longer than the dialog is wide — without it the field grows a
+ * horizontal scrollbar and the user reads one line of a fifty-line document.
+ */
+.code {
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-size: var(--pbui-fs-tiny);
+  line-height: 1.45;
+}
+
+/* Dashed, not only red: a field can be invalid on a monochrome display too. */
+.invalid {
+  border-style: dashed;
+  color: var(--pbui-danger);
+}
+
+.root::placeholder {
+  color: var(--pbui-faint);
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

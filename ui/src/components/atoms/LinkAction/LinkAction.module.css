@@ -1,0 +1,43 @@
+/*
+ * Deliberately identical to Button's two treatments. If these ever diverge, the
+ * sign-in affordance stops looking like every other action in the workbench,
+ * which is the exact confusion the atom exists to prevent.
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  border-radius: var(--pbui-radius);
+  text-decoration: none;
+  display: inline-block;
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+
+.bare {
+  background: none;
+  border: none;
+  padding: 0;
+  font-weight: 700;
+}
+
+.framed {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-3);
+  font-weight: 700;
+}
+
+.root:hover {
+  background: var(--pbui-selected);
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

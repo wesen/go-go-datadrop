@@ -1,0 +1,16 @@
+/*
+ * Two fixed-width gutters, so the three columns line up down the whole diff.
+ *
+ * Without them each row sizes to its own content and the eye has to re-find the
+ * B column on every line — which defeats the point of an aligned diff. Both
+ * were inline style objects in `CompareApp` until DATADROP-6 phase 5.
+ */
+.key {
+  display: inline-block;
+  width: 78px;
+}
+
+.value {
+  display: inline-block;
+  min-width: 150px;
+}

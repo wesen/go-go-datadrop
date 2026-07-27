@@ -1,0 +1,19 @@
+.zone {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: var(--pbui-space-4);
+  text-align: center;
+  cursor: pointer;
+}
+
+/* Firm border AND the selection fill: the drag state has to be unmistakable
+ * while a file is hovering, because the pointer is busy and there is no other
+ * feedback. Two changes rather than one so it survives greyscale. */
+.dragging {
+  border: var(--pbui-border-firm);
+  background: var(--pbui-selected);
+}
+
+.disabled {
+  cursor: not-allowed;
+}

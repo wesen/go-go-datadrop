@@ -1,0 +1,25 @@
+/*
+ * The stage switcher's own anatomy: a row that never wraps and never shrinks.
+ *
+ * `flex-shrink: 0` because the masthead's tagline is allowed to be clipped by a
+ * narrow window and this is not — losing the tagline costs a slogan, losing the
+ * switcher costs the only route to the account stage.
+ */
+.bar {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/*
+ * The current stage's name, in the masthead's tracking.
+ *
+ * `white-space: nowrap` so "sign in" stays two words on one line; the bar is at
+ * the end of a flex row that has already given the tagline everything it can.
+ */
+.name {
+  letter-spacing: var(--pbui-track-label);
+  white-space: nowrap;
+}

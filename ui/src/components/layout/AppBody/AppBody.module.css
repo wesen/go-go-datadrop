@@ -1,0 +1,19 @@
+/*
+ * The scrolling body of a tile application.
+ *
+ * flex: 1 with min-height: 0 is the pair that makes a scroll region inside a
+ * flex column actually scroll. Without min-height: 0 the body grows to fit its
+ * content and pushes the tile's own bounds instead of overflowing — the tile
+ * gets taller than its split and the scrollbar never appears.
+ */
+.body {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+  overflow: auto;
+  padding: var(--pbui-space-3) var(--pbui-space-4);
+}
+
+.flush {
+  padding: 0;
+}

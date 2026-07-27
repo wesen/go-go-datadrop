@@ -1,0 +1,58 @@
+/*
+ * A select keeps its native chrome. The interface has no custom dropdown and
+ * should not grow one: the native control is keyboard-complete, screen-reader
+ * complete and correct on a touch device, and reimplementing that is a project
+ * rather than a component.
+ */
+.root {
+  font: inherit;
+  color: inherit;
+  border-radius: var(--pbui-radius);
+  min-width: 0;
+}
+
+/*
+ * Both variants paint a pale background, so both must state their own ink.
+ *
+ * `color: inherit` on `.root` above is right for a control on a pale surface
+ * and catastrophic on an inverted one: `Surface`'s `.inverted` re-points
+ * `--pbui-ink` to paper for every descendant, so the inherited colour is white
+ * and the background is white. DATADROP-8's stage switcher is the first select
+ * ever placed on the masthead and rendered as a blank box — typecheck, lint and
+ * every test green.
+ */
+.native {
+  background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
+}
+
+.framed {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane);
+  color: var(--pbui-ink-on-pane);
+  padding: 0 var(--pbui-space-2);
+}
+
+.auto {
+  max-width: 220px;
+}
+.compact {
+  max-width: 96px;
+}
+
+.tiny {
+  font-size: var(--pbui-fs-tiny);
+}
+.small {
+  font-size: var(--pbui-fs-small);
+}
+
+.root:disabled {
+  background: var(--pbui-pane-alt);
+  opacity: 0.55;
+}
+
+.root:focus-visible {
+  outline: var(--pbui-focus-ring);
+  outline-offset: var(--pbui-focus-offset);
+}

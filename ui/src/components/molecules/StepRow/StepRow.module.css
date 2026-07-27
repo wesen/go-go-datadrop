@@ -1,0 +1,30 @@
+/*
+ * The kind badge borrows a chip's left edge without being a Chip.
+ *
+ * It carries the step tone on 4px of border, exactly as a presentation chip
+ * does, because in the application it IS wrapped in a presentation — but it is
+ * uppercase and tiny rather than a chip's geometry, because it names a verb
+ * rather than an object.
+ */
+.kind {
+  border: var(--pbui-border-hair);
+  border-left: var(--pbui-tone-edge) solid var(--pbui-tone-step);
+  background: var(--pbui-pane);
+  padding: 0 var(--pbui-space-3);
+  font-size: var(--pbui-fs-tiny);
+  font-weight: 700;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+/* A step that is switched off is dimmed, not hidden: toggling one off and
+ * looking at it beside its neighbours is how a pipeline is debugged. */
+.off {
+  opacity: 0.5;
+}
+
+/* Pushes the buttons right, so the controls line up down a column of steps
+ * whose labels are all different lengths. */
+.spacer {
+  flex: 1;
+}

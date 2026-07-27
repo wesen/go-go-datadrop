@@ -1,0 +1,18 @@
+/*
+ * Full-width geometry for the disclosure control at the foot of a bounded list.
+ *
+ * The wrapper stretches the Button rather than the Button growing a `fullWidth`
+ * prop: exactly one caller wants a full-bleed button, and a prop on the atom
+ * would put a layout concern into the control that every other call site would
+ * then have to ignore.
+ */
+.more {
+  display: flex;
+  margin-top: var(--pbui-space-1);
+}
+
+.more > * {
+  flex: 1 1 auto;
+  justify-content: center;
+  background: var(--pbui-selected);
+}

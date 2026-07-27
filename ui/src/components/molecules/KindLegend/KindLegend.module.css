@@ -1,0 +1,51 @@
+/*
+ * A breakdown by kind: swatch, name, bar, total.
+ *
+ * The name and total columns are fixed-width so the bars all start and end at
+ * the same x. Bars that begin at different offsets cannot be compared by eye,
+ * which is the only thing a row of bars is for.
+ */
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+}
+
+.swatch {
+  flex: 0 0 auto;
+  width: 9px;
+  height: 9px;
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+}
+
+.kind {
+  flex: 0 0 auto;
+  width: 5.5em;
+  font-size: var(--pbui-fs-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bar {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+}
+
+.total {
+  flex: 0 0 auto;
+  width: 5.5em;
+  text-align: right;
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

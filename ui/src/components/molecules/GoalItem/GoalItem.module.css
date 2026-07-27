@@ -1,0 +1,16 @@
+.goal {
+  display: flex;
+  gap: var(--pbui-space-3);
+  align-items: flex-start;
+  margin-bottom: var(--pbui-space-3);
+}
+
+/*
+ * 0.55, not 0.4 — the floor Button.module.css arrived at after measuring 0.4 at
+ * 2.32:1 against the pane. A satisfied goal is still part of the brief and has
+ * to stay readable; fading it out of legibility would turn the list into a
+ * shrinking one, which is what this component deliberately is not.
+ */
+.met {
+  opacity: 0.55;
+}

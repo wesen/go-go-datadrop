@@ -1,0 +1,24 @@
+/*
+ * The geom chips.
+ *
+ * A span rather than a Button, and that is deliberate. Each geom is a
+ * `<geom>` presentation, so it already owns its click: `Presentation`'s
+ * `onActivate` fires the default verb and the right button opens the menu. A
+ * Button inside would give the element two click handlers, one of which would
+ * be wrong.
+ *
+ * The styles were an eleven-property inline object in `EncodingApp` until
+ * DATADROP-6 phase 4 — the same shape `no-raw-controls.test.ts` was written to
+ * stop, one level below its pattern.
+ */
+.geom {
+  border: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+  padding: 0 var(--pbui-space-4);
+  font-size: var(--pbui-fs-small);
+  font-weight: 700;
+}
+
+.selected {
+  background: var(--pbui-selected);
+}
