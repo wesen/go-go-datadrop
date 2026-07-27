@@ -34,3 +34,13 @@ Phases 5-7: traceEntry + TransportBar + descriptor-coverage guard; found a story
 
 Fixed a Biome/Go formatter war over ui/test/fixtures/envelope-projection.json that had been failing pkg/tabular for days (commit cbd71ae). reMarkable upload still blocked on rmapi 400s.
 
+
+## 2026-07-26
+
+Phase 8: ResultLog, the shell-derived widget the first gap analysis skimmed past; guide §1 corrected in place (commit a18c467)
+
+
+## 2026-07-26
+
+All 8 phases complete: ten widgets, a traceEntry presentation type, a scrubbable trace, and a descriptor-coverage guard that found a tone shipping broken since DATADROP-5. reMarkable upload outstanding — blocked on an rmapi bump, filed as remarquee#18.
+

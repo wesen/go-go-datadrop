@@ -1,7 +1,7 @@
 ---
 Title: 'Agent-workbench widgets: transport, segmented bar, hunk diff, sparkline and the run vocabulary'
 Ticket: DATADROP-11
-Status: active
+Status: review
 Topics:
     - frontend
     - design-system
@@ -15,10 +15,11 @@ Owners: []
 RelatedFiles: []
 ExternalSources: []
 Summary: ""
-LastUpdated: 2026-07-26T22:28:44.922553733-04:00
+LastUpdated: 2026-07-26T23:30:50.101082576-04:00
 WhatFor: ""
 WhenToUse: ""
 ---
+
 
 # Agent-workbench widgets: transport, segmented bar, hunk diff, sparkline and the run vocabulary
 

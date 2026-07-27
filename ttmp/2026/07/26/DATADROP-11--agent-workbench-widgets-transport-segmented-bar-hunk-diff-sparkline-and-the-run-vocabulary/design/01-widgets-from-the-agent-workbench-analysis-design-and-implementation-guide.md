@@ -59,8 +59,17 @@ repository:
 
 | File | Lines | What it is |
 |---|---|---|
-| `pbui-shell(1).jsx` | 868 | The original PBUI shell — window manager, presentations, a handful of toy apps |
+| `pbui-shell(1).jsx` | 868 | The original PBUI shell — window manager, presentations, a CLIM listener |
 | `pbui-agent-workbench(1).jsx` | 4 309 | A CLIM-flavoured workbench onto the work of a coding agent |
+
+> **Correction, written after phase 7.** The first version of this table called
+> the shell's apps "a handful of toy apps" and this document gave the shell two
+> paragraphs. That was wrong about one of them. `ListenerApp`
+> (`pbui-shell(1).jsx:376-441`) is a CLIM listener and it contains the one idea
+> in either prototype that we have half of and should finish — see §5.10 and
+> phase 8. The error is left visible here rather than quietly edited out,
+> because "I skimmed it and it looked like a demo" is the exact failure this
+> section is supposed to guard against.
 
 The shell is the ancestor of what we already have. Our `SplitView`,
 `Tile`, `Presentation` and the object menu are all descended from it, and when I
@@ -218,7 +227,10 @@ prototype's `MoreBar` (`:2246`) is a *control*: "⋯ 1.2k more lines — click t
 show", and it is how every long list in that program stays bounded without
 lying about what it hid. That is a different component, and it is on the list.
 
-### The nine we are building
+### The ten we are building
+
+Nine on the first pass, plus `ResultLog`, added after phase 7 when a second
+reading of the shell prototype found what the first had skimmed.
 
 | # | Name | Layer | Why it is not something we have |
 |---|---|---|---|
@@ -231,6 +243,7 @@ lying about what it hid. That is a different component, and it is on the list.
 | 7 | `DiffHunk` | molecule | `SpecDiff` diffs a *chart specification* — two objects. This diffs *text*, with line numbers, `+`/`−` gutters and a unified/split toggle |
 | 8 | `KindLegend` | molecule | `Legend` maps categories to chart colours. This maps kinds to counts and totals, with bars. Related, genuinely distinct |
 | 9 | `TransportBar` | organism | Nothing. We have no notion of a cursor into a history |
+| 10 | `ResultLog` | molecule | **Added after phase 7.** From the shell's `ListenerApp`, not the agent workbench. Nothing renders command *output* as objects — the trace prints strings |
 
 ---
 
@@ -582,6 +595,82 @@ rather than building one, and let `SelectInput`-style styling do the rest.
 Guard the ends in the *handler*, not the render. `onCursor(clamp(next, 0, length - 1))`
 computed once beats four disabled-button conditions that drift apart.
 
+### 5.10 `ResultLog` — molecule
+
+**The tenth widget, and the only one that comes from the shell rather than the
+agent workbench.** It was missed on the first pass; see the correction in §1.
+
+`ListenerApp` (`pbui-shell(1).jsx:376-441`) is a read-eval-print loop, and the
+CLIM idea in it is not the reading or the evaluating. It is the printing:
+
+```js
+const r = a.value + b.value;
+w.print([{ text: a.value + " + " + b.value + " = " },
+         { ptype: "number", value: r }]);   // ← the RESULT is a presentation
+```
+
+Command output is **not text**. Every result is a live object, so the output
+history becomes *a source of input for the next command*. The prototype's own
+prompt says so: *"SUM — click a NUMBER (1 of 2) — numbers app, notes, prior
+results all work."* Sum two numbers, then point at the answer as an argument to
+the next sum.
+
+```
+  ┌──────────────────────────────────────────────────────┐
+  │ described ⟦<field> data.temp_c⟧ → see inspector       │
+  │ 3 + 4 = ⟦7⟧                     ← ⟦…⟧ is clickable    │
+  │ 7 + ⟦7⟧ = ⟦14⟧                    and right-clickable │
+  │ picked ⟦#7aa6c9⟧ luminance 0.63                       │
+  └──────────────────────────────────────────────────────┘
+```
+
+**We already have the hard half.** The accept protocol is real in `pbui/` —
+`AcceptBanner`, `MouseDocLine`, accept mode, Esc to abort, and it survives a
+workspace switch mid-accept. What is missing is anywhere that *output* is
+objects. `TracePanel` renders `entry.type` and `entry.detail` as plain `<Text>`;
+after phase 6 the transport's current entry is a presentation, and that is the
+only live thing in the panel.
+
+```ts
+export type ResultSegment =
+  | { kind: "text"; text: string }
+  | { kind: "object"; ptype: PresentationType; value: unknown; label: string };
+
+export interface ResultLine {
+  id: string;
+  segments: ResultSegment[];
+  /** Rendered dim and prefixed, for the echoed command. */
+  echo?: boolean;
+}
+
+export interface ResultLogProps {
+  lines: ResultLine[];
+  /**
+   * Wraps an object segment. Same seam as `Legend`'s `renderEntry` and
+   * `SegmentedBar`'s `renderSegment` (DR-38) — the molecule stays
+   * provider-free and the caller decides what "live" means.
+   */
+  renderObject?: (segment: ResultSegment & { kind: "object" }, body: ReactNode) => ReactNode;
+  /** Follows its own tail unless the reader has scrolled away. */
+  follow?: boolean;
+  label: string;
+}
+```
+
+Two decisions carried over from what phases 1–7 already learned:
+
+- **The seam, not a direct `Presentation` import.** Three molecules now use this
+  shape. A molecule that imports `Presentation` cannot be storied without a
+  provider, and phase 6 showed exactly what that costs — every `TracePanel`
+  story threw at render while the test suite stayed green.
+- **`label` on an object segment is required.** The caller knows what the object
+  is called; the log must not have to reach into the registry to find out, and
+  `labelFor` needs an environment this component has no business holding.
+
+Non-applicability: if every line of your output is a string, this is a `<pre>`
+with extra steps. It earns its place only where results are objects the reader
+will want to act on.
+
 ---
 
 ## 6. New presentation types
@@ -673,6 +762,15 @@ selected entry expanded; the sparkline shows verb activity across the trace; the
 segmented bar shows the mix of verb kinds.
 
 **The note about review-only mode is part of the deliverable, not a nicety.**
+
+### Phase 8 — `ResultLog`
+
+Added after phase 7. The shell-derived widget of §5.10, with the same
+`renderObject` seam the other two composite molecules use.
+
+**Done when:** it is storied both raw and wrapped in presentations, and the
+story shows a result being produced *and then re-used* as an argument — the
+property that is the entire point.
 
 ### Phase 7 — Guards, stories, and the break sweep
 

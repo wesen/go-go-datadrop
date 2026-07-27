@@ -953,3 +953,132 @@ character'` is 0 — at
 `DATADROP-11-agent-workbench-widgets.pdf` in the ticket directory. Only the
 transfer is outstanding. Re-running `rmapi put` after updating or
 re-authenticating rmapi should complete it; the document needs no rebuild.
+
+## Step 9: The widget I skimmed past, and the correction
+
+A stop hook pointed out that I had identified a tenth widget in closing remarks
+and then done nothing about it. That is fair, and the more useful observation is
+*why* it was only a closing remark: I had classified the shell prototype's apps
+as toys on the first read, written that into the guide, and only went back
+because the user asked "what about pbui-shell(1).jsx btw?".
+
+### Prompt Context
+
+**User prompt (verbatim):** "what about pbui-shell(1).jsx btw?"
+
+**Assistant interpretation:** Justify what the shell prototype contributed,
+which on the record so far was "nothing".
+
+**Inferred user intent:** The second file was named explicitly and mid-turn, so
+it was meant to be analysed as seriously as the first. A two-paragraph dismissal
+does not answer that.
+
+**Commit (code):** `a18c467` — "DATADROP-11 phase 8: ResultLog -- the widget the first pass skimmed past"
+
+### What I did
+
+- Re-read `ListenerApp` (`pbui-shell(1).jsx:376-441`), which I had skipped.
+- Corrected §1 of the guide **in place, visibly**, rather than editing the error
+  out; added §5.10 and a phase 8.
+- Built `ResultLog` with the `renderObject` seam, five stories, and the barrel.
+- Fixed three lint findings, one of which was a real accessibility improvement.
+
+### What didn't work — the original analysis
+
+My gap analysis walked the shell's *window manager* carefully and confirmed,
+correctly, that `SplitView` + `snapRatio` and `Tile/useDrag` already match or
+beat it. Then it looked at the app list — `ColorsApp`, `NumbersApp`, `NotesApp`,
+`ListenerApp` — and classified all four as demos **from their names**.
+
+`ListenerApp` is a CLIM listener, and the important part is not the read or the
+eval. It is the print:
+
+```js
+const r = a.value + b.value;
+w.print([{ text: a.value + " + " + b.value + " = " },
+         { ptype: "number", value: r }]);   // the RESULT is a presentation
+```
+
+Output is objects, so the output history is *a source of input for the next
+command*. The prototype's own accept prompt states it: *"SUM — click a NUMBER
+(1 of 2) — numbers app, notes, prior results all work."*
+
+We have the expensive half of this already — the accept protocol is real in
+`pbui/`, with `AcceptBanner`, accept mode, Esc-to-abort, and it survives a
+workspace switch mid-accept. What we had nowhere is output that is objects.
+`TracePanel` prints `entry.detail` as `<Text>`; after phase 6 the transport's
+current entry is the only live thing in it.
+
+### What I learned
+
+**A gap analysis that reads structure and skims content will miss the ideas.**
+Every rejection I made on the first pass was about *shape* — this is a Chip with
+a tone, this is a Button, this is our SplitView — and shape-level comparison is
+exactly what cannot see "output is objects", because a listener and a log have
+the same shape. The one file I read line by line in that prototype was the
+window manager, which is the part that turned out to have nothing.
+
+The rule I would give the next person: **for each app in a prototype, find the
+one line that makes it non-obvious.** If you cannot find one, then it is a demo.
+Twelve lines of reading per app would have caught this on day one.
+
+### What was tricky to build
+
+**Where the `label` comes from.** The natural design has `ResultLog` call
+`labelFor(ptype, value, env)` so the caller does not repeat itself — and that
+requires a `PbuiEnvironment`, which would make the molecule unstoryable without
+a provider. Phase 6 had just shown what that costs, so `label` is a required
+field on the segment and the caller supplies it.
+
+### What warrants a second pair of eyes
+
+- **`ResultLog` is a molecule with a seam, not an organism that imports
+  `Presentation`.** That is consistent with `Legend` and `SegmentedBar`, and it
+  means the widget on its own is inert — the liveness lives at the call site.
+  Someone may reasonably prefer an organism that just does it.
+- **Nothing consumes it yet.** It is a design-system component with stories and
+  no caller. That is the honest state: the listener *app* is a separate piece of
+  work, and shipping the widget without pretending otherwise is better than
+  bolting a half-listener onto the trace to justify it.
+
+### What should be done in the future
+
+- **A listener app.** `ResultLog` plus the existing accept protocol is most of
+  one. That is a ticket, not a phase.
+- **Re-read the agent workbench's apps the same way.** If shape-level skimming
+  missed the idea in an 868-line file, it may have missed one in the 4 309-line
+  file too. `MemoryApp` and `ContextApp` are the two I read for widgets and not
+  for ideas.
+
+### Code review instructions
+
+- `ui/src/components/molecules/ResultLog/ResultLog.tsx` — the seam, and the
+  comment explaining why segment keys are indices.
+- Storybook: `Molecules/ResultLog → Chaining` is the story that demonstrates the
+  point; a result is produced and then clicked as the next argument.
+- The guide's §1 carries the correction rather than hiding it.
+
+### Technical details (step 9)
+
+The property no test covers, demonstrated in the browser:
+
+```text
+3 + 4 = 7                          ← a result is produced
+SUM — first operand 7, click another   ← the RESULT is clicked
+7 + 4 = 11                         ← it became the next argument
+resultReusedAsArgument: true
+```
+
+Two story defects found while verifying, both mine:
+
+```text
+before: two clicks in one tick ->
+  "SUM — first operand 3, click another"
+  "SUM — first operand 4, click another"   ← the sum never happened
+after:  two clicks in one tick ->
+  "SUM — first operand 3, click another"
+  "3 + 4 = 7"                              ← functional setState
+```
+
+The id counter was a render-scoped `let` reset on every render, which can
+reissue a React key that is still in use. It is a `useRef` now.

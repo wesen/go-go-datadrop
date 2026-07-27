@@ -9,3 +9,4 @@
 - [x] Phase 5 — traceEntry presentation type: union, descriptor, registry, tone token, verbs and applyVerb mapping <!-- t:8wqc -->
 - [x] Phase 6 — TransportBar and the trace review panel; the review-only note is part of the deliverable <!-- t:qumm -->
 - [x] Phase 7 — barrels, stories coverage, and the break sweep with verbatim failures in the diary <!-- t:ei9s -->
+- [x] Phase 8 — ResultLog: the shell prototype's listener idea. An output history whose entries are presentations, not strings, so a result can be pointed at as the next command's argument <!-- t:eymm -->
