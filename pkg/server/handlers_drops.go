@@ -62,6 +62,12 @@ func (s *Server) handleListDrops(w http.ResponseWriter, r *http.Request) {
 	// every drop. With ownership that reasoning no longer holds: the answer is
 	// now per-caller, so there is nothing global to protect.
 	p := auth.FromContext(r.Context())
+	if p.IsAuthenticated() && !p.Allowed(auth.ScopeDropsRead) {
+		// Listing is deliberately available to anonymous callers for public drops,
+		// but an authenticated credential with no drops:read scope must not use
+		// the user's ownership or membership to reveal private drop metadata.
+		p = auth.Anonymous()
+	}
 
 	drops, err := s.store.VisibleDrops(r.Context(), p)
 	if err != nil {

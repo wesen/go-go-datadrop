@@ -24,6 +24,12 @@ func (s *Server) handleListMembers(w http.ResponseWriter, r *http.Request) {
 		s.writeStoreError(w, r, err)
 		return
 	}
+	for i := range members {
+		if members[i].User != nil {
+			user := publicUser(*members[i].User)
+			members[i].User = &user
+		}
+	}
 
 	drop, err := s.store.GetDrop(r.Context(), dropName)
 	if err != nil {

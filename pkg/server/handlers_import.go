@@ -229,14 +229,16 @@ func (s *Server) materialize(
 			return errors.Wrap(err, "encode provenance")
 		}
 
-		// A deterministic identifier derived from (digest, row) makes a repeated
-		// import idempotent: the second run replays the same identifiers, and
-		// the v0.1 append path returns the original event rather than appending
-		// a duplicate. This is why an interrupted import can simply be re-run.
+		// A deterministic identifier derived from (destination, digest, row)
+		// makes a repeated import idempotent within the requested stream: the
+		// second run replays the same identifiers, and the v0.1 append path
+		// returns the original event rather than appending a duplicate. This is
+		// why an interrupted import can simply be re-run without making the same
+		// file bytes collide when they are materialized elsewhere.
 		event := datadrop.Envelope{
 			Drop:   req.drop,
 			Stream: req.stream,
-			ID:     importEventID(req.digest, row),
+			ID:     importEventID(req.drop, req.stream, req.digest, row),
 			Source: "dataset:" + req.dataset + "/" + req.logicalPath,
 			Type:   "io.datadrop.dataset.row.v1",
 			Data:   payload,
@@ -271,13 +273,16 @@ func (s *Server) materialize(
 	return result, nil
 }
 
-// importEventID derives a stable identifier from the source bytes and the row.
+// importEventID derives a stable identifier from the destination, source bytes,
+// and row.
 //
 // Deriving it from the digest rather than from the dataset name means the same
-// content imported under two names produces the same identifiers, so importing
-// a renamed copy does not duplicate the events.
-func importEventID(digest string, row int) string {
-	sum := sha256.Sum256([]byte(digest + "#" + strconv.Itoa(row)))
+// content imported under two names produces the same identifiers within a drop
+// stream, so importing a renamed copy does not duplicate those events. Including
+// the drop and stream keeps the global events.id primary key from turning an
+// import into another destination into an accidental replay of the first one.
+func importEventID(drop, stream, digest string, row int) string {
+	sum := sha256.Sum256([]byte(drop + "\x00" + stream + "\x00" + digest + "#" + strconv.Itoa(row)))
 	return "ds-" + hex.EncodeToString(sum[:16])
 }
 

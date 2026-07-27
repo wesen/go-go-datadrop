@@ -212,6 +212,7 @@ func TestListDropsIsFilteredPerCaller(t *testing.T) {
 
 	owner, ownerCookie := signIn(t, srv, "sub-lo", "lo@example.org")
 	_, strangerCookie := signIn(t, srv, "sub-ls", "ls@example.org")
+	ownerWriteToken := mintToken(t, srv, owner.ID, auth.ScopeDropsWrite)
 
 	for _, d := range []datadrop.Drop{
 		{Name: "mine", OwnerID: owner.ID},
@@ -245,6 +246,9 @@ func TestListDropsIsFilteredPerCaller(t *testing.T) {
 	}
 	if got := names(credential{cookie: strangerCookie}); len(got) != 1 || got[0] != "shared-openly:reader" {
 		t.Errorf("stranger sees %v, want only the public drop as reader", got)
+	}
+	if got := names(credential{bearer: ownerWriteToken}); len(got) != 1 || got[0] != "shared-openly:reader" {
+		t.Errorf("write-only owner token sees %v, want only the public drop as anonymous", got)
 	}
 	if got := names(credential{}); len(got) != 1 || got[0] != "shared-openly:reader" {
 		t.Errorf("anonymous sees %v, want only the public drop", got)
@@ -388,8 +392,8 @@ func TestMeReportsThePrincipal(t *testing.T) {
 	if signed.User.ID != user.ID {
 		t.Errorf("user id = %q, want %q", signed.User.ID, user.ID)
 	}
-	if signed.User.Subject != "" {
-		t.Error("the OIDC subject was echoed to the client; nothing outside the server needs it")
+	if signed.User.Issuer != "" || signed.User.Subject != "" {
+		t.Error("the OIDC provider identifiers were echoed to the client; nothing outside the server needs them")
 	}
 
 	tokenPrincipal := decode(credential{bearer: mintToken(t, srv, user.ID, auth.ScopeDropsRead)})
@@ -639,6 +643,16 @@ func TestMemberListIsVisibleToReaders(t *testing.T) {
 	// request per row.
 	if !strings.Contains(rec.Body.String(), "b@example.org") {
 		t.Errorf("the member's user was not resolved: %s", rec.Body.String())
+	}
+	var body struct {
+		Members []datadrop.Member `json:"members"`
+	}
+	decodeBody(t, rec, &body)
+	if len(body.Members) != 1 || body.Members[0].User == nil {
+		t.Fatalf("member user missing from response: %+v", body)
+	}
+	if body.Members[0].User.Issuer != "" || body.Members[0].User.Subject != "" {
+		t.Fatalf("member response exposed provider identifiers: %+v", body.Members[0].User)
 	}
 }
 

@@ -26,6 +26,12 @@ type MeResponse struct {
 	Provider      *ProviderLinks `json:"provider,omitempty"`
 }
 
+func publicUser(user datadrop.User) datadrop.User {
+	user.Issuer = ""
+	user.Subject = ""
+	return user
+}
+
 // ProviderLinks points the profile tile at the identity provider for the things
 // datadrop deliberately does not own: password, MFA, email, display name.
 type ProviderLinks struct {
@@ -71,7 +77,7 @@ func (s *Server) handleMe(w http.ResponseWriter, r *http.Request) {
 			// value only by accident of JSON tags, so blank them explicitly:
 			// nothing outside this server needs the provider's identifier for
 			// a person, and echoing it invites something to key on it.
-			user.Subject = ""
+			user = publicUser(user)
 			response.User = &user
 		}
 	}

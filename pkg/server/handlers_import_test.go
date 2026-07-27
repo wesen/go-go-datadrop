@@ -123,6 +123,35 @@ func TestImportIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestImportSameBytesAreIdempotentOnlyWithinDestination(t *testing.T) {
+	srv := newTestServer(t)
+	seedDrop(t, srv, "greenhouse")
+	seedDrop(t, srv, "orchard")
+	publish(t, srv, "greenhouse", "readings", "readings.csv", importCSV, "")
+	publish(t, srv, "orchard", "readings", "readings.csv", importCSV, "")
+
+	targets := []string{
+		"/v1/drops/greenhouse/datasets/readings/versions/latest/import?path=readings.csv",
+		"/v1/drops/greenhouse/datasets/readings/versions/latest/import?path=readings.csv&stream=archive",
+		"/v1/drops/orchard/datasets/readings/versions/latest/import?path=readings.csv",
+	}
+	for _, target := range targets {
+		rec := request(t, srv, http.MethodPost, target, "", true)
+		var result datadrop.ImportResult
+		decodeBody(t, rec, &result)
+		if result.Appended != 3 || result.Skipped != 0 {
+			t.Fatalf("%s: appended=%d skipped=%d, want 3 and 0", target, result.Appended, result.Skipped)
+		}
+	}
+
+	retry := request(t, srv, http.MethodPost, targets[2], "", true)
+	var result datadrop.ImportResult
+	decodeBody(t, retry, &result)
+	if result.Appended != 0 || result.Skipped != 3 {
+		t.Fatalf("retry in same destination: appended=%d skipped=%d, want 0 and 3", result.Appended, result.Skipped)
+	}
+}
+
 func TestImportNDJSON(t *testing.T) {
 	srv := newTestServer(t)
 	seedDrop(t, srv, "greenhouse")
@@ -276,17 +305,24 @@ func TestImportMissingFile(t *testing.T) {
 	}
 }
 
-// Identifiers derive from the digest rather than the dataset name, so the same
-// content imported under two names does not duplicate the events.
-func TestImportEventIDDependsOnContentNotName(t *testing.T) {
+// Identifiers derive from the destination and digest rather than the dataset
+// name, so the same content imported under two names does not duplicate events
+// within the same stream but can still be materialized elsewhere.
+func TestImportEventIDDependsOnDestinationAndContentNotName(t *testing.T) {
 	digest := sha256Of("some content")
 	other := sha256Of("different content")
 
-	if importEventID(digest, 1) == importEventID(digest, 2) {
+	if importEventID("greenhouse", "events", digest, 1) == importEventID("greenhouse", "events", digest, 2) {
 		t.Fatal("two rows of the same file share an identifier")
 	}
-	if importEventID(digest, 1) == importEventID(other, 1) {
+	if importEventID("greenhouse", "events", digest, 1) == importEventID("greenhouse", "events", other, 1) {
 		t.Fatal("the same row of two different files shares an identifier")
+	}
+	if importEventID("greenhouse", "events", digest, 1) == importEventID("greenhouse", "archive", digest, 1) {
+		t.Fatal("the same row in two streams shares an identifier")
+	}
+	if importEventID("greenhouse", "events", digest, 1) == importEventID("orchard", "events", digest, 1) {
+		t.Fatal("the same row in two drops shares an identifier")
 	}
 }
 
@@ -295,12 +331,14 @@ func TestImportEventIDDependsOnContentNotName(t *testing.T) {
 // identifiers and duplicate every row. A golden value is the only assertion
 // that catches such a change — comparing the function to itself cannot.
 func TestImportEventIDIsStable(t *testing.T) {
-	// Derived independently: "ds-" + sha256(digest + "#1")[:32].
+	// Derived independently: "ds-" + sha256("greenhouse\\0events\\0" + digest + "#1")[:32].
 	const (
+		drop   = "greenhouse"
+		stream = "events"
 		digest = "sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
-		want   = "ds-732f8185da33e00e0556e9fb3ca1b9a2"
+		want   = "ds-c93cd8c8e2f0a9fb653f19b1fdd636f9"
 	)
-	if got := importEventID(digest, 1); got != want {
+	if got := importEventID(drop, stream, digest, 1); got != want {
 		t.Fatalf("importEventID = %q, want %q.\n"+
 			"If this change is deliberate, note that it invalidates the idempotency "+
 			"of every already-imported dataset.", got, want)

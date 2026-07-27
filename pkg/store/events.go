@@ -197,7 +197,11 @@ func (s *Store) QueryEvents(ctx context.Context, q datadrop.EventQuery) ([]datad
 	args := []any{q.Drop, q.Stream}
 
 	if q.After > 0 {
-		sb.WriteString(` AND seq > ?`)
+		if q.Order == datadrop.OrderAsc {
+			sb.WriteString(` AND seq > ?`)
+		} else {
+			sb.WriteString(` AND seq < ?`)
+		}
 		args = append(args, q.After)
 	}
 	if !q.From.IsZero() {

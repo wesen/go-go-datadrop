@@ -363,7 +363,7 @@ func TestQueryEventsClampsLimit(t *testing.T) {
 
 // Cursor stability: paging with after = last.Seq must visit every event
 // exactly once.
-func TestQueryEventsCursorPagingIsStable(t *testing.T) {
+func TestQueryEventsAscendingCursorPagingIsStable(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)
 	newTestDrop(t, st, "greenhouse")
@@ -402,6 +402,44 @@ func TestQueryEventsCursorPagingIsStable(t *testing.T) {
 		if count != 1 {
 			t.Fatalf("event %d visited %d times, want once", seq, count)
 		}
+	}
+}
+
+func TestQueryEventsDescendingCursorMovesTowardOlderEvents(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	newTestDrop(t, st, "greenhouse")
+
+	for i := 0; i < 5; i++ {
+		if _, err := st.AppendEvent(ctx, datadrop.Envelope{
+			Drop: "greenhouse", Data: json.RawMessage(`{}`),
+		}); err != nil {
+			t.Fatalf("AppendEvent: %v", err)
+		}
+	}
+
+	first, err := st.QueryEvents(ctx, datadrop.EventQuery{Drop: "greenhouse", Limit: 2})
+	if err != nil {
+		t.Fatalf("QueryEvents first: %v", err)
+	}
+	if got := seqsOf(first); len(got) != 2 || got[0] != 5 || got[1] != 4 {
+		t.Fatalf("first page = %v, want [5 4]", got)
+	}
+
+	second, err := st.QueryEvents(ctx, datadrop.EventQuery{Drop: "greenhouse", After: first[len(first)-1].Seq, Limit: 2})
+	if err != nil {
+		t.Fatalf("QueryEvents second: %v", err)
+	}
+	if got := seqsOf(second); len(got) != 2 || got[0] != 3 || got[1] != 2 {
+		t.Fatalf("second page = %v, want [3 2]", got)
+	}
+
+	third, err := st.QueryEvents(ctx, datadrop.EventQuery{Drop: "greenhouse", After: second[len(second)-1].Seq, Limit: 2})
+	if err != nil {
+		t.Fatalf("QueryEvents third: %v", err)
+	}
+	if got := seqsOf(third); len(got) != 1 || got[0] != 1 {
+		t.Fatalf("third page = %v, want [1]", got)
 	}
 }
 
