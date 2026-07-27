@@ -29,3 +29,8 @@ Phases 3-4: SegmentedBar (overflow prose corrected) and DiffHunk (split pairing 
 
 Phases 5-7: traceEntry + TransportBar + descriptor-coverage guard; found a story throwing while the suite was green, and an undeclared tone shipping since DATADROP-5 (commits 79a5364, d835a76)
 
+
+## 2026-07-26
+
+Fixed a Biome/Go formatter war over ui/test/fixtures/envelope-projection.json that had been failing pkg/tabular for days (commit cbd71ae). reMarkable upload still blocked on rmapi 400s.
+
