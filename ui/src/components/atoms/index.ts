@@ -38,3 +38,9 @@ export { ScopeChip } from "./ScopeChip";
 // existed since DATADROP-4 as an inline style object inside a tutorial tile.
 export { Tick } from "./Tick";
 export type { TickState } from "./Tick";
+export { CodeLine } from "./CodeLine";
+export type { CodeLineProps, LineOp } from "./CodeLine";
+export { Meter } from "./Meter";
+export type { MeterProps } from "./Meter";
+export { Sparkline } from "./Sparkline";
+export type { SparklineProps } from "./Sparkline";

@@ -1,0 +1,61 @@
+/*
+ * One line of source inside a diff.
+ *
+ * `tabular-nums` on the gutters so the numbers do not shift width as they pass
+ * 9 → 10 → 100, which on a long hunk makes the whole left edge shimmer as you
+ * scroll.
+ */
+.line {
+  display: flex;
+  align-items: flex-start;
+  font-family: var(--pbui-font);
+  font-size: var(--pbui-fs-micro);
+  line-height: var(--pbui-lh-tight);
+  border-left: var(--pbui-tone-edge) solid transparent;
+}
+
+.line[data-op="add"] {
+  background: color-mix(in srgb, var(--pbui-ok) 14%, transparent);
+}
+
+.line[data-op="remove"] {
+  background: color-mix(in srgb, var(--pbui-danger) 12%, transparent);
+}
+
+.gutter {
+  flex: 0 0 auto;
+  width: 2.6em;
+  padding-right: var(--pbui-space-2);
+  text-align: right;
+  color: var(--pbui-faint);
+  font-variant-numeric: tabular-nums;
+  user-select: none;
+}
+
+.sign {
+  flex: 0 0 auto;
+  width: 1em;
+  font-weight: 700;
+  user-select: none;
+  color: var(--pbui-faint);
+}
+
+.line[data-op="add"] .sign {
+  color: var(--pbui-ok);
+}
+
+.line[data-op="remove"] .sign {
+  color: var(--pbui-danger);
+}
+
+/*
+ * `pre-wrap` rather than `pre`: a long line wraps instead of forcing the whole
+ * hunk to scroll horizontally. `break-word` catches minified or generated lines
+ * that have no spaces to wrap at.
+ */
+.text {
+  flex: 1 1 auto;
+  min-width: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

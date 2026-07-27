@@ -7,6 +7,7 @@
 
 import type { ChartSpec } from "./chart";
 import { CHANNELS } from "./chart";
+import { clamp } from "./format";
 import { evaluate } from "./pipeline";
 import type { FieldType, Row, Table } from "./table";
 import { asNumber, asText, fmt } from "./table";
@@ -98,8 +99,6 @@ export interface PlotOptions {
   /** A miniature is drawn with tighter padding and smaller marks. */
   mini?: boolean;
 }
-
-const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 /**
  * Axis ticks at 1, 2, 5 or 10 times a power of ten.

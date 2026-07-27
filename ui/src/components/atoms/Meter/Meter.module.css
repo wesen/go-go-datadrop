@@ -1,0 +1,62 @@
+/*
+ * A proportional bar.
+ *
+ * The fill is a percentage width inside a fixed-height track rather than a flex
+ * child, because a caller animating `fraction` gets a smooth transition for
+ * free and because a 0% fill must still leave the track visible — a bar that
+ * disappears at zero reads as a missing element rather than an empty one.
+ *
+ * `.track` is declared before the size-scoped overrides that follow it. Biome's
+ * noDescendingSpecificity rejects the other order, and it is right to: a reader
+ * scanning for what `.track` does should meet the base rule first.
+ */
+.meter {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+  min-width: 0;
+}
+
+.track {
+  height: 8px;
+  background: var(--pbui-pane);
+  border: var(--pbui-border-hair);
+  border-radius: var(--pbui-radius);
+  overflow: hidden;
+}
+
+.row {
+  display: flex;
+  width: 100%;
+}
+
+.inline .track {
+  flex: 0 0 46px;
+  width: 46px;
+}
+
+.row .track {
+  flex: 1 1 auto;
+}
+
+.fill {
+  display: block;
+  height: 100%;
+  background: var(--pbui-tone-neutral);
+}
+
+/* Alarm levels. Only applied when the caller opts in — see the `alarm` prop. */
+.fill[data-level="warn"] {
+  background: var(--pbui-type-t);
+}
+
+.fill[data-level="high"] {
+  background: var(--pbui-danger);
+}
+
+.value {
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
