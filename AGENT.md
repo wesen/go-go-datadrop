@@ -82,10 +82,16 @@ what was tried and did not work.
 Two or more agents may be working in this checkout at the same time, on tickets
 whose file sets are disjoint. The branch is shared, so the git index is shared.
 
-- **Stage explicit paths only.** `git add pkg/cli/rows.go ttmp/...` — never
-  `git add -A`, `git add .` or `git commit -a`. Another agent's half-finished
-  work is very likely sitting in the tree beside yours, and staging it makes a
-  commit that neither of you can review.
+- **Commit explicit paths, not the index.** Staging carefully is necessary and
+  *not sufficient*: `git commit` commits the whole index, including whatever the
+  other agent staged a second ago. Both agents on DATADROP-8/9 did stage explicit
+  paths, and commits leaked across tickets in both directions anyway. Use
+  `git commit -- <paths>` so the commit is limited to your files regardless of
+  what else is staged, and check `git diff --cached --name-only` first. Never
+  `git add -A`, `git add .` or `git commit -a`.
+- **`git rm` stages immediately.** `git rm --cached <f>` puts a deletion in the
+  shared index before you are ready to commit it. Prefer removing the file and
+  letting your own `git commit -- <paths>` pick the deletion up.
 - **`index.lock` contention is expected, not an error.** If a git command fails
   with `Unable to create '.git/index.lock': File exists`, wait a couple of
   seconds and retry once. Do not delete the lock file — the other agent is
