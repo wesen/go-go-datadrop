@@ -314,6 +314,26 @@ func TestCSRFCoversEveryMutatingRoute(t *testing.T) {
 	}
 }
 
+func TestBlobPrecheckUsesDatasetWriteScope(t *testing.T) {
+	srv := newOIDCServer(t)
+	user, _ := signIn(t, srv, "sub-blob-scope", "blob@example.org")
+
+	datasetToken := mintToken(t, srv, user.ID, auth.ScopeDatasetsWrite)
+	readToken := mintToken(t, srv, user.ID, auth.ScopeDropsRead)
+	const target = "/v1/blobs/not-a-digest"
+
+	// 400 proves the least-privilege dataset token passed authorization and
+	// reached digest validation. The old drops:read check returned 403 here.
+	if rec := do(t, srv, http.MethodHead, target,
+		credential{bearer: datasetToken}, ""); rec.Code != http.StatusBadRequest {
+		t.Fatalf("dataset-write token status = %d, want 400: %s", rec.Code, rec.Body.String())
+	}
+	if rec := do(t, srv, http.MethodHead, target,
+		credential{bearer: readToken}, ""); rec.Code != http.StatusForbidden {
+		t.Fatalf("drops-read token status = %d, want 403", rec.Code)
+	}
+}
+
 func TestCSRFDoesNotApplyToBearerCredentials(t *testing.T) {
 	// A bearer token is not ambient: it has to be deliberately attached, so a
 	// page on another site cannot cause one to be sent. Applying the origin

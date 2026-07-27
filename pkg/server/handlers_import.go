@@ -100,6 +100,28 @@ func (s *Server) handleImportDataset(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Strict means rejection has no side effects. Parse and validate the entire
+	// bounded import before opening the mutation pass, so a bad later row cannot
+	// leave valid earlier rows committed. The source is content-addressed and can
+	// be reopened safely without buffering a potentially multi-gigabyte file.
+	if mode == datadrop.ModeStrict {
+		preflight, err := s.blobs.Open(blob.Digest(file.Digest))
+		if err != nil {
+			s.internalError(w, r, errors.Wrapf(err, "open blob %s", file.Digest))
+			return
+		}
+		validateErr := validateStrictImport(preflight, format, maxRows, compiled)
+		closeErr := preflight.Close()
+		if validateErr != nil {
+			s.writeImportError(w, r, validateErr)
+			return
+		}
+		if closeErr != nil {
+			s.internalError(w, r, errors.Wrap(closeErr, "close import preflight"))
+			return
+		}
+	}
+
 	body, err := s.blobs.Open(blob.Digest(file.Digest))
 	if err != nil {
 		s.internalError(w, r, errors.Wrapf(err, "open blob %s", file.Digest))
@@ -190,6 +212,30 @@ type materializeRequest struct {
 // errImportRejected marks a row that failed strict validation, so the handler
 // can map it to 422 rather than 500.
 var errImportRejected = errors.New("row rejected by the dataset schema")
+
+// validateStrictImport completes the read/validation phase before materialize
+// is allowed to append anything. It intentionally uses the same row reader and
+// row limit as the mutation pass; because the source blob is immutable, the
+// second pass observes exactly the rows accepted here.
+func validateStrictImport(
+	body io.Reader, format tabular.Format, maxRows int, compiled *schema.Compiled,
+) error {
+	_, err := tabular.ReadRows(body, format, tabular.ReadOptions{MaxRows: maxRows},
+		func(row int, payload json.RawMessage) error {
+			if compiled == nil {
+				return nil
+			}
+			outcome, err := compiled.Validate(payload)
+			if err != nil {
+				return errors.Wrapf(err, "row %d", row)
+			}
+			if !outcome.Valid {
+				return errors.Wrapf(errImportRejected, "row %d", row)
+			}
+			return nil
+		})
+	return err
+}
 
 // materialize reads rows and appends one event per row.
 func (s *Server) materialize(

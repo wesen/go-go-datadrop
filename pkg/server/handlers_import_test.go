@@ -243,6 +243,17 @@ func TestImportStrictRejectsBadRows(t *testing.T) {
 	if rec.Code != http.StatusUnprocessableEntity {
 		t.Fatalf("status = %d, want %d (body %s)", rec.Code, http.StatusUnprocessableEntity, rec.Body)
 	}
+
+	// The first row is valid and the second is invalid. Strict rejection must
+	// preflight both before appending either; otherwise this query finds a
+	// partial import despite the 422 response.
+	queryRec := request(t, srv, http.MethodGet,
+		"/v1/drops/greenhouse/events?order=asc", "", true)
+	var events datadrop.QueryResult
+	decodeBody(t, queryRec, &events)
+	if len(events.Events) != 0 {
+		t.Fatalf("strict rejection left %d committed events, want none", len(events.Events))
+	}
 }
 
 func TestImportRequiresAPath(t *testing.T) {

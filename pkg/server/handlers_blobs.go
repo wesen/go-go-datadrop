@@ -340,7 +340,7 @@ func (s *Server) handleHeadBlob(w http.ResponseWriter, r *http.Request) {
 	// endpoint is load-bearing for the upload fast path, so it is documented
 	// rather than pretended away — and it is gated on authentication so the
 	// oracle is at least attributable (guide §7.5).
-	if _, ok := s.authorize(w, r, auth.ScopeDropsRead); !ok {
+	if _, ok := s.authorize(w, r, auth.ScopeDatasetsWrite); !ok {
 		return
 	}
 
