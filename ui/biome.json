@@ -6,7 +6,13 @@
     "useIgnoreFile": true
   },
   "files": {
-    "includes": ["src/**", "test/**", ".storybook/**", "scripts/**"]
+    "includes": [
+      "src/**",
+      "test/**",
+      ".storybook/**",
+      "scripts/**",
+      "!test/fixtures/envelope-projection.json"
+    ]
   },
   "formatter": {
     "enabled": true,
