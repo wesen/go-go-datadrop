@@ -1,5 +1,5 @@
 import type { Verb } from "../pbui/verbs";
-import { beginImport, exportStage, exportTile, exportWorkspace } from "./effects";
+import { beginImport, exportStage, exportTile, exportWorkspace, storeTemplate } from "./effects";
 import { layoutActions, type LayoutState } from "./layout";
 import type { VerbResult } from "./applyVerb";
 
@@ -73,6 +73,9 @@ export function actionsForLayoutVerb(verb: Verb, layout: LayoutState): VerbResul
 
     case "importStage":
       return [beginImport({ kind: "stage" })];
+
+    case "storeTemplate":
+      return [storeTemplate(verb.source, verb.name)];
 
     default:
       // Not a layout verb. `layout` is unused in that case and is taken anyway,

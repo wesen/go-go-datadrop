@@ -191,6 +191,7 @@ describe("the layout descriptors", () => {
       "Split below",
       "Copy this tile to the clipboard",
       "Replace this tile from the clipboard …",
+      "Save as a template …",
       "Inspect",
       "Close",
     ]);

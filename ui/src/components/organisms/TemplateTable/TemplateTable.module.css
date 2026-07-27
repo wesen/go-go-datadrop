@@ -1,0 +1,70 @@
+/*
+ * A list of rows that each expand, inside a tile that scrolls.
+ *
+ * `AppBody` supplies the bounded scroll; everything here is the anatomy of one
+ * row plus the two small markers.
+ */
+.spacer {
+  flex: 1;
+}
+
+.message {
+  padding: var(--pbui-space-2) var(--pbui-space-3);
+  border-bottom: var(--pbui-border-hair);
+  background: var(--pbui-selected-wash);
+}
+
+.empty {
+  padding: var(--pbui-space-4);
+}
+
+.rows {
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * A hairline between rows rather than around each: fifty templates with fifty
+ * boxes is a grid, and this is a list.
+ */
+.row {
+  border-bottom: var(--pbui-border-hair);
+}
+
+/* The open row gets the same pale wash the lesson rail uses for "this is the
+ * one currently expanded" — not --pbui-selected, because nothing here is
+ * SELECTED, something is merely open. */
+.row[data-state="open"] {
+  background: var(--pbui-selected-wash);
+}
+
+.head {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-3);
+  padding: var(--pbui-space-1) var(--pbui-space-3);
+  min-width: 0;
+}
+
+.detail {
+  padding: var(--pbui-space-2) var(--pbui-space-3) var(--pbui-space-4) var(--pbui-space-5);
+  border-top: var(--pbui-border-hair);
+}
+
+/*
+ * The kind badge, and the application chips in the detail pane.
+ *
+ * Same geometry as `TracePanel`'s `.kind`, deliberately: a short uppercase word
+ * in a hairline box means the same thing in both places, and `white-space:
+ * nowrap` because a wrapped badge breaks the baseline of the row it is in.
+ */
+.kind,
+.app {
+  border: var(--pbui-border-hair);
+  padding: 0 var(--pbui-space-2);
+  white-space: nowrap;
+}
+
+.app {
+  background: var(--pbui-pane);
+}

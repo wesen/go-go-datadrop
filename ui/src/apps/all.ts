@@ -37,3 +37,9 @@ import "./SignInApp/SignInApp";
 import "./ProfileApp/ProfileApp";
 import "./TokensApp/TokensApp";
 import "./UploadApp/UploadApp";
+
+// The stored template library (DATADROP-8). It lives on the account stage and
+// is deliberately absent from every tour section's `apps` list: localStorage is
+// per origin, so six embedded workbenches share one library, and a tour panel
+// writing to the reader's real templates would be a defect.
+import "./TemplatesApp/TemplatesApp";

@@ -7,6 +7,8 @@ export { Dialog } from "./Dialog";
 export type { DialogProps } from "./Dialog";
 export { BundleDialog } from "./BundleDialog";
 export type { BundleDialogProps } from "./BundleDialog";
+export { TemplateTable } from "./TemplateTable";
+export type { TemplateTableProps, TemplateView } from "./TemplateTable";
 
 // Presentational panels. Added by DATADROP-6 phase 5, which is when they became
 // legal: apps may import organisms only because DR-33 deleted the reverse edge.

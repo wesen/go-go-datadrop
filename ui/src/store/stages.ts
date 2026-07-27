@@ -50,6 +50,15 @@ export const SIGNIN_SPACE_ID = "ws-signin";
 export const TOUR_SPACE_IDS = ["ws-tour-1", "ws-tour-2", "ws-tour-3", "ws-tour-4"] as const;
 /** The account stage's workspaces. */
 export const ACCOUNT_SPACE_ID = "ws-account";
+/**
+ * The templates workspace, which the stage menu's "templates …" opens.
+ *
+ * On the account stage rather than anywhere else because that is what the
+ * request asked for: "a button on the top right that is used to manage account,
+ * stored workspace templates, etc." The button is the stage menu, and account
+ * management is a stage.
+ */
+export const TEMPLATES_SPACE_ID = "ws-templates";
 
 /**
  * The applications the welcome stage offers.
@@ -182,6 +191,15 @@ export function pinnedStages(): { stages: Stage[]; spaces: Workspace[] } {
       stageId: ACCOUNT_STAGE_ID,
       pinned: true,
       tree: split("row", leaf("profile"), split("col", leaf("tokens"), leaf("upload"), 0.55), 0.38),
+    },
+    {
+      id: TEMPLATES_SPACE_ID,
+      name: "templates",
+      stageId: ACCOUNT_STAGE_ID,
+      pinned: true,
+      // One tile. The library is a table with a detail pane and wants the
+      // width; a second tile beside it would be furniture.
+      tree: leaf("templates"),
     },
   ];
 

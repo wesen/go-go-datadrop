@@ -55,6 +55,15 @@ export const workspaceDescriptor: PresentationDescriptor<WorkspaceRef> = {
       verb: { kind: "importWorkspace", stageId: space.stageId },
     });
     actions.push({
+      label: "Save as a template …",
+      verb: {
+        kind: "storeTemplate",
+        source: { kind: "workspace", spaceId: space.spaceId },
+        name: space.name,
+      },
+    });
+
+    actions.push({
       label: "Inspect",
       verb: { kind: "inspect", ptype: "workspace", value: space },
     });

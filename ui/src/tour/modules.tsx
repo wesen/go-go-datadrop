@@ -351,4 +351,23 @@ export const MODULES: ModuleEntry[] = [
     lr: "A draft survives a reload; the queue says which stage each file reached.",
     vs: <>a file picker. The four stages are separately observable because they fail separately.</>,
   },
+  {
+    id: "templates",
+    what: "The stored library: tile, workspace and stage bundles saved under a name (DATADROP-8).",
+    accepts: "—",
+    emits: (
+      <>
+        — nothing. A template is a stored <i>file</i>, not an object other objects can accept, so it
+        has no presentation and no verbs of its own; the four buttons on a row are the whole
+        vocabulary.
+      </>
+    ),
+    lr: "Load goes through the same import dialog a paste does, so you read what you are adding.",
+    vs: (
+      <>
+        the <b>workspace strip</b> — that is what you have open, this is what you kept. Deleting
+        here is the only deletion that asks, because localStorage has no undo.
+      </>
+    ),
+  },
 ];

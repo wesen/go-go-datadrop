@@ -5,7 +5,7 @@ import {
   type Bundle,
   type BundleKind,
 } from "../model/portable";
-import type { ImportTarget } from "../pbui/verbs";
+import type { BundleSource, ImportTarget } from "../pbui/verbs";
 import type { AppThunk } from "./index";
 import {
   applyStageBundle,
@@ -17,6 +17,7 @@ import {
   idsNeeded,
 } from "./bundles";
 import { layoutActions } from "./layout";
+import { listTemplates, saveTemplate, type SaveResult } from "./templates";
 import { newId, worldActions } from "./world";
 
 /**
@@ -155,6 +156,77 @@ export function beginImport(target: ImportTarget): AppThunk<Promise<void>> {
 export function beginImportWithText(target: ImportTarget, text: string): AppThunk {
   return (dispatch) => {
     dispatch(layoutActions.openImport({ target, prefill: text, from: "template" }));
+  };
+}
+
+/* ------------------------------------------------------------ templates -- */
+
+/**
+ * Save something as a named template.
+ *
+ * "Copy this to the clipboard" and "save this as a template" are the same code
+ * with a different sink — which is DR-71 paying for itself, and is why the
+ * library can offer "Copy to clipboard" on every row for nothing.
+ */
+export function storeTemplate(source: BundleSource, name: string): AppThunk<SaveResult> {
+  return (dispatch, getState) => {
+    const { world, layout } = getState();
+    const at = new Date().toISOString();
+    let bundle: Bundle;
+    try {
+      bundle =
+        source.kind === "tile"
+          ? bundleForTile({ world, layout }, source.nodeId, at)
+          : source.kind === "workspace"
+            ? bundleForWorkspace({ world, layout }, source.spaceId, at)
+            : bundleForStage({ world, layout }, source.stageId, at);
+    } catch (error) {
+      const reason = error instanceof Error ? error.message : "could not build that bundle";
+      dispatch(layoutActions.showNotice({ ok: false, title: "Nothing was saved", body: reason }));
+      return { ok: false, reason };
+    }
+
+    const result = saveTemplate({ id: newId(), name, kind: bundle.kind, savedAt: at, bundle });
+    dispatch(
+      layoutActions.showNotice(
+        result.ok
+          ? {
+              ok: true,
+              title: "Saved as a template",
+              body: `“${name}” — ${describeBundle(bundle)} Open the templates workspace on the account stage to load it.`,
+            }
+          : { ok: false, title: "Nothing was saved", body: result.reason },
+      ),
+    );
+    return result;
+  };
+}
+
+/**
+ * Load a stored template, through the import dialog rather than straight in.
+ *
+ * Loading a template IS an import (DR-71), so it goes through the same
+ * validator, the same describe function and the same confirmation. The user
+ * gets a chance to read what they are about to add, and there is one code path
+ * to keep correct rather than two.
+ */
+export function loadTemplate(templateId: string, target: ImportTarget): AppThunk<boolean> {
+  return (dispatch) => {
+    const record = listTemplates().find((t) => t.id === templateId);
+    if (!record) return false;
+    dispatch(beginImportWithText(target, JSON.stringify(record.bundle, null, 2)));
+    return true;
+  };
+}
+
+/** Put a stored template on the clipboard, unchanged. */
+export function copyTemplate(templateId: string): AppThunk<Promise<ExportOutcome>> {
+  return (dispatch, getState, extra) => {
+    const record = listTemplates().find((t) => t.id === templateId);
+    if (!record) {
+      return Promise.resolve<ExportOutcome>({ ok: false, reason: "that template is gone" });
+    }
+    return exportBundle(() => record.bundle)(dispatch, getState, extra);
   };
 }
 

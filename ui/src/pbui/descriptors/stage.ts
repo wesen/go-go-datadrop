@@ -50,6 +50,15 @@ export const stageDescriptor: PresentationDescriptor<StageRef> = {
       label: "Add a workspace from the clipboard …",
       verb: { kind: "importWorkspace", stageId: stage.stageId },
     });
+    actions.push({
+      label: "Save as a template …",
+      verb: {
+        kind: "storeTemplate",
+        source: { kind: "stage", stageId: stage.stageId },
+        name: stage.name,
+      },
+    });
+
     actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "stage", value: stage } });
 
     return actions;

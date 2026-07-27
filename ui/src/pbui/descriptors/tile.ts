@@ -78,6 +78,15 @@ export const tileDescriptor: PresentationDescriptor<TileRef> = {
       label: "Replace this tile from the clipboard …",
       verb: { kind: "importIntoTile", nodeId: tile.nodeId },
     });
+    actions.push({
+      label: "Save as a template …",
+      verb: {
+        kind: "storeTemplate",
+        source: { kind: "tile", nodeId: tile.nodeId },
+        name: tile.title,
+      },
+    });
+
     actions.push({ label: "Inspect", verb: { kind: "inspect", ptype: "tile", value: tile } });
 
     actions.push({
