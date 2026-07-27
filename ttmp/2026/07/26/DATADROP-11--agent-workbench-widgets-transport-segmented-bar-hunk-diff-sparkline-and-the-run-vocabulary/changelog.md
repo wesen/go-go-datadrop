@@ -44,3 +44,8 @@ Phase 8: ResultLog, the shell-derived widget the first gap analysis skimmed past
 
 All 8 phases complete: ten widgets, a traceEntry presentation type, a scrubbable trace, and a descriptor-coverage guard that found a tone shipping broken since DATADROP-5. reMarkable upload outstanding — blocked on an rmapi bump, filed as remarquee#18.
 
+
+## 2026-07-26
+
+reMarkable upload completed. Cause was a stale rmapi, not the cloud: rebuilding from ddvk/rmapi master worked first try. Verified on remarquee#18.
+
