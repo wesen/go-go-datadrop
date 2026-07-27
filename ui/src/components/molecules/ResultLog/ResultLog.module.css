@@ -1,0 +1,42 @@
+/*
+ * An output history whose entries are objects.
+ *
+ * Lines wrap rather than scrolling sideways: a result line mixes prose and
+ * chips, and a horizontal scrollbar would hide the chips, which are the part
+ * the reader is meant to act on.
+ */
+.log {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+  overflow-y: auto;
+  min-height: 0;
+}
+
+.line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--pbui-space-1);
+  font-size: var(--pbui-fs-small);
+  line-height: var(--pbui-lh-tight);
+  word-break: break-word;
+}
+
+/* The echoed command, not its result. Dimmed so the eye lands on results. */
+.line[data-echo="true"] {
+  color: var(--pbui-faint);
+}
+
+.prompt {
+  font-weight: 700;
+  user-select: none;
+}
+
+.text {
+  white-space: pre-wrap;
+}
+
+.object {
+  display: inline-flex;
+}

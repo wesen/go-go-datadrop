@@ -107,7 +107,7 @@ describe("the presentation vocabulary is not a wish list", () => {
 
     expect(
       unknown,
-      "these exemptions name types that no longer exist — delete them:\n" + unknown.join(", "),
+      `these exemptions name types that no longer exist — delete them:\n${unknown.join(", ")}`,
     ).toEqual([]);
   });
 

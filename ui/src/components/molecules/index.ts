@@ -47,3 +47,5 @@ export { SegmentedBar } from "./SegmentedBar";
 export type { Segment, SegmentedBarProps } from "./SegmentedBar";
 export { DiffHunk, pairRows } from "./DiffHunk";
 export type { DiffHunkProps, DiffRow, Hunk } from "./DiffHunk";
+export { ResultLog } from "./ResultLog";
+export type { ResultLine, ResultLogProps, ResultSegment } from "./ResultLog";
