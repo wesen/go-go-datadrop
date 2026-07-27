@@ -1,6 +1,6 @@
+import { JsonBlock } from "../../molecules";
 import { SectionLabel, Text } from "../../foundation";
 import { AppBody } from "../../layout";
-import styles from "./InspectorPanel.module.css";
 
 /**
  * Whatever was last inspected, as formatted JSON.
@@ -35,7 +35,7 @@ export function InspectorPanel({
       ) : (
         <>
           <SectionLabel>{inspected.title}</SectionLabel>
-          <pre className={styles.body}>{JSON.stringify(inspected.value, null, 2)}</pre>
+          <JsonBlock value={inspected.value} maxHeight="none" />
         </>
       )}
     </AppBody>

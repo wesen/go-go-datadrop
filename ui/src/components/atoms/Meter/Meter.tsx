@@ -51,7 +51,19 @@ export interface MeterProps {
  * measures is an object.
  */
 export function Meter({ fraction, label, tone, value, size = "row", alarm = false }: MeterProps) {
-  const safe = Number.isFinite(fraction) ? clamp(fraction, 0, 1) : 0;
+  // NaN and ±Infinity are not the same fact and must not render the same way.
+  // NaN means "unknown" — 0/0, nothing measured yet — and an empty bar is
+  // honest. +Infinity means x/0 with x > 0: unbounded overflow, something used
+  // against a budget of nothing. Rendering *that* as an empty bar says "nothing
+  // used" about the one case where usage is infinite, which is the opposite of
+  // the truth. Found by measuring the rendered widths, not by a test.
+  const safe = Number.isNaN(fraction)
+    ? 0
+    : fraction === Number.POSITIVE_INFINITY
+      ? 1
+      : fraction === Number.NEGATIVE_INFINITY
+        ? 0
+        : clamp(fraction, 0, 1);
   const level = !alarm ? "ok" : safe > 0.9 ? "high" : safe > 0.75 ? "warn" : "ok";
 
   return (

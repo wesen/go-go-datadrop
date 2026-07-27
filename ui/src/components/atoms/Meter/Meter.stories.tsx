@@ -109,16 +109,20 @@ export const Tones: Story = {
  * The cases that would otherwise reach CSS `width` and break the layout.
  *
  * Every current caller computes `fraction` by division, and at least one
- * divides by a budget that is zero before the first event arrives. All four of
- * these render a sane bar; none of them produce a NaN width or a fill that
- * escapes its track.
+ * divides by a budget that is zero before the first event arrives.
+ *
+ * NaN and +Infinity are deliberately *not* treated alike, and the first version
+ * of this component got it wrong. NaN is 0/0 — nothing measured — and an empty
+ * bar is honest. +Infinity is x/0 with x above zero: unbounded overflow. An
+ * empty bar there says "nothing used" about the one case where usage is
+ * infinite. It renders full.
  */
 export const HostileInput: Story = {
   render: () => (
     <Stack gap={3}>
       {[
         ["NaN — 0/0", Number.NaN],
-        ["Infinity", Number.POSITIVE_INFINITY],
+        ["+Infinity — used against a zero budget", Number.POSITIVE_INFINITY],
         ["1.4 — over budget", 1.4],
         ["−0.3 — negative", -0.3],
       ].map(([caption, f]) => (
