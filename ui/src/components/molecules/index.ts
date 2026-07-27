@@ -43,3 +43,5 @@ export { KindLegend } from "./KindLegend";
 export type { KindLegendProps, KindTotal } from "./KindLegend";
 export { MoreBar } from "./MoreBar";
 export type { MoreBarProps } from "./MoreBar";
+export { SegmentedBar } from "./SegmentedBar";
+export type { Segment, SegmentedBarProps } from "./SegmentedBar";

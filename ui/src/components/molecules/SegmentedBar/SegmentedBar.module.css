@@ -1,0 +1,92 @@
+/*
+ * One bar of proportional segments.
+ *
+ * Flex weights rather than percentage widths: percentages accumulate rounding
+ * error across many segments and leave a visible gap at the right edge, which
+ * on a bar whose whole job is "these add up to the whole" reads as a bug.
+ */
+.wrap {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+  min-width: 0;
+}
+
+.summary {
+  display: flex;
+  justify-content: flex-end;
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.bar {
+  position: relative;
+  display: flex;
+  height: 28px;
+  background: var(--pbui-pane-alt);
+  border: var(--pbui-border-firm);
+  border-radius: var(--pbui-radius);
+  overflow: hidden;
+}
+
+.bar[data-over="true"] {
+  border-color: var(--pbui-danger);
+}
+
+/*
+ * The slot carries the flex weight; the segment fills it. Two elements because
+ * the caller's renderSegment wrapper sits between them, and a wrapper that had
+ * to carry the flex basis would be a wrapper the caller could break.
+ */
+.slot {
+  display: block;
+  min-width: 2px;
+  height: 100%;
+}
+
+.slot > * {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.segment {
+  border-right: var(--pbui-border-hair);
+  box-sizing: border-box;
+}
+
+/* Pinned reads as protected, so it is drawn as a containment rather than a
+ * colour: colour is already spent on identity. */
+.segment[data-pinned="true"] {
+  outline: 2px solid var(--pbui-ink);
+  outline-offset: -2px;
+}
+
+.segment[data-dimmed="true"] {
+  opacity: 0.45;
+}
+
+.headroom {
+  display: block;
+  min-width: 0;
+  height: 100%;
+  background: repeating-linear-gradient(
+    45deg,
+    var(--pbui-pane-alt),
+    var(--pbui-pane-alt) 4px,
+    var(--pbui-pane) 4px,
+    var(--pbui-pane) 8px
+  );
+}
+
+.overflow {
+  position: absolute;
+  right: var(--pbui-space-2);
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: var(--pbui-fs-micro);
+  font-weight: 700;
+  color: var(--pbui-danger);
+  pointer-events: none;
+}
