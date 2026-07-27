@@ -5,10 +5,11 @@ import type { Channel } from "../model/chart";
 import { effectiveType } from "../model/table";
 import type { FieldType } from "../model/table";
 import { census, readings } from "../fixtures";
-import { DocChip, FieldChip, SourceChip } from "../components/atoms";
+import { Chip, DocChip, FieldChip, SourceChip } from "../components/atoms";
 import { ChannelRow } from "../components/molecules";
 import { SectionLabel, Text } from "../components/foundation";
 import { Stack, Surface } from "../components/layout";
+import { Presentation } from "./Presentation";
 import { usePbui } from "./usePbui";
 import type { FieldRef } from "./types";
 
@@ -260,4 +261,115 @@ export const WithTypeOverride: Story = {
     pbui: { table: readings, overrides: { "data.temp_c": "n" as FieldType } },
   },
   render: () => <Playground />,
+};
+
+/* ------------------------------------------------- the layout menus (DR-8) -- */
+
+/**
+ * The three menus DATADROP-8 added, side by side.
+ *
+ * Worth a story of its own because of what it is a picture of: `tile`,
+ * `workspace` and `stage` were declared presentation types from DATADROP-4,
+ * were already wrapped in real `<Presentation>` elements, and had **no
+ * descriptor** — so right-clicking any of them produced
+ *
+ *     ┌─────────────────────────────────┐
+ *     │ <tile> chart · α                │
+ *     │   no verbs for this object yet  │
+ *     └─────────────────────────────────┘
+ *
+ * for twenty months. Three files in `pbui/descriptors/` is the whole of the
+ * feature; everything else in the ticket is what those verbs *do*.
+ *
+ * Right-click any of the three chips below. Note the disabled entries, which
+ * are the interesting ones: a verb that cannot fire is shown greyed with its
+ * reason rather than hidden, because hiding an unavailable verb hides the rule
+ * that makes it unavailable.
+ */
+function LayoutObjects() {
+  return (
+    <Surface tone="pane" padding={4}>
+      <Stack gap={4}>
+        <SectionLabel>Right-click each of these</SectionLabel>
+
+        <Stack gap={2}>
+          <Text size="tiny" tone="faint">
+            A tile that CAN be duplicated and CAN close.
+          </Text>
+          <Presentation
+            ptype="tile"
+            value={{
+              nodeId: "n1",
+              app: "chart",
+              title: "chart · α",
+              docId: "d1",
+              duplicable: true,
+              canClose: true,
+            }}
+            doc="<tile> chart · α"
+          >
+            <Chip label="⠿ CHART · α" tone="var(--pbui-tone-cat)" />
+          </Presentation>
+        </Stack>
+
+        <Stack gap={2}>
+          <Text size="tiny" tone="faint">
+            A tile that can do neither — the greyed entries carry the reasons.
+          </Text>
+          <Presentation
+            ptype="tile"
+            value={{
+              nodeId: "n2",
+              app: "trace",
+              title: "trace",
+              docId: null,
+              duplicable: false,
+              canClose: false,
+            }}
+            doc="<tile> trace"
+          >
+            <Chip label="⠿ TRACE" tone="var(--pbui-tone-source)" />
+          </Presentation>
+        </Stack>
+
+        <Stack gap={2}>
+          <Text size="tiny" tone="faint">
+            A code-defined workspace: rename and delete both refuse, each saying why.
+          </Text>
+          <Presentation
+            ptype="workspace"
+            value={{
+              spaceId: "ws-account",
+              name: "profile",
+              stageId: "stage-account",
+              pinned: true,
+              canDelete: true,
+            }}
+            doc="<workspace> profile"
+          >
+            <Chip label="⌾ profile" tone="var(--pbui-tone-source)" />
+          </Presentation>
+        </Stack>
+
+        <Stack gap={2}>
+          <Text size="tiny" tone="faint">
+            The current stage. “Switch to it” is absent rather than greyed — you are already here,
+            which is not a rule to teach.
+          </Text>
+          <Presentation
+            ptype="stage"
+            value={{ stageId: "stage-work", name: "work", pinned: true, current: true }}
+            doc="<stage> work"
+          >
+            <Chip label="▸ work" tone="var(--pbui-tone-doc)" />
+          </Presentation>
+        </Stack>
+      </Stack>
+    </Surface>
+  );
+}
+
+export const LayoutMenus: Story = {
+  parameters: { pbui: { table: readings } },
+  render: () => <LayoutObjects />,
 };
