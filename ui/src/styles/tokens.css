@@ -99,6 +99,11 @@
   --pbui-tone-source: #7cae9b;
   --pbui-tone-doc: #c2503a;
   --pbui-tone-step: #a99fc9;
+  /* DATADROP-11. One entry in the verb trace. Shares the neutral family
+     rather than claiming a hue: a trace entry is a record OF an object, not a
+     kind of object, and giving it its own colour would compete with the tones
+     of the things it records. */
+  --pbui-tone-traceEntry: var(--pbui-neutral);
   --pbui-tone-chart: #e0b95c;
   --pbui-tone-cat: #d59a86;
   --pbui-tone-geom: #8fc7b0;

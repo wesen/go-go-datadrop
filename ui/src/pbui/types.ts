@@ -24,6 +24,10 @@ export type PresentationType =
   | "workspace"
   // DATADROP-8. The layer above a workspace.
   | "stage"
+  // DATADROP-11. One entry in the verb trace, identified by its sequence
+  // number rather than by its array index: the trace is capped and drops from
+  // the front, so an index is a moving target and a seq is not.
+  | "traceEntry"
   // DATADROP-5. A person, a credential, an access-list row, one queued file.
   | "user"
   | "token"

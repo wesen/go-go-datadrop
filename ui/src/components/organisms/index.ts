@@ -47,3 +47,5 @@ export { LessonRail } from "./LessonRail";
 export { BriefChecklist } from "./BriefChecklist";
 export { ModuleRack } from "./ModuleRack";
 export { wedgeOf } from "./LessonRail";
+export { TransportBar } from "./TransportBar";
+export type { TransportBarProps } from "./TransportBar";

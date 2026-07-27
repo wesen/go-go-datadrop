@@ -9,6 +9,8 @@ import { sourceDescriptor } from "./descriptors/source";
 import { memberDescriptor } from "./descriptors/member";
 import { stepDescriptor } from "./descriptors/step";
 import { tokenDescriptor } from "./descriptors/token";
+// DATADROP-11: the trace stops being a write-only log.
+import { traceEntryDescriptor } from "./descriptors/traceEntry";
 import { uploadDescriptor } from "./descriptors/upload";
 import { userDescriptor } from "./descriptors/user";
 // DATADROP-8: the three layout types. They were declared presentation types
@@ -65,6 +67,7 @@ const DESCRIPTORS: Partial<Record<PresentationType, PresentationDescriptor<never
   tile: tileDescriptor as PresentationDescriptor<never>,
   workspace: workspaceDescriptor as PresentationDescriptor<never>,
   stage: stageDescriptor as PresentationDescriptor<never>,
+  traceEntry: traceEntryDescriptor as PresentationDescriptor<never>,
 };
 
 export function descriptorFor(ptype: PresentationType): PresentationDescriptor<never> | null {

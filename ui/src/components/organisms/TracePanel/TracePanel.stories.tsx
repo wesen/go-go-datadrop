@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react-vite";
 import { TracePanel } from "./TracePanel";
 import type { TraceEntry } from "../../../store/world";
 import { TRACE_CAP } from "../../../store/world";
+import { readings } from "../../../fixtures";
 
 const SESSION: TraceEntry[] = [
   { seq: 1, type: "doc_added", detail: "α" },
@@ -26,7 +27,12 @@ const SESSION: TraceEntry[] = [
 const meta = {
   title: "Component Library/Organisms/TracePanel",
   component: TracePanel,
-  parameters: { tile: { width: 560, height: 360 }, pbui: false },
+  // `pbui: false` until DATADROP-11. The panel had no presentations, so it
+  // needed no provider — and when the transport made the current entry a
+  // <traceEntry>, every story in this file threw `usePbui outside a
+  // PbuiProvider` at render time while `bun test` stayed green, because the
+  // test suite never renders a story.
+  parameters: { tile: { width: 560, height: 360 }, pbui: { table: readings } },
   args: { entries: SESSION },
 } satisfies Meta<typeof TracePanel>;
 

@@ -23,3 +23,15 @@
      baseline alignment of every entry after it. */
   white-space: nowrap;
 }
+
+/*
+ * The entry under the transport's cursor, while the reader is reviewing.
+ *
+ * Only applied when `reviewing` is a number. Highlighting the tail entry
+ * permanently would make the newest verb look selected at all times, which is
+ * a claim about attention the panel has no business making.
+ */
+.reviewing {
+  background: var(--pbui-selected);
+  outline: var(--pbui-border-hair);
+}

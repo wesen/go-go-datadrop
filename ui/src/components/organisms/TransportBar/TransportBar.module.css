@@ -1,0 +1,42 @@
+/*
+ * A cursor into a history.
+ *
+ * The range input is a real <input type="range">: it brings slider semantics,
+ * arrow-key stepping and Home/End for free, and every hand-rolled replacement
+ * has to reimplement all three and usually reimplements two.
+ */
+.transport {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pbui-space-1);
+  padding: var(--pbui-space-2);
+  border-bottom: var(--pbui-border-hair);
+  background: var(--pbui-pane-alt);
+}
+
+.controls {
+  display: flex;
+  align-items: center;
+  gap: var(--pbui-space-2);
+}
+
+.scrub {
+  flex: 1 1 auto;
+  min-width: 0;
+  accent-color: var(--pbui-ink);
+}
+
+.position {
+  flex: 0 0 auto;
+  font-size: var(--pbui-fs-micro);
+  color: var(--pbui-faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.current {
+  font-size: var(--pbui-fs-micro);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

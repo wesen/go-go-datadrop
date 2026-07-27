@@ -58,6 +58,15 @@ const ALLOWED: Array<{ prefix: string; because: string }> = [
       "so Escape means 'there was never an edit' rather than 'restore the old value'",
   },
   {
+    prefix: "components/organisms/TransportBar/",
+    because:
+      "an <input type=range> scrubber. The design system has no range atom and " +
+      "should not grow one for a single caller; the native element brings slider " +
+      "semantics, arrow-key stepping and Home/End that a hand-rolled replacement " +
+      "would have to reimplement and usually gets two of three right. If a second " +
+      "transport appears, this becomes a RangeInput atom and this entry goes",
+  },
+  {
     prefix: "components/organisms/SplitView/",
     because:
       "a <button role=separator> resize handle carrying aria-orientation and " +
