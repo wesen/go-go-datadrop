@@ -45,3 +45,5 @@ export { MoreBar } from "./MoreBar";
 export type { MoreBarProps } from "./MoreBar";
 export { SegmentedBar } from "./SegmentedBar";
 export type { Segment, SegmentedBarProps } from "./SegmentedBar";
+export { DiffHunk, pairRows } from "./DiffHunk";
+export type { DiffHunkProps, DiffRow, Hunk } from "./DiffHunk";
