@@ -58,3 +58,12 @@ Phase 5: the dialogs — TextArea, Dialog, BundleDialog, a live describeBundle v
 
 - /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/clipboard.ts — READ_TIMEOUT — Firefox's readText neither resolves nor rejects
 
+
+## 2026-07-26
+
+Phase 6: the template library — store/templates.ts (one localStorage key, three caps, a bundle stored verbatim), TemplateTable, TemplatesApp as the 26th application on the account stage's new templates workspace, and Save-as-a-template on all three object menus. Loading a template is an import, so it goes through the same dialog and validator. Only deletion confirms. 19 tests against a fake localStorage, plus a smoke script that proves the round trip survives a reload. (commit b710bea)
+
+### Related Files
+
+- /home/manuel/workspaces/2026-07-24/datadrop-mcp/go-go-datadrop/ui/src/store/templates.ts — One key, three caps, and a Bundle stored verbatim
+

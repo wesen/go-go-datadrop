@@ -16,12 +16,16 @@ Owners: []
 RelatedFiles:
     - Path: repo://ttmp/2026/07/26/DATADROP-8--portable-workspaces-stages-tile-and-workspace-import-export-stored-templates-and-duplicable-tiles/scripts/smoke-firefox-import.ts
       Note: The Firefox check the phase calls not optional, and the two defects it found
+    - Path: repo://ttmp/2026/07/26/DATADROP-8--portable-workspaces-stages-tile-and-workspace-import-export-stored-templates-and-duplicable-tiles/scripts/smoke-templates.ts
+      Note: The save-reload-load round trip, which is what a fake localStorage cannot check (commit b710bea)
     - Path: repo://ui/src/components/organisms/BundleDialog/BundleDialog.tsx
       Note: Import in three states, with the verdict that keeps the confirm button honest (commit 26b5170)
     - Path: repo://ui/src/components/organisms/Dialog/Dialog.tsx
       Note: The only modal; focuses the body rather than its own close button (commit 26b5170)
     - Path: repo://ui/src/components/organisms/StageBar/StageBar.tsx
       Note: The switcher; a stage whose chrome hides the bar is not offered by the bar (commit 9dc985c)
+    - Path: repo://ui/src/components/organisms/TemplateTable/TemplateTable.tsx
+      Note: The library's rows, and the only confirmation in the ticket (commit b710bea)
     - Path: repo://ui/src/components/organisms/Tile/options.ts
       Note: The picker's three rules — own app always listed and never disabled, singletons already open, stage scope (commit da29ec2)
     - Path: repo://ui/src/model/portable.ts
@@ -40,6 +44,8 @@ RelatedFiles:
       Note: VERSION 2 and migrate(); validate calls migrate first so a migration cannot skip the validator (commit 9dc985c)
     - Path: repo://ui/src/store/stages.ts
       Note: The four pinned stages, mergeStages and defaultLayout — replaces spaces.ts (commit 9dc985c)
+    - Path: repo://ui/src/store/templates.ts
+      Note: DR-70 and DR-71 — one key holding an array, and a Bundle rather than a Workspace (commit b710bea)
     - Path: repo://ui/test/apps.test.ts
       Note: duplicable and singleton follow docBound unless a sentence is written into EXCEPTIONS (commit da29ec2)
     - Path: repo://ui/test/effects.test.ts
@@ -56,6 +62,7 @@ LastUpdated: 2026-07-26T18:18:37.781026543-04:00
 WhatFor: Recording what was built, what failed, and what a reviewer should look at hardest for DATADROP-8.
 WhenToUse: Read before reviewing DATADROP-8, and before touching stages, the bundle format or the clipboard path afterwards.
 ---
+
 
 
 
@@ -1196,4 +1203,181 @@ one:
 
 ```
 { "label": "Duplicate — a second about tile would show the same thing", "disabled": true }
+```
+
+## Step 6: The stored template library
+
+`store/templates.ts` is one `localStorage` key holding an array, and every
+function in it takes and returns plain data — no store, no React — which is what
+lets `test/templates.test.ts` exercise all three caps, a corrupt blob and a
+`QuotaExceededError` against a fake storage in 95 ms.
+
+The design decision that pays for itself here is DR-71: a template holds a
+`Bundle` verbatim rather than a `Workspace`. Loading one is then *an import* —
+the same parse, the same caps, the same describe, the same dialog — so "save as
+a template" and "copy to the clipboard" are the same code with a different sink,
+and "Copy to clipboard" on every row cost nothing.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 6 — the library, its application, its
+workspace on the account stage, and the four verbs on a row.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `b710bea` — "DATADROP-8 phase 6: the stored template library"
+
+### What I did
+
+- `ui/src/store/templates.ts` (new): `listTemplates`, `saveTemplate`,
+  `renameTemplate`, `deleteTemplate`, `measureLibrary`, `TEMPLATE_LIMITS`.
+- `ui/src/store/effects.ts`: `storeTemplate`, `loadTemplate`, `copyTemplate`.
+- `ui/src/components/organisms/TemplateTable/` (new) and its story.
+- `ui/src/apps/TemplatesApp/` (new), the twenty-sixth application.
+- `ui/src/store/stages.ts`: `TEMPLATES_SPACE_ID` on the account stage.
+- The "Save as a template …" entries in all three descriptors, and the
+  `storeTemplate` case in `applyLayoutVerb`.
+- `ui/src/tour/modules.tsx`: the module card the anti-rot test demanded.
+- `ui/test/templates.test.ts` (19 tests) and
+  `ttmp/…/scripts/smoke-templates.ts`.
+
+### Why
+
+It is the half of request item 2 the clipboard does not cover: "use localstorage
+for store / load for now", where *now* is doing real work — the bundle format is
+designed so a server-backed library is a different storage driver behind the
+same envelope.
+
+### What worked
+
+**The anti-rot guards fired in the right order and said the right things.**
+Registering `templates` failed `test/tour.test.ts` immediately:
+
+```
+(fail) the module rack covers the registry > every registered application has a module card
+```
+
+and creating the organism directory failed `stories.test.ts`:
+
+```
+(fail) story coverage > every component directory has a story
+```
+
+Neither is an obstacle. The first is the only mechanism that stops an
+application shipping with nobody having a model of it; the second is the only
+mechanism that stops a component shipping that nobody has looked at.
+
+**Validating each stored record through `parseBundle` rather than shape-checking
+it.** A record hand-edited in devtools, or written by a newer build, is dropped
+by `listTemplates` rather than surfacing and failing at the moment somebody
+loads it into their layout.
+
+### What didn't work
+
+**`onImport` was going to be a second import path, and should not be.** My first
+version called `loadTemplate("", …)` — a lookup by an id that does not exist —
+which returned `false` and did nothing. Rewriting it exposed the actual
+question: what does "import into the library" mean? The answer is that there is
+no such thing. A pasted bundle becomes a workspace in the current stage through
+the ordinary dialog, and the reader saves it from that workspace's own menu if
+they want to keep it. A direct-to-library path would have needed a second parse,
+a second set of caps and a second describe, all for a shortcut.
+
+**"Load" on a *tile* template has nowhere to go.** A tile template replaces one
+tile and the library does not know which. Rather than silently doing nothing, the
+row says so and names the route — copy it to the clipboard, then use that tile's
+own "Replace this tile …". It is the least satisfying thing in the phase.
+
+### What I learned
+
+`localStorage` is not reactive, and the temptation is to add a `storage` event
+listener so a second tab's writes appear. That sounds better and is worse: a
+library that changes under the cursor while a delete confirmation is open is
+exactly how the wrong row gets deleted. `TemplatesApp` re-reads on a counter it
+bumps itself, and the comment says why.
+
+### What was tricky to build
+
+**Where the delete confirmation lives.** It is the only confirmation in the
+whole ticket, and it has to be scoped to one row: a `confirming` flag that
+survives a re-render is a flag that can be answered for a different template
+than the one it was raised for. It is `useState<string | null>` holding the id,
+compared per row, and it is cleared by both answers.
+
+**Making the total-size cap testable.** The per-item cap is easy to hit with a
+long name; the *total* cap needs many items that each fit. The test stores
+100 kB names in a loop and asserts that the refusal arrives before the count cap
+does, which is the ordering that matters — a user hits whichever is nearer, and
+both must say which.
+
+### What warrants a second pair of eyes
+
+- **A tile template's Load is a paragraph of prose rather than an action.** It
+  is honest and it is a gap. The right answer is probably an accept: "click the
+  tile to replace", which the presentation protocol already supports.
+- `TemplatesApp` re-reads `localStorage` on every render (through a memo keyed
+  on a counter). At fifty templates of a few kB that is nothing; it is still a
+  synchronous parse in a render body.
+- The library is shared by every workbench on the origin, which is right, and
+  the only thing keeping a tour panel out of it is that no tour stage offers the
+  application. That is the scope mechanism doing its job, and it is a *rendering*
+  constraint rather than a mounting one — a tour section that seeded a layout
+  naming `templates` directly would still render it.
+
+### What should be done in the future
+
+- `TemplateRecord` has no `origin: "local" | "server"`. §20 of the design guide
+  flags this as an open question: if a server-backed library is the next ticket,
+  the field should exist from the start rather than being added later.
+
+### Code review instructions
+
+`ui/src/store/templates.ts` from `listTemplates` down — it is 200 lines and the
+docstring carries DR-70 and DR-71. Then `TemplateTable`'s confirmation block.
+
+```bash
+bun test --cwd ui test/templates.test.ts       # 19 pass, fake localStorage
+bun run ttmp/…/DATADROP-8…/scripts/smoke-templates.ts
+```
+
+### Technical details
+
+**The reload is the point, and it is what the fake-storage tests cannot check.**
+`smoke-templates.ts` saves a workspace from its chip's menu, reloads the page,
+finds it still in the library, loads it, and deletes it through the
+confirmation:
+
+```json
+{
+  "storedBefore": [{ "name": "build", "kind": "workspace" }],
+  "loading": {
+    "text": "Add a workspace from a bundle ● Loaded from a stored template. …
+             ✓ A workspace “build”: 4 tiles, 0 documents. 1 kB. Cancel Add workspace",
+    "prefilled": 925
+  },
+  "added": {
+    "dialogOpen": false,
+    "chips": ["<workspace> profile", "<workspace> templates", "<workspace> build"]
+  },
+  "failures": []
+}
+```
+
+Read `Loaded from a stored template` against `✓ A workspace “build”` — the
+template went in through the same dialog and the same validator as a paste, and
+said so.
+
+**How the library renders**, seeded with a workspace template and a tile one,
+first row expanded:
+
+```
+⠿ TEMPLATES                                                    [ templates ▾ ]
+  TEMPLATES  2 of 50 saved · 1 kB of 2048 kB      [ Import from clipboard ]
+  ▾ weekly sensor review  [workspace]  2026-07-24                     [ Load ]
+      A workspace “weekly sensor review”: 3 tiles, 0 documents.
+      [sources] [chart] [table]
+      [ Load into this stage ] [ Copy to clipboard ] [ Rename ] [ Delete ]
+  ▸ raw feed, unfiltered  [tile]       2026-07-22                     [ Load ]
 ```
