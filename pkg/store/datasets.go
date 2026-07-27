@@ -8,6 +8,7 @@ import (
 	"github.com/pkg/errors"
 
 	"github.com/go-go-golems/go-go-datadrop/pkg/datadrop"
+	"github.com/go-go-golems/go-go-datadrop/pkg/schema"
 )
 
 // ErrImmutable means an operation tried to modify a committed dataset version.
@@ -208,6 +209,11 @@ func (s *Store) CommitDatasetVersion(
 	schemaSpec, err := compactJSON(req.Schema)
 	if err != nil {
 		return datadrop.DatasetVersion{}, errors.Wrap(err, "store: schema")
+	}
+	if len(schemaSpec) > 0 {
+		if _, err := schema.Compile(schemaSpec); err != nil {
+			return datadrop.DatasetVersion{}, errors.Wrap(err, "store: schema")
+		}
 	}
 
 	now := s.Now()

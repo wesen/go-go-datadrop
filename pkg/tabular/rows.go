@@ -254,5 +254,20 @@ func ReadJSONArrayRows(body io.Reader, opts ReadOptions, emit RowEmitter) (bool,
 			return false, err
 		}
 	}
+
+	closing, err := decoder.Token()
+	if err != nil {
+		return false, errors.Wrap(err, "read JSON array closing delimiter")
+	}
+	if delim, ok := closing.(json.Delim); !ok || delim != ']' {
+		return false, errors.New("expected JSON array closing delimiter")
+	}
+	var trailing json.RawMessage
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return false, errors.New("unexpected data after JSON array")
+		}
+		return false, errors.Wrap(err, "read after JSON array")
+	}
 	return false, nil
 }

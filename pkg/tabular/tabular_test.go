@@ -359,6 +359,20 @@ func TestFromRowsExactlyAtTheCapIsNotTruncated(t *testing.T) {
 	}
 }
 
+func TestFromRowsRejectsUnterminatedOrTrailingJSONArrayData(t *testing.T) {
+	for name, input := range map[string]string{
+		"missing closing bracket": `[1,2`,
+		"trailing garbage":        `[1,2] garbage`,
+		"second document":         `[1,2] []`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := FromRows(SourceRef{}, strings.NewReader(input), FormatJSON, 10, nil); err == nil {
+				t.Fatalf("FromRows accepted %q", input)
+			}
+		})
+	}
+}
+
 func TestFromRowsNDJSONAndJSONAgree(t *testing.T) {
 	ndjson := `{"a":1,"b":"x"}
 {"a":2,"b":"y"}

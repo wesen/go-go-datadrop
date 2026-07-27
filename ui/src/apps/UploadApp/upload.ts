@@ -76,6 +76,12 @@ export interface UploadItem extends UploadRef {
   file: File;
 }
 
+export interface ResumeFile {
+  path: string;
+  size_bytes: number;
+  digest: string;
+}
+
 export interface Batch {
   id: string;
   drop: string;
@@ -145,9 +151,21 @@ function isInFlight(state: UploadState): boolean {
  * This is what makes an interrupted batch resumable rather than restartable,
  * and it is why the server needed a draft listing at all (guide §4.5).
  */
-export function pendingAfterResume(items: UploadItem[], alreadyUploaded: string[]): UploadItem[] {
-  const done = new Set(alreadyUploaded);
-  return items.filter((item) => !done.has(item.path));
+export function pendingAfterResume(items: UploadItem[], alreadyUploaded: ResumeFile[]): UploadItem[] {
+  const uploadedByPath = new Map(alreadyUploaded.map((item) => [item.path, item]));
+  return items.filter((item) => {
+    const uploaded = uploadedByPath.get(item.path);
+    if (!uploaded || uploaded.size_bytes !== item.size) return true;
+    // A matching path and size are not proof of matching bytes. Only skip a
+    // hashable local file when its digest agrees with the draft; unhashable
+    // files are uploaded again because that is safer than publishing stale data.
+    return item.digest === null || uploaded.digest !== item.digest;
+  });
+}
+
+/** Encode a validated logical path without turning slashes into data. */
+export function encodeLogicalPath(path: string): string {
+  return path.split("/").map(encodeURIComponent).join("/");
 }
 
 /** Run tasks with a fixed number in flight. */

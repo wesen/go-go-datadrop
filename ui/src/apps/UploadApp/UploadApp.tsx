@@ -9,6 +9,7 @@ import { Presentation, usePbui } from "../../pbui";
 import {
   canHash,
   digestOf,
+  encodeLogicalPath,
   HASH_LIMIT,
   newBatch,
   pendingAfterResume,
@@ -16,6 +17,7 @@ import {
   pooled,
   withItem,
   type Batch,
+  type ResumeFile,
 } from "./upload";
 
 /**
@@ -80,7 +82,7 @@ function UploadApp(_props: AppProps) {
     [request],
   );
 
-  async function run(resumeVersion?: number, alreadyUploaded: string[] = []) {
+  async function run(resumeVersion?: number, alreadyUploaded: ResumeFile[] = []) {
     if (!batch) return;
     // A non-nullable local, because TypeScript cannot keep the narrowing from
     // the guard above across the closures below — `current` is reassigned
@@ -102,7 +104,17 @@ function UploadApp(_props: AppProps) {
       current = { ...current, version, phase: "uploading" };
       setBatch(current);
 
-      // Anything the draft already holds is done before we start.
+      // Hash selected files before comparing them with a resumed draft. A path
+      // and size alone cannot prove that the bytes have not changed locally.
+      if (alreadyUploaded.length > 0) {
+        for (const item of current.items) {
+          const digest = await digestOf(item.file);
+          current = withItem(current, item.path, { digest });
+        }
+        setBatch({ ...current });
+      }
+
+      // Anything whose content the draft already holds is done before we start.
       const pending = pendingAfterResume(current.items, alreadyUploaded);
       const pendingPaths = new Set(pending.map((item) => item.path));
       for (const item of current.items) {
@@ -119,7 +131,7 @@ function UploadApp(_props: AppProps) {
               current = withItem(current, item.path, { state: "hashing", error: null });
               setBatch({ ...current });
 
-              const digest = await digestOf(item.file);
+              const digest = item.digest ?? (await digestOf(item.file));
               current = withItem(current, item.path, { digest, state: "mounting" });
               setBatch({ ...current });
 
@@ -127,7 +139,7 @@ function UploadApp(_props: AppProps) {
               const target =
                 `/drops/${encodeURIComponent(current.drop)}` +
                 `/datasets/${encodeURIComponent(current.dataset)}` +
-                `/versions/${settled}/files/${item.path}${query}`;
+                `/versions/${settled}/files/${encodeLogicalPath(item.path)}${query}`;
 
               // The mount fast path. If the server already holds these bytes it
               // records the metadata row and we transfer nothing, so
@@ -262,10 +274,7 @@ function UploadApp(_props: AppProps) {
       onRetry={() => void run(batch?.version ?? undefined)}
       onResumeDraft={(version) => {
         const draft = drafts?.find((d) => d.version === version);
-        void run(
-          version,
-          (draft?.files ?? []).map((file) => file.path),
-        );
+        void run(version, draft?.files ?? []);
       }}
       onDiscardDraft={(version) => void discard(version)}
       onOpenInChart={() =>
@@ -307,7 +316,7 @@ interface DraftVersion {
   version: number;
   file_count: number;
   total_bytes: number;
-  files?: Array<{ path: string }>;
+  files?: ResumeFile[];
 }
 
 registerApp({

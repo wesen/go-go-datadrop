@@ -31,7 +31,7 @@ function TokensApp(_props: AppProps) {
   const { data } = useListTokensQuery(showRevoked, {
     skip: !me?.authenticated || !me.user,
   });
-  const [createToken, { isLoading: minting }] = useCreateTokenMutation();
+  const [createToken, { isLoading: minting, reset: resetCreatedToken }] = useCreateTokenMutation();
   const [revokeToken] = useRevokeTokenMutation();
   const pbui = usePbui();
 
@@ -47,6 +47,9 @@ function TokensApp(_props: AppProps) {
         ...(expiresIn ? { expires_in: expiresIn } : {}),
       }).unwrap();
       setMinted(created);
+      // RTK Query retains fulfilled mutation data unless explicitly reset. Copy
+      // the one-time secret into component state, then remove it from Redux.
+      resetCreatedToken();
       // The verb, for the trace. It carries the name and the scopes; the secret
       // stays in `minted` and goes nowhere else.
       pbui.perform({

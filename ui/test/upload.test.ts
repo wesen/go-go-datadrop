@@ -2,6 +2,7 @@ import { describe, expect, test } from "bun:test";
 import {
   HASH_LIMIT,
   digestOf,
+  encodeLogicalPath,
   formatBytes,
   newBatch,
   normalisePath,
@@ -47,6 +48,10 @@ describe("logical paths", () => {
     // visible name in the list is worse than one called "file".
     expect(normalisePath("../..")).toBe("file");
     expect(normalisePath("/")).toBe("file");
+  });
+
+  test("URL-encodes each path segment without encoding separators", () => {
+    expect(encodeLogicalPath("data/sales?draft#1.csv")).toBe("data/sales%3Fdraft%231.csv");
   });
 
   test("a batch takes each file's relative path when it has one", () => {
@@ -121,8 +126,32 @@ describe("resuming", () => {
     // exists, and its blob references keep garbage collection from reclaiming
     // the bytes (guide §4.5).
     const batch = newBatch("b1", "lab", "readings", [file("a.csv"), file("b.csv"), file("c.csv")]);
-    const pending = pendingAfterResume(batch.items, ["a.csv", "c.csv"]);
+    batch.items[0]!.digest = "sha256:a";
+    batch.items[2]!.digest = "sha256:c";
+    const pending = pendingAfterResume(batch.items, [
+      { path: "a.csv", size_bytes: 10, digest: "sha256:a" },
+      { path: "c.csv", size_bytes: 10, digest: "sha256:c" },
+    ]);
     expect(pending.map((item) => item.path)).toEqual(["b.csv"]);
+  });
+
+  test("a same-path file with changed bytes remains pending", () => {
+    const batch = newBatch("b1", "lab", "readings", [file("a.csv")]);
+    batch.items[0]!.digest = "sha256:new";
+    expect(
+      pendingAfterResume(batch.items, [
+        { path: "a.csv", size_bytes: 10, digest: "sha256:old" },
+      ]),
+    ).toHaveLength(1);
+  });
+
+  test("an unhashable same-size file is re-uploaded rather than assumed complete", () => {
+    const batch = newBatch("b1", "lab", "readings", [file("a.csv")]);
+    expect(
+      pendingAfterResume(batch.items, [
+        { path: "a.csv", size_bytes: 10, digest: "sha256:remote" },
+      ]),
+    ).toHaveLength(1);
   });
 
   test("an empty draft means everything is pending", () => {

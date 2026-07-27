@@ -312,6 +312,26 @@ func TestCommitRejectsMalformedManifest(t *testing.T) {
 	}
 }
 
+func TestCommitRejectsInvalidJSONSchemaAndLeavesDraftMutable(t *testing.T) {
+	ctx := context.Background()
+	st := newTestStore(t)
+	newTestDrop(t, st, "greenhouse")
+
+	v := openDraft(t, st, "greenhouse", "readings")
+	if _, err := st.CommitDatasetVersion(ctx, "greenhouse", "readings", v.Version,
+		datadrop.CommitVersionRequest{Schema: json.RawMessage(`{"type":7}`)}); err == nil {
+		t.Fatal("CommitDatasetVersion accepted an invalid JSON Schema")
+	}
+
+	read, err := st.GetDatasetVersion(ctx, "greenhouse", "readings", v.Version, true)
+	if err != nil {
+		t.Fatalf("GetDatasetVersion: %v", err)
+	}
+	if read.State != datadrop.StateDraft {
+		t.Fatalf("invalid schema made version state %q, want draft", read.State)
+	}
+}
+
 func TestCommitStoresSchema(t *testing.T) {
 	ctx := context.Background()
 	st := newTestStore(t)

@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"net/http"
@@ -472,6 +473,24 @@ func TestExportJSON(t *testing.T) {
 	decodeBody(t, rec, &doc)
 	if len(doc.Events) != 1 {
 		t.Fatalf("exported %d events, want 1", len(doc.Events))
+	}
+}
+
+func TestExportCSVRejectsResultsBeyondItsBound(t *testing.T) {
+	srv := newTestServer(t)
+	seedDrop(t, srv, "greenhouse")
+
+	for i := 0; i <= datadrop.MaxLimit; i++ {
+		if _, err := srv.store.AppendEvent(context.Background(), datadrop.Envelope{
+			Drop: "greenhouse", Data: json.RawMessage(`{"n":1}`),
+		}); err != nil {
+			t.Fatalf("append %d: %v", i, err)
+		}
+	}
+
+	rec := request(t, srv, http.MethodGet, "/v1/drops/greenhouse/export?format=csv", "", true)
+	if rec.Code != http.StatusUnprocessableEntity {
+		t.Fatalf("status = %d, want %d; body: %s", rec.Code, http.StatusUnprocessableEntity, rec.Body.String())
 	}
 }
 

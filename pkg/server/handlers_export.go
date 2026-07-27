@@ -167,7 +167,21 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request, q datadrop.Ev
 	)
 
 	q.Limit = datadrop.MaxLimit
-	events, err := s.store.QueryEvents(r.Context(), q)
+	events := make([]datadrop.Envelope, 0, datadrop.MaxLimit)
+	errTooMany := errors.New("CSV export exceeds the maximum row count")
+	err := s.store.EachEvent(r.Context(), q, func(e datadrop.Envelope) error {
+		if len(events) == datadrop.MaxLimit {
+			return errTooMany
+		}
+		events = append(events, e)
+		return nil
+	})
+	if errors.Is(err, errTooMany) {
+		writeProblem(w, r, http.StatusUnprocessableEntity, CodeInvalidRequest,
+			"CSV export exceeds the "+strconv.Itoa(datadrop.MaxLimit)+
+				"-row limit; use json or ndjson for an unbounded export")
+		return nil
+	}
 	if err != nil {
 		return err
 	}
