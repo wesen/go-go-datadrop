@@ -67,6 +67,20 @@ export function ChartPanel({
         </div>
       ) : (
         <>
+          {/* The chart WAS drawn; these say what part of the spec could not be
+              honoured. Above the plot rather than below it, because a reader who
+              scrolls away never learns their reference line is missing. */}
+          {plot.notices.length > 0 ? (
+            <div role="status">
+              {plot.notices.map((notice) => (
+                <div key={notice}>
+                  <Text size="tiny" tone="faint">
+                    ⚠ {notice}
+                  </Text>
+                </div>
+              ))}
+            </div>
+          ) : null}
           <PlotSvg plot={plot} docId={docId} colorField={colorField} />
           {/* Every place the view is not the whole truth says so. */}
           {(plot.markOverflow > 0 || plot.facetOverflow > 0) && (
@@ -214,6 +228,47 @@ function MarkView({ mark, docId }: { mark: Mark; docId: string | null }) {
         stroke={mark.stroke}
         strokeWidth="2"
       />
+    );
+  }
+
+  // A reference line is chrome, not data: no row behind it, nothing to act on,
+  // so it is never wrapped in a Presentation (DATADROP-13 §4.1).
+  if (mark.kind === "rule") {
+    const midX = (mark.x1 + mark.x2) / 2;
+    return (
+      <g>
+        <line
+          x1={mark.x1}
+          y1={mark.y1}
+          x2={mark.x2}
+          y2={mark.y2}
+          stroke={
+            mark.intent === "limit"
+              ? "var(--pbui-danger)"
+              : mark.intent === "target"
+                ? "var(--pbui-ok)"
+                : "var(--pbui-faint)"
+          }
+          strokeWidth={mark.intent === "reference" ? 1 : 1.4}
+          strokeDasharray={mark.intent === "limit" ? "2 2" : "4 3"}
+        />
+        {mark.label ? (
+          <text
+            x={mark.x1 === mark.x2 ? mark.x1 + 3 : midX}
+            y={mark.y1 === mark.y2 ? mark.y1 - 3 : 9}
+            fontSize="8"
+            fontWeight="700"
+            fill="var(--pbui-faint)"
+            textAnchor={mark.x1 === mark.x2 ? "start" : "middle"}
+          >
+            {mark.label}
+            {/* A clipped rule sits on the panel edge, which otherwise reads as
+                "we are exactly at target". The arrow says the real value is
+                further out. */}
+            {mark.clipped ? (mark.x1 === mark.x2 ? " →" : " ↑") : ""}
+          </text>
+        ) : null}
+      </g>
     );
   }
 

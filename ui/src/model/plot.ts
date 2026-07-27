@@ -51,6 +51,25 @@ export type Mark =
       stroke?: string;
       fill?: string;
       fillOpacity?: number;
+    }
+  /**
+   * A constant drawn across the panel (DATADROP-13 §4.1).
+   *
+   * Panel-relative like every other mark, so it faceted correctly for free.
+   * Carries `clipped` rather than being dropped when the constant falls outside
+   * the data's range: a target above every observed value is the MOST
+   * interesting case — it says you are nowhere near it — and silently dropping
+   * it hides the exact fact it exists to show.
+   */
+  | {
+      kind: "rule";
+      x1: number;
+      y1: number;
+      x2: number;
+      y2: number;
+      label?: string;
+      intent: "reference" | "target" | "limit";
+      clipped: boolean;
     };
 
 export interface Panel {
@@ -76,6 +95,17 @@ export interface LegendEntry {
 export interface Plot {
   /** Non-empty means nothing was drawn, and each entry says why. */
   problems: string[];
+  /**
+   * The chart WAS drawn, but part of the spec could not be honoured.
+   *
+   * Deliberately not `problems`. That field means "nothing was drawn" and
+   * `ChartPanel` renders a refusal instead of the chart when it is non-empty
+   * — so putting a partial failure there would hide a chart that exists.
+   * Introduced in DATADROP-13 for a reference line the axis cannot place: the
+   * caller asked for a line, did not get one, and has to be told without the
+   * rest of the chart disappearing.
+   */
+  notices: string[];
   panels: Panel[];
   legend: LegendEntry[];
   legendTitle: string | null;
@@ -141,6 +171,7 @@ export function lerpHex(a: string, b: string, t: number): string {
 function emptyPlot(problems: string[], width: number, height: number, rowsOut: number): Plot {
   return {
     problems,
+    notices: [],
     panels: [],
     legend: [],
     legendTitle: null,
@@ -281,6 +312,15 @@ export function buildPlot(
       xLo -= 1;
       xHi += 1;
     }
+    // Extend for x references before padding, so the 5% breathing room applies
+    // to the combined range rather than leaving a reference flush against the
+    // edge. A banded x axis has no numeric domain to extend, so a reference on
+    // it is reported as clipped at emission time instead.
+    for (const ref of spec.references ?? []) {
+      if (ref.on !== "x" || !Number.isFinite(ref.value)) continue;
+      xLo = Math.min(xLo, ref.value);
+      xHi = Math.max(xHi, ref.value);
+    }
     const pad = (xHi - xLo) * 0.05;
     xLo -= pad;
     xHi += pad;
@@ -302,6 +342,20 @@ export function buildPlot(
   // be a lie, so the editor also disables the toggle — this is the second line
   // of defence, not the first.
   const log = spec.yScale === "log" && yLo > 0;
+
+  // A y reference must be inside the domain or it cannot be drawn where it
+  // means. Extending is the honest option: the alternative is a target line
+  // pinned to the top edge, which reads as "we are at target" — the opposite of
+  // what a target above every observation says. Same fix Sparkline's threshold
+  // needed in DATADROP-11, for the same reason.
+  const yRefs = (spec.references ?? []).filter((r) => r.on === "y" && Number.isFinite(r.value));
+  for (const ref of yRefs) {
+    // A log scale cannot show a non-positive constant, so leave the domain alone
+    // and let the emission below mark it clipped.
+    if (log && ref.value <= 0) continue;
+    yLo = Math.min(yLo, ref.value);
+    yHi = Math.max(yHi, ref.value);
+  }
 
   // A bar or an area whose baseline is not zero misrepresents magnitude.
   if ((spec.geom === "bar" || spec.geom === "area") && !log) {
@@ -390,6 +444,20 @@ export function buildPlot(
             })
             .map(({ pos, label }) => ({ pos, label }));
 
+  // An x reference on a banded axis has no numeric position, so it cannot be
+  // drawn. Reported rather than dropped: the caller asked for a line and did
+  // not get one, and a chart that quietly ignores half a spec is how a reader
+  // ends up trusting a picture that is missing its own premise.
+  const notices: string[] = [];
+  const undrawable = (spec.references ?? []).filter(
+    (r) => r.on === "x" && !continuousX && Number.isFinite(r.value),
+  );
+  if (undrawable.length > 0) {
+    notices.push(
+      `a reference line on x needs a quantitative or temporal x axis — ${undrawable.length} not drawn`,
+    );
+  }
+
   // ---- marks ------------------------------------------------------------
   let markOverflow = 0;
   const panels: Panel[] = facetValues.map((facetValue, index) => {
@@ -410,6 +478,44 @@ export function buildPlot(
     }
 
     const marks: Mark[] = [];
+
+    // Reference lines first, so data marks draw ON TOP of them. A rule painted
+    // over a point would hide the observation it is there to contextualise.
+    for (const ref of spec.references ?? []) {
+      if (!Number.isFinite(ref.value)) continue;
+      const intent = ref.intent ?? "reference";
+
+      if (ref.on === "y") {
+        const outside = ref.value < yLo || ref.value > yHi;
+        const y = scaleY(clamp(ref.value, yLo, yHi));
+        marks.push({
+          kind: "rule",
+          x1: 0,
+          y1: y,
+          x2: panelW,
+          y2: y,
+          label: ref.label,
+          intent,
+          clipped: outside,
+        });
+      } else if (continuousX) {
+        const outside = ref.value < xLo || ref.value > xHi;
+        const x = ((clamp(ref.value, xLo, xHi) - xLo) / (xHi - xLo)) * panelW;
+        marks.push({
+          kind: "rule",
+          x1: x,
+          y1: 0,
+          x2: x,
+          y2: panelH,
+          label: ref.label,
+          intent,
+          clipped: outside,
+        });
+      }
+      // A banded x axis has no numeric position for a constant, so the
+      // reference is not drawn. buildPlot reports it below rather than
+      // discarding it silently.
+    }
     const baseline = log ? panelH : scaleY(clamp(0, yLo, yHi));
 
     if (spec.geom === "point") {
@@ -546,6 +652,7 @@ export function buildPlot(
 
   return {
     problems: [],
+    notices,
     panels,
     legend,
     legendTitle: colorName ?? null,

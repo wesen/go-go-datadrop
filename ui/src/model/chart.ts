@@ -26,6 +26,46 @@ export interface ChartSpec {
    * The server's `inferred_from` keeps saying what the server thought.
    */
   typeOverrides?: Record<string, FieldType>;
+  /**
+   * Constants drawn across the plot: a mean, a target, a limit.
+   *
+   * A scatter of usage against efficiency is a cloud. The same scatter with the
+   * two means drawn is a claim with four named quadrants, and the difference is
+   * two dashed lines (DATADROP-13 §4.1).
+   */
+  references?: ReferenceLine[];
+}
+
+/**
+ * A constant drawn across a plot.
+ *
+ * Chrome, not data: a reference line is never wrapped in a `<Presentation>`,
+ * because it is not an object anyone can act on.
+ */
+export interface ReferenceLine {
+  /**
+   * The axis the constant lives on.
+   *
+   * `"x"` draws a **vertical** line — it is a constant *in x*, so it runs
+   * perpendicular to the x axis. This reads backwards to about half of people,
+   * which is why it is spelled out here and named in a test.
+   */
+  on: "x" | "y";
+  /**
+   * The constant, in DATA units — never pixels.
+   *
+   * Data units so the line survives a resize, a scale change and a facet. A
+   * pixel constant is correct exactly once, at the size it was authored.
+   */
+  value: number;
+  label?: string;
+  /**
+   * What kind of claim the line makes.
+   *
+   * "the mean is here" and "we are aiming at this" read differently and should
+   * look different; a limit is the one you are not supposed to cross.
+   */
+  intent?: "reference" | "target" | "limit";
 }
 
 /**
