@@ -1527,3 +1527,57 @@ sensors / readings. 1 kB.` with the warning beneath it and the confirm button
 **enabled** — a bundle naming an application this build lacks imports anyway,
 because a four-tile layout with one unfillable tile is true and a three-tile
 layout is a lie about what a colleague sent.
+
+## Postscript: the shared index bit twice, in both directions
+
+Two commits in this ticket carry changes that belong to DATADROP-9, and the
+cause is the same both times and is worth stating plainly, because
+`AGENT.md`'s `<parallelAgentGuidelines>` does not yet say it.
+
+**Going out.** Step 1 deleted `store/spaces.ts` with `git rm --cached` followed
+by `rm`. `git rm --cached` is a *staging* command: it put the deletion in the
+shared index, and the DATADROP-9 agent's next commit — `62e53d4 DATADROP-9
+phase 1: the scaffolding for Glazed verbs` — swept it up. The file is correctly
+gone, in a commit about Glazed verbs.
+
+**Coming in.** Step 3's commit `e80ec0c DATADROP-8 phase 3: the portable format`
+carries five files it has nothing to do with:
+
+```
+ pkg/cli/dataset.go               | 595 ---------------------------------------
+ pkg/cli/{ => drops}/push_test.go |   0
+ pkg/cli/output.go                | 162 -----------
+ pkg/cli/push.go                  | 342 ----------------------
+ pkg/cli/read.go                  | 368 ------------------------
+ 5 files changed, 1467 deletions(-)
+```
+
+Those are the other agent's deprecation deletions, staged by them and already
+sitting in the index when I ran `git commit`. I had staged only `ui/` paths —
+which is what the guidelines ask for — and it made no difference.
+
+**The rule the guidelines are missing.** Staging explicit paths is necessary and
+not sufficient, because **`git commit` commits the index, not what you just
+added**. In a shared index the two safe forms are:
+
+```bash
+git commit -- ui/src/… ui/test/…     # path-limited: commits ONLY these paths
+git diff --cached --stat             # or: look before every commit
+```
+
+and `git rm` should be plain `rm` followed by naming the path in your own
+`git add`.
+
+Nothing was lost either time — a commit records a state, and both agents'
+subsequent commits build on the result; `go build ./...` and the whole UI suite
+are green. What was lost is attribution, which matters for exactly the reason
+the guidelines give: `git diff` of one commit is supposed to be reviewable, and
+neither of these two is.
+
+### What warrants a second pair of eyes
+
+- `e80ec0c` and `62e53d4` both need a note in review saying which half of each
+  belongs to which ticket. Rewriting them would rewrite the other agent's
+  history on a shared branch, which is worse than the mislabelling.
+- `AGENT.md` should gain the sentence above. It is outside this ticket's file
+  set, so it is reported rather than edited.
