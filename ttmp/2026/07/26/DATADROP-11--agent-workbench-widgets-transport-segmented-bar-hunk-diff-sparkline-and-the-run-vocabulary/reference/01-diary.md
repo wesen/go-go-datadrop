@@ -722,3 +722,165 @@ contextRowsAlwaysFaceThemselves: true
 allPairHeightsEqual: true
 heights: [11]
 ```
+
+## Step 6: The transport, and a story that threw while the suite was green
+
+Phases 5 and 6 gave the trace a presentation type and a cursor. The widget work
+was straightforward. The finding was a class of defect this repository's test
+suite **structurally cannot see**, and it took opening a browser to notice.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Build phases 5 and 6 — the `traceEntry` type and
+`TransportBar`, wired into `TracePanel`.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `79a5364` — "DATADROP-11 phases 5+6: traceEntry, TransportBar, and a scrubbable trace"
+
+### What I did
+
+- Added `traceEntry` to the union, wrote its descriptor, registered it, added a
+  tone token.
+- Built `TransportBar` and wired it into `TracePanel` with a `reviewing` state.
+- Allow-listed the `<input type=range>` in `no-raw-controls.test.ts`, with a
+  reason.
+
+### What didn't work
+
+**Every `TracePanel` story threw at render time while `bun test` reported 369
+passing.** The story file declared `parameters: { pbui: false }`, which was
+correct while the panel contained no presentations. Making the current entry a
+`<traceEntry>` made the provider mandatory:
+
+```text
+Error: usePbui outside a PbuiProvider — a presentation cannot be live without one
+    at usePbui (src/pbui/usePbui.ts:14:9)
+    at Presentation (src/pbui/Presentation.tsx:9:15)
+```
+
+`stories.test.ts` asserts that every component directory *has* a story with the
+right title prefix. It does not render one. So a story can be broken — not
+subtly wrong, but throwing — and every structural guard in the repository stays
+green. **This is a hole in the genre, not an oversight in one test**, and it is
+worth saying plainly: the structural tests check that documentation exists, and
+nothing checks that it works.
+
+### What I learned
+
+**The guide told me to use an array index and the guide was wrong.** Section 6
+specified `traceEntry` as `{ index: number }`. `TRACE_CAP` in the world slice
+drops entries from the front, so an index silently comes to mean a different
+entry once the cap is reached, and a verb carrying `{index: 3}` would act on
+whatever had slid into position 3. The value is `{ seq }`. I wrote that guide
+four hours earlier and still had to catch it by reading the slice.
+
+### What was tricky to build
+
+**`reviewing` is `number | null`, and the null is load-bearing.** A bare number
+cannot distinguish "the reader is looking at the last entry" from "the reader is
+following the tail and the last entry happens to be current". Without the
+distinction the auto-scroll fights a reader who has scrubbed backwards — which
+is exactly the defect DATADROP-7 hit with the tour's auto-advance, arrived at
+from a different direction.
+
+### What warrants a second pair of eyes
+
+- **The review-only scope.** The note on screen says the transport does not roll
+  the workbench back and names DATADROP-12. If anyone thinks shipping a control
+  that looks like time travel without being it is worse than not shipping it, I
+  want to hear that before it reaches users.
+- **The `<input type=range>` exemption.** One caller. If a second transport
+  appears it should become a `RangeInput` atom, and the allow-list entry says so.
+
+## Step 7: The break sweep, and two silent guards
+
+The last phase is the one the guide says is most likely to be skipped. It found
+two guards that were not guarding, and the test written to close them found a
+defect that had been shipping since DATADROP-5.
+
+### Prompt Context
+
+**User prompt (verbatim):** (see Step 1)
+
+**Assistant interpretation:** Phase 7 — barrels, story coverage, and the break
+sweep with verbatim failures recorded.
+
+**Inferred user intent:** As Step 1.
+
+**Commit (code):** `d835a76` — "DATADROP-11 phase 7: descriptor coverage, and a tone that never existed"
+
+### What I did
+
+Broke each guard this ticket touched, one at a time, and recorded what happened.
+Two produced nothing. Wrote `ui/test/descriptor-coverage.test.ts` to cover both,
+fixed what it found, and verified it by breaking all three of its assertions.
+
+### What didn't work — which is the point of the sweep
+
+**Removing a descriptor from the registry failed nothing.** Zero tests. That is
+precisely the DATADROP-4 defect: `tile` and `workspace` were declared
+presentation types wrapped in real `<Presentation>` elements with no descriptors
+behind them, so right-clicking a tile said "no verbs for this object yet" for
+two tickets. DATADROP-8 repaired the instance and nothing prevented the class.
+
+**Deleting a tone token while keeping the reference failed nothing.**
+`tokens-used.test.ts` scans stylesheets, and a descriptor's `tone` is a token
+reference written in TypeScript. The earlier break in step 2 — putting
+`var(--pbui-tone-invented)` in a `.module.css` — passed cleanly and gave me
+false confidence that token references were covered. They are covered *in CSS*.
+
+### What worked
+
+**The new test earned itself on its first run**, which is the best available
+outcome for a structural guard:
+
+```text
+upload: tone names --pbui-tone-datum, which is not declared
+```
+
+`upload.ts` has named `--pbui-tone-datum` since DATADROP-5 (`39e607e`) and that
+token has never existed. An undeclared `var()` with no fallback resolves to
+nothing, silently, so every upload chip has rendered with no tone for two
+tickets and nobody noticed — including me, three hours earlier, when I read that
+exact file to inventory the descriptors.
+
+### What I learned
+
+**A break sweep is not a formality and "the tests pass" is not evidence.** Three
+of the six things I broke across this ticket produced no failure at all, and
+each of those was a place I would have said, unprompted, that we had coverage.
+
+**One break passing does not generalise to its class.** Step 2's token break
+went through a stylesheet and passed; I concluded token references were guarded.
+They were guarded in the one medium I happened to test. The lesson is to break
+the specific mechanism you are relying on, not a cousin of it.
+
+### What should be done in the future
+
+- **Story rendering is unguarded.** A story that throws at render is invisible to
+  every test here. A smoke test that mounts each story would close it; Storybook
+  ships a test-runner for exactly this. Worth its own ticket — it would have
+  caught the `pbui: false` defect in step 6 automatically.
+
+### Technical details
+
+The sweep, before and after:
+
+```text
+BEFORE the new test
+  remove traceEntry from the registry     -> 0 fail   ← silent
+  delete --pbui-tone-traceEntry           -> 0 fail   ← silent
+  remove the TransportBar allow-list      -> 1 fail   ✓ names file:line
+
+AFTER
+  remove traceEntry from the registry     -> "every declared presentation type
+                                              has a descriptor" fails, naming it
+  delete --pbui-tone-traceEntry           -> "every descriptor's tone names a
+                                              declared token" fails, naming both
+  exempt a type that has a descriptor     -> "every exemption is still exempt" fails
+```
+
+Final: 374 tests across 28 files, typecheck clean, biome clean over 502 files.

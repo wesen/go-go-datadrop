@@ -24,3 +24,8 @@ Phase 2: MoreBar, JsonBlock, KindLegend + InspectorPanel substitution; 3 defects
 
 Phases 3-4: SegmentedBar (overflow prose corrected) and DiffHunk (split pairing was wrong; pairRows extracted and pinned) (commits e2dac48, 906dc05)
 
+
+## 2026-07-26
+
+Phases 5-7: traceEntry + TransportBar + descriptor-coverage guard; found a story throwing while the suite was green, and an undeclared tone shipping since DATADROP-5 (commits 79a5364, d835a76)
+
