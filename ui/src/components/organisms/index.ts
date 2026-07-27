@@ -49,3 +49,5 @@ export { ModuleRack } from "./ModuleRack";
 export { wedgeOf } from "./LessonRail";
 export { TransportBar } from "./TransportBar";
 export type { TransportBarProps } from "./TransportBar";
+export { RadarPanel } from "./RadarPanel";
+export type { RadarPanelProps } from "./RadarPanel";

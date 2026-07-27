@@ -161,3 +161,76 @@ export const Truncated: Story = {
     table: { ...readings, truncated: true, strategy: "latest", row_count: 2000 },
   },
 };
+
+/**
+ * Reference lines (DATADROP-13).
+ *
+ * A constant drawn across the plot in DATA units, so it survives a resize, a
+ * scale change and a facet. Three intents, three appearances: a `reference` is
+ * faint, a `target` is green, a `limit` is red and finely dashed.
+ *
+ * The values are chosen to sit inside the fixture's range, so all three land
+ * between the marks rather than at the edges.
+ */
+export const WithReferenceLines: Story = {
+  args: {
+    plot: chartPlot(
+      chartSpec({
+        references: [
+          { on: "y", value: 21, label: "mean", intent: "reference" },
+          { on: "y", value: 24, label: "target", intent: "target" },
+          { on: "y", value: 26.5, label: "limit", intent: "limit" },
+        ],
+      }),
+    ),
+  },
+};
+
+/**
+ * A target above every observation — the case that must NOT be hidden.
+ *
+ * The y domain stretches to include it, so the line is drawn where it means and
+ * the marks compress downward. The alternatives are both lies: dropping the
+ * line hides the fact it exists to show, and pinning it to the top edge says
+ * "we are at target" when the point is that we are nowhere near it.
+ */
+export const ATargetOutsideTheData: Story = {
+  args: {
+    plot: chartPlot(
+      chartSpec({
+        references: [{ on: "y", value: 60, label: "target", intent: "target" }],
+      }),
+    ),
+  },
+};
+
+/**
+ * A reference the axis cannot place.
+ *
+ * A banded x axis has no numeric position for a constant, so the line is not
+ * drawn — and the panel says so above the chart. It is a `notice`, not a
+ * `problem`: the chart itself is fine and still renders, which is exactly why
+ * the two severities are separate fields.
+ */
+export const AnUndrawableReference: Story = {
+  args: {
+    plot: chartPlot(
+      chartSpec({
+        geom: "bar",
+        mapping: {
+          x: READINGS.station,
+          // After a summarize the field is renamed — mapping y to the ORIGINAL
+          // column makes buildPlot refuse, which is what the first version of
+          // this story did: it rendered "Nothing to draw yet" and demonstrated
+          // the refusal path instead of the notice path it claims to show.
+          y: `mean_${READINGS.temp}`,
+          color: null,
+          size: null,
+          facet: null,
+        },
+        steps: [step.summarize(READINGS.station, "mean", READINGS.temp)],
+        references: [{ on: "x", value: 5, label: "cannot be placed" }],
+      }),
+    ),
+  },
+};
